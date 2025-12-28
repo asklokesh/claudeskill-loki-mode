@@ -8,17 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.4.0] - 2025-12-28
 
 ### Added
-- **Live Output** - Claude's output now displays in real-time (no more blank screen waiting)
-- **Vibe Kanban Dashboard** - Automatically launches Vibe Kanban UI:
-  - Opens at http://127.0.0.1:57374
-  - Visual kanban board for monitoring agent tasks
-  - Real-time progress updates in browser
-  - Starts/stops automatically with the runner
+- **Live Output** - Claude's output now streams in real-time using pseudo-TTY
+  - Uses `script` command to allocate PTY for proper streaming
+  - Visual separator shows when Claude is working
+- **Status Monitor** - `.loki/STATUS.txt` updates every 5 seconds with:
+  - Current phase
+  - Task counts (pending, in-progress, completed, failed)
+  - Monitor with: `watch -n 2 cat .loki/STATUS.txt`
 
 ### Changed
-- Autonomy runner now shows Claude output directly (unbuffered)
-- Vibe Kanban now launches as actual web UI (not just JSON export)
-- Updated README and autonomy/README with dashboard URL
+- Replaced Vibe Kanban auto-launch with simpler status file monitor
+- Autonomy runner uses `script` for proper TTY output on macOS/Linux
 
 ## [2.3.0] - 2025-12-27
 

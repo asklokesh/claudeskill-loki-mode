@@ -33,25 +33,37 @@ Claude's output is displayed in real-time - you can see exactly what's happening
 [Claude's output appears here in real-time...]
 ```
 
-## Vibe Kanban Dashboard (Built-in)
+## Status Monitor (Built-in)
 
-The runner automatically starts [Vibe Kanban](https://github.com/BloopAI/vibe-kanban) UI:
+The runner updates `.loki/STATUS.txt` every 5 seconds with task progress:
 
 ```
-┌────────────────────────────────────────────────────────────────┐
-│  Vibe Kanban Dashboard                                         │
-│                                                                │
-│  http://127.0.0.1:57374                                        │
-│                                                                │
-│  Open this URL in your browser to monitor agent tasks          │
-└────────────────────────────────────────────────────────────────┘
+╔════════════════════════════════════════════════════════════════╗
+║                    LOKI MODE STATUS                            ║
+╚════════════════════════════════════════════════════════════════╝
+
+Updated: Sat Dec 28 15:30:00 PST 2025
+
+Phase: DEVELOPMENT
+
+Tasks:
+  ├─ Pending:     10
+  ├─ In Progress: 1
+  ├─ Completed:   5
+  └─ Failed:      0
+
+Monitor: watch -n 2 cat .loki/STATUS.txt
 ```
 
-Open the URL in your browser to see:
-- Visual kanban board of all tasks
-- Real-time progress updates
-- Agent status and history
-- Code diffs and reviews
+### Monitor in Another Terminal
+
+```bash
+# Watch status updates live
+watch -n 2 cat .loki/STATUS.txt
+
+# Or view once
+cat .loki/STATUS.txt
+```
 
 ## What Gets Checked
 

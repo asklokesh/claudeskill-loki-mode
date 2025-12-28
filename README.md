@@ -135,7 +135,7 @@ The autonomous runner will:
 1. Check all prerequisites (Claude CLI, Python, Git, etc.)
 2. Verify skill installation
 3. Initialize the `.loki/` directory
-4. **Start Vibe Kanban sync** for real-time task monitoring
+4. Start **status monitor** (updates `.loki/STATUS.txt` every 5s)
 5. Start Claude Code with **live output** (see what's happening)
 6. Auto-resume on rate limits or interruptions
 7. Continue until completion or max retries
@@ -152,18 +152,28 @@ No more staring at a blank screen! Claude's output is displayed in real-time:
 [You see Claude working in real-time here...]
 ```
 
-### Vibe Kanban Dashboard
+### Status Monitor
 
-The runner automatically starts [Vibe Kanban](https://github.com/BloopAI/vibe-kanban) UI:
+Monitor task progress in another terminal:
 
+```bash
+# Watch status updates live
+watch -n 2 cat .loki/STATUS.txt
 ```
-┌────────────────────────────────────────────────────────────────┐
-│  Vibe Kanban Dashboard                                         │
-│                                                                │
-│  http://127.0.0.1:57374                                        │
-│                                                                │
-│  Open this URL in your browser to monitor agent tasks          │
-└────────────────────────────────────────────────────────────────┘
+
+Output:
+```
+╔════════════════════════════════════════════════════════════════╗
+║                    LOKI MODE STATUS                            ║
+╚════════════════════════════════════════════════════════════════╝
+
+Phase: DEVELOPMENT
+
+Tasks:
+  ├─ Pending:     10
+  ├─ In Progress: 1
+  ├─ Completed:   5
+  └─ Failed:      0
 ```
 
 ### Manual Mode
