@@ -25,6 +25,8 @@ MAX_RETRIES=${LOKI_MAX_RETRIES:-50}
 BASE_WAIT=${LOKI_BASE_WAIT:-60}
 MAX_WAIT=${LOKI_MAX_WAIT:-3600}
 SKIP_PREREQS=${LOKI_SKIP_PREREQS:-false}
+VIBE_SYNC_INTERVAL=${LOKI_VIBE_SYNC:-30}  # Vibe Kanban sync interval in seconds
+VIBE_KANBAN_PID=""
 
 # Colors
 RED='\033[0;31m'
@@ -207,6 +209,105 @@ EOF
 }
 
 #===============================================================================
+# Vibe Kanban Integration
+#===============================================================================
+
+export_to_vibe_kanban() {
+    local export_dir=".loki/vibe-kanban"
+    mkdir -p "$export_dir"
+
+    # Get current phase
+    local current_phase="UNKNOWN"
+    if [ -f ".loki/state/orchestrator.json" ]; then
+        current_phase=$(python3 -c "import json; print(json.load(open('.loki/state/orchestrator.json')).get('currentPhase', 'UNKNOWN'))" 2>/dev/null || echo "UNKNOWN")
+    fi
+
+    # Export tasks from queues
+    python3 << EOF 2>/dev/null || true
+import json
+import os
+from datetime import datetime
+
+export_dir = "$export_dir"
+current_phase = "$current_phase"
+
+def phase_to_column(phase):
+    mapping = {
+        "BOOTSTRAP": "backlog", "DISCOVERY": "planning", "ARCHITECTURE": "planning",
+        "INFRASTRUCTURE": "in-progress", "DEVELOPMENT": "in-progress",
+        "QA": "review", "DEPLOYMENT": "deploying",
+        "BUSINESS_OPS": "done", "GROWTH": "done", "COMPLETED": "done"
+    }
+    return mapping.get(phase, "backlog")
+
+total = 0
+for queue in ["pending", "in-progress", "completed", "failed"]:
+    queue_file = f".loki/queue/{queue}.json"
+    if not os.path.exists(queue_file):
+        continue
+    try:
+        with open(queue_file) as f:
+            tasks = json.load(f)
+    except:
+        continue
+
+    status_map = {"pending": "todo", "in-progress": "doing", "completed": "done", "failed": "blocked"}
+    for task in tasks:
+        task_id = task.get("id", "unknown")
+        payload = task.get("payload", {})
+        agent_type = task.get("type", "unknown")
+
+        vibe_task = {
+            "id": f"loki-{task_id}",
+            "title": f"[{agent_type}] {payload.get('action', 'Task')}",
+            "description": payload.get('description', str(payload)),
+            "status": status_map.get(queue, "todo"),
+            "column": phase_to_column(current_phase),
+            "agent": "claude-code",
+            "tags": [agent_type, f"phase-{current_phase.lower()}"],
+            "updatedAt": datetime.utcnow().isoformat() + "Z"
+        }
+        with open(f"{export_dir}/{task_id}.json", "w") as out:
+            json.dump(vibe_task, out, indent=2)
+        total += 1
+
+# Write summary
+summary = {
+    "phase": current_phase,
+    "column": phase_to_column(current_phase),
+    "totalTasks": total,
+    "updatedAt": datetime.utcnow().isoformat() + "Z"
+}
+with open(f"{export_dir}/_summary.json", "w") as f:
+    json.dump(summary, f, indent=2)
+EOF
+}
+
+start_vibe_sync() {
+    log_step "Starting Vibe Kanban sync (every ${VIBE_SYNC_INTERVAL}s)..."
+
+    # Background sync loop
+    (
+        while true; do
+            export_to_vibe_kanban
+            sleep "$VIBE_SYNC_INTERVAL"
+        done
+    ) &
+    VIBE_KANBAN_PID=$!
+
+    log_info "Vibe Kanban sync started (PID: $VIBE_KANBAN_PID)"
+    log_info "Monitor tasks at: .loki/vibe-kanban/"
+}
+
+stop_vibe_sync() {
+    if [ -n "$VIBE_KANBAN_PID" ]; then
+        kill "$VIBE_KANBAN_PID" 2>/dev/null || true
+        wait "$VIBE_KANBAN_PID" 2>/dev/null || true
+        log_info "Vibe Kanban sync stopped"
+    fi
+}
+
+#===============================================================================
 # Calculate Exponential Backoff
 #===============================================================================
 
@@ -335,12 +436,33 @@ run_autonomous() {
 
         save_state $retry "running" 0
 
-        # Run Claude Code
+        # Run Claude Code with live output
         local start_time=$(date +%s)
+        local log_file=".loki/logs/autonomy-$(date +%Y%m%d).log"
+
+        echo ""
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${CYAN}  CLAUDE CODE OUTPUT (live)${NC}"
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo ""
+
+        # Log start time
+        echo "=== Session started at $(date) ===" >> "$log_file"
+        echo "=== Prompt: $prompt ===" >> "$log_file"
+
         set +e
-        claude --dangerously-skip-permissions -p "$prompt" 2>&1 | tee -a ".loki/logs/autonomy-$(date +%Y%m%d).log"
-        local exit_code=${PIPESTATUS[0]}
+        # Run Claude directly for live, unbuffered output
+        # No piping or redirection - output goes straight to terminal
+        claude --dangerously-skip-permissions -p "$prompt"
+        local exit_code=$?
         set -e
+
+        echo ""
+        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo ""
+
+        # Log end time
+        echo "=== Session ended at $(date) with exit code $exit_code ===" >> "$log_file"
 
         local end_time=$(date +%s)
         local duration=$((end_time - start_time))
@@ -397,6 +519,7 @@ run_autonomous() {
 cleanup() {
     echo ""
     log_warn "Received interrupt signal"
+    stop_vibe_sync
     save_state ${RETRY_COUNT:-0} "interrupted" 130
     log_info "State saved. Run again to resume."
     exit 130
@@ -448,8 +571,17 @@ main() {
     # Initialize .loki directory
     init_loki_dir
 
+    # Start Vibe Kanban background sync
+    start_vibe_sync
+
     # Run autonomous loop
-    run_autonomous "$PRD_PATH"
+    local result=0
+    run_autonomous "$PRD_PATH" || result=$?
+
+    # Cleanup
+    stop_vibe_sync
+
+    exit $result
 }
 
 # Run main

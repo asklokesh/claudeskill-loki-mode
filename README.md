@@ -135,9 +135,31 @@ The autonomous runner will:
 1. Check all prerequisites (Claude CLI, Python, Git, etc.)
 2. Verify skill installation
 3. Initialize the `.loki/` directory
-4. Start Claude Code with autonomous permissions
-5. Auto-resume on rate limits or interruptions
-6. Continue until completion or max retries
+4. **Start Vibe Kanban sync** for real-time task monitoring
+5. Start Claude Code with **live output** (see what's happening)
+6. Auto-resume on rate limits or interruptions
+7. Continue until completion or max retries
+
+### Live Output
+
+No more staring at a blank screen! Claude's output is displayed in real-time:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  CLAUDE CODE OUTPUT (live)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[You see Claude working in real-time here...]
+```
+
+### Built-in Task Monitoring
+
+Tasks are synced to `.loki/vibe-kanban/` every 30 seconds:
+
+```bash
+# Watch progress in another terminal
+watch -n 5 'jq . .loki/vibe-kanban/_summary.json'
+```
 
 ### Manual Mode
 
@@ -171,6 +193,7 @@ LOKI_MAX_WAIT=7200 \
 | `LOKI_MAX_RETRIES` | 50 | Maximum retry attempts before giving up |
 | `LOKI_BASE_WAIT` | 60 | Base wait time in seconds |
 | `LOKI_MAX_WAIT` | 3600 | Maximum wait time (1 hour) |
+| `LOKI_VIBE_SYNC` | 30 | Vibe Kanban sync interval in seconds |
 | `LOKI_SKIP_PREREQS` | false | Skip prerequisite checks |
 
 ### How Auto-Resume Works
