@@ -5,6 +5,13 @@ All notable changes to Loki Mode will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.1] - 2025-12-31
+
+### Fixed
+- **Immediate continuation on success** - Successful iterations (exit code 0) now continue immediately
+- No more 17+ minute waits between successful iterations
+- Exponential backoff only applies to errors or rate limits
+
 ## [2.9.0] - 2025-12-31
 
 ### Added
