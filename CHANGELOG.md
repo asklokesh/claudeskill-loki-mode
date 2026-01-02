@@ -5,6 +5,39 @@ All notable changes to Loki Mode will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.16.0] - 2026-01-02
+
+### Added
+- **Model Selection Strategy** - Performance and cost optimization (SKILL.md:78-119):
+  - Comprehensive model selection table (Haiku/Sonnet/Opus)
+  - Use Haiku 4.5 for simple tasks (tests, docs, commands, fixes)
+  - Use Sonnet 4.5 for standard implementation (default)
+  - Use Opus 4.5 for complex architecture/planning
+  - Speed/cost comparison matrix
+  - Haiku task categories checklist (10 common use cases)
+
+- **Haiku Parallelization Examples** - Maximize speed with 10+ concurrent agents (SKILL.md:2748-2806):
+  - Parallel unit testing (1 Haiku agent per test file)
+  - Parallel documentation (1 Haiku agent per module)
+  - Parallel linting (1 Haiku agent per directory)
+  - Background task execution with TaskOutput aggregation
+  - Performance gain calculations (8x faster with Haiku parallelization)
+
+- **Model Parameter in Task Dispatch Templates** - All templates now include model selection:
+  - Updated Task Tool Dispatch template with model parameter (SKILL.md:337)
+  - Added 5 concrete examples (Haiku for tests/docs/linting, Sonnet for implementation, Opus for architecture)
+  - Updated UNIT_TESTS phase with parallel Haiku execution strategy (SKILL.md:2041-2084)
+
+### Changed
+- **Quick Reference** - Added 5th critical step: "OPTIMIZE - Use Haiku for simple tasks" (SKILL.md:19)
+- **Agent Spawning Section** - Clarified model selection for implementation agents (SKILL.md:2744)
+- **Code Review** - Maintained Opus for security/architecture reviewers, Sonnet for performance
+
+### Performance Impact
+- **Unit Testing**: 50 test files × 30s = 25 min (sequential Sonnet) → 3 min (parallel Haiku) = **8x faster**
+- **Cost Reduction**: Haiku is cheapest model, using it for 70% of tasks significantly reduces costs
+- **Throughput**: 10+ Haiku agents running concurrently vs sequential Sonnet agents
+
 ## [2.15.0] - 2026-01-02
 
 ### Added

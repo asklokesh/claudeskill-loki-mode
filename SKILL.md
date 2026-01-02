@@ -5,7 +5,7 @@ description: Multi-agent autonomous startup system for Claude Code. Triggers on 
 
 # Loki Mode - Multi-Agent Autonomous Startup System
 
-> **Version 2.15.0** | PRD → Production | Zero Human Intervention
+> **Version 2.16.0** | PRD → Production | Zero Human Intervention
 
 ---
 
@@ -16,6 +16,7 @@ description: Multi-agent autonomous startup system for Claude Code. Triggers on 
 2. **CHECK** `.loki/state/orchestrator.json` - Current phase/metrics
 3. **REVIEW** `.loki/queue/pending.json` - Next tasks
 4. **FOLLOW** RAR cycle: REASON → ACT → REFLECT
+5. **OPTIMIZE** Use Haiku for simple tasks (tests, docs, commands) - 10+ agents in parallel for max speed
 
 ### Key Files (Priority Order)
 | File | Purpose | Update When |
@@ -74,6 +75,49 @@ Development ← QA ← Deployment ← Business Ops ← Growth Loop
 2. CLAUDE.md (significant changes)
 3. Ledgers (checkpoints)
 4. Rules (permanent patterns)
+
+### Model Selection Strategy (Performance & Cost Optimization)
+
+**CRITICAL: Use Haiku 4.5 for maximum parallelization and speed.**
+
+| Model | Use For | Examples | Speed | Cost |
+|-------|---------|----------|-------|------|
+| **Haiku 4.5** | Simple, fast tasks (DEFAULT for most subagents) | Unit tests, docs, bash commands, simple fixes, formatting, linting, file operations | ⚡⚡⚡ Fastest | 💰 Cheapest |
+| **Sonnet 4.5** | Standard implementation tasks | Feature implementation, API endpoints, moderate refactoring, integration tests | ⚡⚡ Fast | 💰💰 Medium |
+| **Opus 4.5** | Complex planning & architecture | System design, architecture decisions, complex refactoring plans, security reviews | ⚡ Slower | 💰💰💰 Expensive |
+
+**Task Tool Model Parameter:**
+```python
+# Haiku for simple tasks (PREFER THIS)
+Task(subagent_type="general-purpose", model="haiku", description="Run unit tests", prompt="...")
+
+# Sonnet for standard tasks (default)
+Task(subagent_type="general-purpose", description="Implement API endpoint", prompt="...")
+
+# Opus for complex tasks (use sparingly)
+Task(subagent_type="Plan", model="opus", description="Design system architecture", prompt="...")
+```
+
+**Haiku 4.5 Task Categories (Use Extensively):**
+- ✅ Writing/running unit tests
+- ✅ Generating documentation
+- ✅ Running bash commands (npm install, git operations, etc.)
+- ✅ Simple bug fixes (typos, imports, formatting)
+- ✅ File operations (read, write, move, organize)
+- ✅ Linting/formatting code
+- ✅ Simple data transformations
+- ✅ Generating boilerplate code
+- ✅ Running static analysis tools
+- ✅ Simple validation logic
+
+**Parallelization Strategy:**
+```python
+# Launch 10+ Haiku agents in parallel for test suite
+for test_file in test_files:
+    Task(subagent_type="general-purpose", model="haiku",
+         description=f"Run tests: {test_file}",
+         run_in_background=True)
+```
 
 ### Common Issues & Solutions
 
@@ -291,6 +335,7 @@ NOT: "Refactor the auth file"
 ```markdown
 [Task tool call]
 - description: "[5-word summary]"
+- model: "haiku"  # Use haiku for simple tasks, sonnet (default), or opus for complex
 - prompt: |
     ## GOAL
     [What success looks like]
@@ -312,6 +357,48 @@ NOT: "Refactor the auth file"
     2. WHAT: What changed? (files, APIs, behavior)
     3. TRADE-OFFS: What did we gain? What did we give up?
     4. RISKS: What could go wrong? How do we mitigate?
+```
+
+**Model Selection Examples:**
+```python
+# Haiku - Simple task (unit tests)
+Task(
+    subagent_type="general-purpose",
+    model="haiku",
+    description="Write unit tests",
+    prompt="Write unit tests for src/auth.ts with >90% coverage"
+)
+
+# Haiku - Documentation
+Task(
+    subagent_type="general-purpose",
+    model="haiku",
+    description="Generate API docs",
+    prompt="Generate API documentation for /api/v1/users endpoints"
+)
+
+# Haiku - Bash commands
+Task(
+    subagent_type="general-purpose",
+    model="haiku",
+    description="Run linting",
+    prompt="Run ESLint on src/ directory and fix auto-fixable issues"
+)
+
+# Sonnet - Standard implementation (default, can omit model parameter)
+Task(
+    subagent_type="general-purpose",
+    description="Implement login endpoint",
+    prompt="Implement POST /api/v1/auth/login endpoint per OpenAPI spec"
+)
+
+# Opus - Complex architecture
+Task(
+    subagent_type="Plan",
+    model="opus",
+    description="Design authentication system",
+    prompt="Design complete authentication system architecture with JWT, refresh tokens, OAuth2"
+)
 ```
 
 ### Principle 3: Document Decisions, Not Just Code
@@ -1953,6 +2040,37 @@ Use the generated PRD as the requirements baseline and execute all enabled SDLC 
 The prompt includes `SDLC_PHASES_ENABLED: [...]` listing which phases to execute. Execute each enabled phase in order. Log results to `.loki/logs/sdlc-{phase}-{timestamp}.md`.
 
 ### UNIT_TESTS Phase
+
+**CRITICAL: Use Haiku agents for maximum parallelization and speed.**
+
+**Parallel Execution Strategy (RECOMMENDED):**
+```python
+# Identify all test files
+test_files = glob("**/*test.ts") + glob("**/*spec.ts")
+
+# Launch Haiku agent for EACH test file in parallel (10+ agents at once)
+tasks = []
+for test_file in test_files:
+    task_id = Task(
+        subagent_type="general-purpose",
+        model="haiku",  # Fast and cheap for unit tests
+        description=f"Run tests: {test_file}",
+        prompt=f"""
+        Run unit tests for {test_file}:
+        1. Execute: npm test {test_file}
+        2. Report pass/fail status
+        3. If failures, extract error messages
+        4. Report coverage percentage
+        """,
+        run_in_background=True  # Don't block, run in parallel
+    )
+    tasks.append(task_id)
+
+# Wait for all tasks to complete and aggregate results
+# If ANY test file fails, create fix task
+```
+
+**Sequential Execution (Fallback):**
 ```bash
 # Execute existing unit tests
 cd backend && npm test
@@ -1960,8 +2078,11 @@ cd frontend && npm test
 # Generate coverage report
 npm run test:coverage
 ```
+
 **Pass Criteria:** All tests pass, coverage > 80%
-**On Failure:** Fix failing tests before proceeding
+**On Failure:**
+- Use Haiku agent to fix each failing test file independently
+- Dispatch fix agents in parallel for speed
 
 ### API_TESTS Phase
 Functional testing of ALL API endpoints with real HTTP requests:
@@ -2621,9 +2742,69 @@ Use the Task tool to dispatch subagents. Each task gets a fresh context (no poll
     3. Verify all tests pass
     4. Commit with conventional commit message
     5. Report: WHAT_WAS_IMPLEMENTED, FILES_CHANGED, TEST_RESULTS
-- model: "sonnet" (fast implementation)
+- model: "sonnet" (default for standard implementation)
 - working_directory: [project root]
 ```
+
+### Haiku Parallelization for Speed (CRITICAL)
+
+**When to use Haiku agents (EXTENSIVELY):**
+- Unit test execution (1 agent per test file = 10-50 parallel agents)
+- Documentation generation (1 agent per module)
+- Linting/formatting (1 agent per directory)
+- Simple bug fixes (1 agent per file)
+- Bash command execution (git, npm, docker, etc.)
+
+**Example: Parallel Unit Testing (10+ Haiku Agents):**
+```python
+# Get all test files
+test_files = glob("**/*test.ts") + glob("**/*.spec.ts")
+
+# Dispatch Haiku agent for EACH test file (DON'T wait for sequential completion)
+background_tasks = []
+for test_file in test_files:
+    task = Task(
+        subagent_type="general-purpose",
+        model="haiku",  # Fast, cheap, perfect for unit tests
+        description=f"Test: {test_file}",
+        prompt=f"Run npm test {test_file} and report results",
+        run_in_background=True  # CRITICAL: Non-blocking parallel execution
+    )
+    background_tasks.append(task)
+
+# Collect results from all background tasks
+results = [TaskOutput(task_id=t, block=True) for t in background_tasks]
+```
+
+**Example: Parallel Documentation (5+ Haiku Agents):**
+```python
+modules = ["auth", "users", "products", "orders", "payments"]
+for module in modules:
+    Task(
+        subagent_type="general-purpose",
+        model="haiku",
+        description=f"Document {module} module",
+        prompt=f"Generate API documentation for src/{module}/ with examples",
+        run_in_background=True
+    )
+```
+
+**Example: Parallel Linting (Directory-level):**
+```python
+directories = ["src/components", "src/api", "src/utils", "src/models"]
+for directory in directories:
+    Task(
+        subagent_type="general-purpose",
+        model="haiku",
+        description=f"Lint {directory}",
+        prompt=f"Run ESLint on {directory} and fix auto-fixable issues",
+        run_in_background=True
+    )
+```
+
+**Performance Gain:**
+- **Sequential (Sonnet)**: 50 test files × 30s = 25 minutes
+- **Parallel (Haiku)**: 50 test files ÷ 10 concurrent = ~3 minutes (8x faster + cheaper)
 
 ### Parallel Code Review (3 Reviewers Simultaneously)
 
