@@ -5,6 +5,37 @@ All notable changes to Loki Mode will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.18.0] - 2026-01-04
+
+### Added
+- **Boris Cherny "Max Setup" Integration** - Inspired by Claude Code creator's workflow best practices:
+  - **Plan Mode First** (`LOKI_PLAN_MODE=true`): Start every session by creating a solid plan before execution
+  - **CLAUDE.md Team Playbook** (`LOKI_PLAYBOOK=CLAUDE.md`): Auto-updated with learnings from each session
+  - **PostToolUse Hooks** (`LOKI_USE_HOOKS=true`): Auto-formatting for JS/TS/Python/Go/Rust files
+  - **Self-Verification** (`LOKI_VERIFY_OWN_WORK=true`): 2-3x quality boost by testing every change
+  - Reference: Boris Cherny's LinkedIn post on "Claude Code Max Setup"
+
+- **Slash Commands for Automation** (`.claude/commands/`):
+  - `/verify` - Comprehensive verification (tests, lint, types, build)
+  - `/simplify` - Code simplification agent (Boris's "code-simplifier")
+  - `/plan` - Create implementation plan before coding
+  - `/review` - Run 3-reviewer parallel code review
+  - `/status` - Check Loki Mode status and progress
+  - `/learn` - Update CLAUDE.md with new learnings
+
+### Enhanced
+- `autonomy/run.sh`: Integrated Plan Mode → Execute workflow
+- Build prompt now includes plan reference, playbook instruction, and self-verification
+- Session learnings automatically appended to CLAUDE.md
+
+### Philosophy
+"Less prompting. More systems." - Boris Cherny
+
+Agents work best with feedback loops:
+1. **Parallelize**: Run many agents (10+ Haiku in parallel)
+2. **Document**: Maintain CLAUDE.md as team playbook
+3. **Verify**: Let AI test its own changes
+
 ## [2.17.0] - 2026-01-04
 
 ### Added

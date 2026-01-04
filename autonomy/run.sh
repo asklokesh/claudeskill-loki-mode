@@ -36,6 +36,14 @@
 #   LOKI_MAX_ITERATIONS        - Max loop iterations before exit (default: 1000)
 #   LOKI_PERPETUAL_MODE        - Ignore ALL completion signals (default: false)
 #                                Set to 'true' for truly infinite operation
+#
+# Boris Cherny "Max Setup" Inspired (v2.18.0):
+#   LOKI_PLAN_MODE             - Start in Plan Mode before execution (default: true)
+#                                Plan is approved, then execution begins
+#   LOKI_PLAYBOOK              - Path to CLAUDE.md team playbook (default: CLAUDE.md)
+#                                Updated with learnings after each session
+#   LOKI_USE_HOOKS             - Enable PostToolUse hooks for formatting (default: true)
+#   LOKI_VERIFY_OWN_WORK       - Let AI verify its changes (2-3x quality) (default: true)
 #===============================================================================
 
 set -uo pipefail
@@ -73,6 +81,12 @@ MAX_ITERATIONS=${LOKI_MAX_ITERATIONS:-1000}
 ITERATION_COUNT=0
 # Perpetual mode: never stop unless max iterations (ignores all completion signals)
 PERPETUAL_MODE=${LOKI_PERPETUAL_MODE:-false}
+
+# Boris Cherny "Max Setup" Features
+PLAN_MODE=${LOKI_PLAN_MODE:-true}              # Start in Plan Mode, approve, then execute
+PLAYBOOK_PATH=${LOKI_PLAYBOOK:-"CLAUDE.md"}    # Team playbook - learnings accumulate here
+USE_HOOKS=${LOKI_USE_HOOKS:-true}              # PostToolUse hooks for formatting
+VERIFY_OWN_WORK=${LOKI_VERIFY_OWN_WORK:-true}  # AI self-verification (2-3x quality boost)
 
 # Colors
 RED='\033[0;31m'
@@ -628,6 +642,219 @@ stop_dashboard() {
 }
 
 #===============================================================================
+# Plan Mode - "Start in Plan Mode. Approve the plan → then execute."
+# Inspired by Boris Cherny's Max Setup
+#===============================================================================
+
+run_plan_mode() {
+    local prd_path="$1"
+
+    log_header "Plan Mode (Boris Cherny Max Setup)"
+    log_info "Creating implementation plan before execution..."
+    log_info "This ensures quality over speed."
+    echo ""
+
+    local plan_prompt=""
+    if [ -n "$prd_path" ]; then
+        plan_prompt="PLAN MODE: Analyze PRD at $prd_path and create a detailed implementation plan. Output:
+1. SUMMARY: What are we building? (2-3 sentences)
+2. ARCHITECTURE: Key technical decisions (tech stack, patterns)
+3. PHASES: Break down into numbered implementation phases
+4. RISKS: What could go wrong? How to mitigate?
+5. QUALITY GATES: What tests/checks before each phase completes?
+6. ESTIMATED TASKS: List major tasks (will become queue items)
+
+Write plan to .loki/PLAN.md. Do NOT start implementation - just plan.
+After writing plan, output: 'PLAN COMPLETE - Ready for execution.'"
+    else
+        plan_prompt="PLAN MODE: Analyze this codebase and create an improvement plan. Output:
+1. SUMMARY: What does this codebase do? Current state?
+2. IMPROVEMENTS: What should be improved? (tests, docs, perf, security)
+3. PHASES: Break down into numbered improvement phases
+4. RISKS: What could break? How to mitigate?
+5. QUALITY GATES: What tests/checks before each phase completes?
+
+Write plan to .loki/PLAN.md. Do NOT start implementation - just plan.
+After writing plan, output: 'PLAN COMPLETE - Ready for execution.'"
+    fi
+
+    log_step "Running Claude in Plan Mode..."
+    local plan_log=".loki/logs/plan-mode-$(date +%Y%m%d%H%M%S).log"
+
+    set +e
+    claude --dangerously-skip-permissions -p "$plan_prompt" 2>&1 | tee "$plan_log"
+    local exit_code=${PIPESTATUS[0]}
+    set -e
+
+    if [ $exit_code -ne 0 ]; then
+        log_error "Plan Mode failed with exit code $exit_code"
+        return 1
+    fi
+
+    if [ -f ".loki/PLAN.md" ]; then
+        log_success "Plan created at .loki/PLAN.md"
+        echo ""
+        log_info "Plan Summary:"
+        head -30 .loki/PLAN.md
+        echo ""
+        return 0
+    else
+        log_warn "Plan file not created, proceeding with execution anyway"
+        return 0
+    fi
+}
+
+#===============================================================================
+# CLAUDE.md Team Playbook - "Our team updates CLAUDE.md multiple times a week"
+# Inspired by Boris Cherny's Max Setup
+#===============================================================================
+
+init_playbook() {
+    log_step "Initializing CLAUDE.md team playbook..."
+
+    if [ ! -f "$PLAYBOOK_PATH" ]; then
+        cat > "$PLAYBOOK_PATH" << 'PLAYBOOK_EOF'
+# CLAUDE.md - Team Playbook
+
+> Auto-updated by Loki Mode with learnings from each session.
+> "Our team updates CLAUDE.md multiple times a week: AI mistakes + fixes." - Boris Cherny
+
+## Project Context
+<!-- Describe what this project does -->
+
+## Architecture Decisions
+<!-- Key architectural choices and rationale -->
+
+## Common Patterns
+<!-- Patterns that work well in this codebase -->
+
+## Known Issues & Fixes
+<!-- AI mistakes and their solutions - updated automatically -->
+
+### Session Log
+<!-- Recent learnings appended here -->
+
+## Quality Standards
+- All code must pass static analysis (ESLint/Prettier/etc.)
+- Tests required for new features
+- PR reviews by AI reviewers before merge
+
+## Commands & Shortcuts
+<!-- Useful commands for this project -->
+
+---
+*Last updated: AUTO*
+PLAYBOOK_EOF
+        log_info "Created new CLAUDE.md playbook"
+    else
+        log_info "Using existing CLAUDE.md playbook"
+    fi
+}
+
+update_playbook() {
+    local learning="$1"
+    local timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+    if [ -f "$PLAYBOOK_PATH" ]; then
+        # Append learning to Session Log section
+        echo "" >> "$PLAYBOOK_PATH"
+        echo "#### [$timestamp]" >> "$PLAYBOOK_PATH"
+        echo "$learning" >> "$PLAYBOOK_PATH"
+
+        # Update last modified timestamp
+        sed -i.bak "s/\*Last updated:.*/\*Last updated: $timestamp\*/" "$PLAYBOOK_PATH" 2>/dev/null || true
+        rm -f "${PLAYBOOK_PATH}.bak"
+    fi
+}
+
+#===============================================================================
+# PostToolUse Hooks - "I use PostToolUse hooks for formatting"
+# Inspired by Boris Cherny's Max Setup
+#===============================================================================
+
+setup_hooks() {
+    log_step "Setting up PostToolUse hooks..."
+
+    local hooks_dir=".claude/hooks"
+    mkdir -p "$hooks_dir"
+
+    if [ "$USE_HOOKS" = "true" ]; then
+        # Create PostToolUse hook for formatting
+        cat > "$hooks_dir/post-tool-use.sh" << 'HOOK_EOF'
+#!/bin/bash
+# PostToolUse Hook - Auto-format after file writes
+# Inspired by Boris Cherny: "I use PostToolUse hooks for formatting"
+
+TOOL_NAME="$1"
+FILE_PATH="$2"
+
+# Only process file write operations
+if [[ "$TOOL_NAME" != "Write" && "$TOOL_NAME" != "Edit" ]]; then
+    exit 0
+fi
+
+# Skip if file doesn't exist
+[ -f "$FILE_PATH" ] || exit 0
+
+# Detect file type and format accordingly
+case "$FILE_PATH" in
+    *.js|*.jsx|*.ts|*.tsx|*.json)
+        if command -v prettier &> /dev/null; then
+            prettier --write "$FILE_PATH" 2>/dev/null || true
+        elif command -v npx &> /dev/null; then
+            npx prettier --write "$FILE_PATH" 2>/dev/null || true
+        fi
+        ;;
+    *.py)
+        if command -v black &> /dev/null; then
+            black "$FILE_PATH" 2>/dev/null || true
+        elif command -v autopep8 &> /dev/null; then
+            autopep8 --in-place "$FILE_PATH" 2>/dev/null || true
+        fi
+        ;;
+    *.go)
+        if command -v gofmt &> /dev/null; then
+            gofmt -w "$FILE_PATH" 2>/dev/null || true
+        fi
+        ;;
+    *.rs)
+        if command -v rustfmt &> /dev/null; then
+            rustfmt "$FILE_PATH" 2>/dev/null || true
+        fi
+        ;;
+    *.md)
+        if command -v prettier &> /dev/null; then
+            prettier --write "$FILE_PATH" 2>/dev/null || true
+        fi
+        ;;
+esac
+HOOK_EOF
+        chmod +x "$hooks_dir/post-tool-use.sh"
+        log_info "PostToolUse formatting hook created"
+    fi
+}
+
+#===============================================================================
+# Self-Verification - "Let the AI verify its own work"
+# "When it tests every change, quality improves 2-3×" - Boris Cherny
+#===============================================================================
+
+build_verification_prompt() {
+    local task_desc="$1"
+
+    if [ "$VERIFY_OWN_WORK" = "true" ]; then
+        echo "SELF-VERIFICATION ENABLED: After EVERY change:
+1. Run relevant tests immediately
+2. Check for regressions (run full test suite if time permits)
+3. Verify the change works as intended (manual check if needed)
+4. If browser/UI involved, verify visually
+5. Only proceed after verification passes
+
+This is critical - self-verification improves quality 2-3x."
+    fi
+}
+
+#===============================================================================
 # Calculate Exponential Backoff
 #===============================================================================
 
@@ -903,17 +1130,35 @@ build_prompt() {
         fi
     fi
 
+    # Self-verification instruction (Boris Cherny: 2-3x quality boost)
+    local verify_instruction=""
+    if [ "$VERIFY_OWN_WORK" = "true" ]; then
+        verify_instruction="SELF-VERIFICATION (2-3x quality): After EVERY code change, immediately run tests. Verify the change works. Only proceed after verification passes."
+    fi
+
+    # CLAUDE.md playbook instruction (Boris Cherny: team knowledge base)
+    local playbook_instruction=""
+    if [ -f "$PLAYBOOK_PATH" ]; then
+        playbook_instruction="TEAM PLAYBOOK: Read $PLAYBOOK_PATH for project context, patterns, and past learnings. Update it with new learnings when you discover fixes or patterns."
+    fi
+
+    # Plan reference (if Plan Mode was run)
+    local plan_reference=""
+    if [ -f ".loki/PLAN.md" ]; then
+        plan_reference="IMPLEMENTATION PLAN: Follow the plan at .loki/PLAN.md. Execute phases in order."
+    fi
+
     if [ $retry -eq 0 ]; then
         if [ -n "$prd" ]; then
-            echo "Loki Mode with PRD at $prd. $rar_instruction $memory_instruction $completion_instruction $sdlc_instruction $autonomous_suffix"
+            echo "Loki Mode with PRD at $prd. $plan_reference $playbook_instruction $verify_instruction $rar_instruction $memory_instruction $completion_instruction $sdlc_instruction $autonomous_suffix"
         else
-            echo "Loki Mode. $analysis_instruction $rar_instruction $memory_instruction $completion_instruction $sdlc_instruction $autonomous_suffix"
+            echo "Loki Mode. $plan_reference $playbook_instruction $verify_instruction $analysis_instruction $rar_instruction $memory_instruction $completion_instruction $sdlc_instruction $autonomous_suffix"
         fi
     else
         if [ -n "$prd" ]; then
-            echo "Loki Mode - Resume iteration #$iteration (retry #$retry). PRD: $prd. $context_injection $rar_instruction $memory_instruction $completion_instruction $sdlc_instruction $autonomous_suffix"
+            echo "Loki Mode - Resume iteration #$iteration (retry #$retry). PRD: $prd. $plan_reference $playbook_instruction $verify_instruction $context_injection $rar_instruction $memory_instruction $completion_instruction $sdlc_instruction $autonomous_suffix"
         else
-            echo "Loki Mode - Resume iteration #$iteration (retry #$retry). $context_injection Use .loki/generated-prd.md if exists. $rar_instruction $memory_instruction $completion_instruction $sdlc_instruction $autonomous_suffix"
+            echo "Loki Mode - Resume iteration #$iteration (retry #$retry). $plan_reference $playbook_instruction $verify_instruction $context_injection Use .loki/generated-prd.md if exists. $rar_instruction $memory_instruction $completion_instruction $sdlc_instruction $autonomous_suffix"
         fi
     fi
 }
@@ -1219,6 +1464,38 @@ main() {
     # Initialize .loki directory
     init_loki_dir
 
+    # =========================================================================
+    # Boris Cherny "Max Setup" Features
+    # =========================================================================
+
+    # Initialize CLAUDE.md team playbook
+    init_playbook
+
+    # Setup PostToolUse hooks for auto-formatting
+    if [ "$USE_HOOKS" = "true" ]; then
+        setup_hooks
+    else
+        log_info "Hooks disabled (LOKI_USE_HOOKS=false)"
+    fi
+
+    # Run Plan Mode first (if enabled and not resuming)
+    if [ "$PLAN_MODE" = "true" ] && [ ! -f ".loki/PLAN.md" ]; then
+        log_header "Starting Plan Mode (Boris Cherny Max Setup)"
+        log_info "Plan Mode: Create a solid plan before execution"
+        log_info "Set LOKI_PLAN_MODE=false to skip"
+        echo ""
+
+        if ! run_plan_mode "$PRD_PATH"; then
+            log_warn "Plan Mode failed, but continuing with execution"
+        fi
+    elif [ -f ".loki/PLAN.md" ]; then
+        log_info "Using existing plan at .loki/PLAN.md"
+    else
+        log_info "Plan Mode disabled (LOKI_PLAN_MODE=false)"
+    fi
+
+    # =========================================================================
+
     # Start web dashboard (if enabled)
     if [ "$ENABLE_DASHBOARD" = "true" ]; then
         start_dashboard
@@ -1232,6 +1509,17 @@ main() {
     # Run autonomous loop
     local result=0
     run_autonomous "$PRD_PATH" || result=$?
+
+    # Update CLAUDE.md with session learnings (Boris Cherny: team playbook)
+    if [ -f ".loki/memory/learnings" ]; then
+        local recent_learnings=$(find .loki/memory/learnings -name "*.md" -mmin -60 2>/dev/null | head -3)
+        if [ -n "$recent_learnings" ]; then
+            log_step "Updating CLAUDE.md playbook with session learnings..."
+            for learning_file in $recent_learnings; do
+                update_playbook "$(cat "$learning_file")"
+            done
+        fi
+    fi
 
     # Cleanup
     stop_dashboard

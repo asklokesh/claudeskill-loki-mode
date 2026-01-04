@@ -219,6 +219,40 @@ LOKI_MAX_WAIT=7200 \
 | `LOKI_MAX_WAIT` | 3600 | Maximum wait time (1 hour) |
 | `LOKI_SKIP_PREREQS` | false | Skip prerequisite checks |
 
+### Boris Cherny "Max Setup" Features (v2.18.0)
+
+Inspired by Claude Code creator's workflow best practices:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LOKI_PLAN_MODE` | true | Start in Plan Mode, create plan before execution |
+| `LOKI_PLAYBOOK` | CLAUDE.md | Path to team playbook (updated with learnings) |
+| `LOKI_USE_HOOKS` | true | Enable PostToolUse hooks for auto-formatting |
+| `LOKI_VERIFY_OWN_WORK` | true | Self-verification (2-3x quality boost) |
+
+```bash
+# Skip plan mode for quick iterations
+LOKI_PLAN_MODE=false ./autonomy/run.sh ./docs/requirements.md
+
+# Use custom playbook location
+LOKI_PLAYBOOK=docs/TEAM_PLAYBOOK.md ./autonomy/run.sh
+```
+
+### Slash Commands
+
+Loki Mode includes automation commands in `.claude/commands/`:
+
+| Command | Description |
+|---------|-------------|
+| `/plan` | Create implementation plan before coding |
+| `/verify` | Run comprehensive verification (tests, lint, types) |
+| `/review` | Run 3-reviewer parallel code review |
+| `/simplify` | Find code simplification opportunities |
+| `/status` | Check Loki Mode status and progress |
+| `/learn` | Update CLAUDE.md with new learnings |
+
+**Philosophy:** "Less prompting. More systems." - Boris Cherny
+
 ### How Auto-Resume Works
 
 ```
