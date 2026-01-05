@@ -5,6 +5,14 @@ All notable changes to Loki Mode will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.19.1] - 2026-01-05
+
+### Fixed
+- **Enterprise Security Defaults** - All enterprise features now OFF by default
+  - `LOKI_AUDIT_LOG` changed from `true` to `false`
+  - Ensures Loki Mode works exactly as before with `--dangerously-skip-permissions`
+  - Enterprise features are opt-in, not forced
+
 ## [2.19.0] - 2026-01-04
 
 ### Added - Major Competitive Improvements

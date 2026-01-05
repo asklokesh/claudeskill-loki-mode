@@ -23,7 +23,7 @@
 #
 # Security & Autonomy Controls (Enterprise):
 #   LOKI_STAGED_AUTONOMY    - Require approval before execution (default: false)
-#   LOKI_AUDIT_LOG          - Enable audit logging (default: true)
+#   LOKI_AUDIT_LOG          - Enable audit logging (default: false)
 #   LOKI_MAX_PARALLEL_AGENTS - Limit concurrent agent spawning (default: 10)
 #   LOKI_SANDBOX_MODE       - Run in sandboxed container (default: false, requires Docker)
 #   LOKI_ALLOWED_PATHS      - Comma-separated paths agents can modify (default: all)
@@ -69,7 +69,7 @@ RESOURCE_MEM_THRESHOLD=${LOKI_RESOURCE_MEM_THRESHOLD:-80}     # Memory % thresho
 
 # Security & Autonomy Controls
 STAGED_AUTONOMY=${LOKI_STAGED_AUTONOMY:-false}           # Require plan approval
-AUDIT_LOG_ENABLED=${LOKI_AUDIT_LOG:-true}                # Enable audit logging
+AUDIT_LOG_ENABLED=${LOKI_AUDIT_LOG:-false}               # Enable audit logging
 MAX_PARALLEL_AGENTS=${LOKI_MAX_PARALLEL_AGENTS:-10}      # Limit concurrent agents
 SANDBOX_MODE=${LOKI_SANDBOX_MODE:-false}                 # Docker sandbox mode
 ALLOWED_PATHS=${LOKI_ALLOWED_PATHS:-""}                  # Empty = all paths allowed
