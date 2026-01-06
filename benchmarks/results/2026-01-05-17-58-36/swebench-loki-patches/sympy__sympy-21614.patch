@@ -1,0 +1,17 @@
+# sympy__sympy-21614
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/sympy/core/function.py
++++ b/sympy/core/function.py
+@@ -1165,6 +1165,10 @@ class Derivative(Expr):
+     def expr(self):
+         return self._args[0]
+ 
++    @property
++    def kind(self):
++        return self.expr.kind
++
+     @property
+     def _diff_wrt(self):
+         """An expression may be differentiated wrt a Derivative if

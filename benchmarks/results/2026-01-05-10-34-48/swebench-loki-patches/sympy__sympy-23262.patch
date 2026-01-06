@@ -1,0 +1,20 @@
+# sympy__sympy-23262
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis, I can generate the appropriate patch. The issue is that Python requires a trailing comma for single-element tuples `(1,)` vs `(1)`. The fix should be in the `_print_tuple` method of `PythonCodePrinter`:
+
+--- a/sympy/printing/pycode.py
++++ b/sympy/printing/pycode.py
+@@ -374,7 +374,10 @@ class PythonCodePrinter(AbstractPythonCodePrinter):
+         return 'range({})'.format(self._print(expr.args[0]))
+ 
+     def _print_tuple(self, expr):
+-        return "({})".format(", ".join(self._print(i) for i in expr))
++        if len(expr) == 1:
++            return "({},)".format(self._print(expr[0]))
++        else:
++            return "({})".format(", ".join(self._print(i) for i in expr))
+ 
+     def _print_Tuple(self, expr):
+         if len(expr) == 1:

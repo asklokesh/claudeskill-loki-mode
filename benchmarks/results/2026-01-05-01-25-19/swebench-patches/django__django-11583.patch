@@ -1,0 +1,30 @@
+Based on the issue description and stacktrace, I understand the problem clearly:
+
+1. In Django 2.2+, the `iter_modules_and_files` function in `django/utils/autoreload.py` uses `path.resolve().absolute()` 
+2. When `resolve()` is called, it tries to resolve symlinks using `os.readlink()`
+3. Sometimes there's a corrupted/null byte in path data that causes `ValueError: embedded null byte`
+4. The fix should catch this `ValueError` and handle it gracefully
+
+Looking at the stacktrace:
+- Line 132: `results.add(path.resolve().absolute())`
+- The error occurs when `pathlib` tries to resolve symlinks
+
+The fix is to wrap the `path.resolve().absolute()` call in a try-except to catch `ValueError` and skip files that can't be resolved. This is consistent with the hint that says "I think this is a fairly simple fix" and "it used to work (at least, the error was swallowed)".
+
+--- a/django/utils/autoreload.py
++++ b/django/utils/autoreload.py
+@@ -129,7 +129,12 @@ def iter_modules_and_files(modules, extra_files):
+             # The code here is a little more conservative; we only
+             # temporary add the directory to sys.path.
+             if getattr(spec, 'has_location', False):
+                 if getattr(spec, 'origin', None) and spec.origin != '__pycache__':
+-                    results.add(path.resolve().absolute())
++                    try:
++                        results.add(path.resolve().absolute())
++                    except ValueError as e:
++                        # Windows raises ValueError if the path has embedded null bytes.
++                        # The path can't be used, so just skip it.
++                        continue
+                 if spec.submodule_search_locations:
+                     for parent in spec.submodule_search_locations:
+                         try:

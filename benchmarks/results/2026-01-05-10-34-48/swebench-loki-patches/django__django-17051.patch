@@ -1,0 +1,24 @@
+# django__django-17051
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/django/db/models/query.py
++++ b/django/db/models/query.py
+@@ -1837,7 +1837,7 @@ class QuerySet(AltersData):
+                 )
+             )
+             returned_columns = self._batched_insert(
+-                objs_with_pk, fields, batch_size, on_conflict=None
++                objs_with_pk, fields, batch_size, on_conflict=on_conflict, update_fields=update_fields, unique_fields=unique_fields
+             )
+             for obj, results in zip(objs_with_pk, returned_columns):
+                 for result, field in zip(results, returned_columns_fields):
+@@ -1849,7 +1849,7 @@ class QuerySet(AltersData):
+                 objs_without_pk, fields, batch_size, on_conflict=on_conflict, update_fields=update_fields, unique_fields=unique_fields
+             )
+             connection = connections[self.db]
+-            if connection.features.can_return_rows_from_bulk_insert and on_conflict is None:
++            if connection.features.can_return_rows_from_bulk_insert and on_conflict in (None, OnConflict.UPDATE):
+                 for obj, results in zip(objs_without_pk, returned_columns):
+                     for result, field in zip(results, returned_columns_fields):
+                         setattr(obj, field.attname, result)

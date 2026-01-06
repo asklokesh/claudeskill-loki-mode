@@ -1,0 +1,83 @@
+# matplotlib__matplotlib-25433
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Now I understand. This is a SWE-bench benchmark environment. The user is asking me to act as the ENGINEER AGENT and generate a patch for a matplotlib bug. Based on the architect's analysis, I need to fix the RangeSlider callback issue.
+
+The core issue is that when `clf()` is called within a RangeSlider's `on_changed` callback during a mouse drag event, the widget gets destroyed while the callback is still executing, which breaks the event handling chain.
+
+The fix should ensure that slider callbacks complete before widget destruction, or defer callback execution. Let me create the patch:
+
+--- a/lib/matplotlib/widgets.py
++++ b/lib/matplotlib/widgets.py
+@@ -775,7 +775,12 @@ class SliderBase(AxesWidget):
+         """
+         if self.eventson:
+             self._observers.process(self.valstep, val)
+-
++    
++    def _end_drag(self, event):
++        """Handle end of drag event."""
++        if self.eventson and hasattr(self, '_drag_active') and self._drag_active:
++            self._drag_active = False
++            self._observers.process(self.valstep, self.val)
+ 
+ class Slider(SliderBase):
+     """
+@@ -962,6 +967,7 @@ class Slider(SliderBase):
+         self.valinit = valinit
+ 
+         self._dragging = False
++        self._drag_active = False
+ 
+         if orientation == "vertical":
+             self.orientation = "vertical"
+@@ -1017,11 +1023,13 @@ class Slider(SliderBase):
+         if self.drawon:
+             self.ax.figure.canvas.draw_idle()
+         if self.eventson:
+-            self._observers.process(self.eventson, val)
++            if not self._dragging:
++                self._observers.process(self.eventson, val)
+ 
+     def _update_val_from_pos(self, pos):
+         """Update the slider value based on a given position."""
+         if self.orientation == "vertical":
++            self._drag_active = self._dragging
+             idx = np.argmin(np.abs(self._ax_pos - pos[1]))
+         else:
+             idx = np.argmin(np.abs(self._ax_pos - pos[0]))
+@@ -1036,6 +1044,7 @@ class Slider(SliderBase):
+         if not self.ignore(event):
+             self._dragging = False
+             self.set_val(self._newval)
++            self._drag_active = False
+ 
+     def _onmove(self, event):
+         """Update the slider position."""
+@@ -1259,6 +1268,7 @@ class RangeSlider(SliderBase):
+         self.valinit = valinit
+ 
+         self._dragging = False
++        self._drag_active = False
+ 
+         if orientation == "vertical":
+             self.orientation = "vertical"
+@@ -1342,7 +1352,8 @@ class RangeSlider(SliderBase):
+         if self.drawon:
+             self.ax.figure.canvas.draw_idle()
+         if self.eventson:
+-            self._observers.process(self.eventson, val)
++            if not self._dragging:
++                self._observers.process(self.eventson, val)
+ 
+     def _update_val_from_pos(self, pos):
+         """Update the slider value based on a given position."""
+@@ -1364,6 +1375,7 @@ class RangeSlider(SliderBase):
+         if not self.ignore(event):
+             self._dragging = False
+             self.set_val(self._newval)
++            self._drag_active = False
+ 
+     def _onmove(self, event):
+         """Update the slider position."""

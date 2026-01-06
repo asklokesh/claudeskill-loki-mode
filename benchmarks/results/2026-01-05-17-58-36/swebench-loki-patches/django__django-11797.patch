@@ -1,0 +1,19 @@
+# django__django-11797
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+This is not a Django repository. Based on the context, I need to generate a patch for the Django repository file `django/db/models/lookups.py`. Let me create the patch based on the architect's analysis:
+
+--- a/django/db/models/lookups.py
++++ b/django/db/models/lookups.py
+@@ -262,8 +262,9 @@ class Exact(FieldGetDbPrepValueMixin, BuiltinLookup):
+     def process_rhs(self, compiler, connection):
+         result = super().process_rhs(compiler, connection)
+         if self.rhs_is_direct_value():
+             return result
+-        self.rhs.clear_select_clause()
+-        self.rhs.add_fields(["pk"])
++        if not getattr(self.rhs, "has_select_fields", True):
++            self.rhs.clear_select_clause()
++            self.rhs.add_fields(["pk"])
+         return result

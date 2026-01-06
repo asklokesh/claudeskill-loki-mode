@@ -1,0 +1,45 @@
+# sphinx-doc__sphinx-11445
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis, I need to generate a patch for the `sphinx/util/rst.py` file in the sphinx-doc/sphinx repository. The issue is in the `prepend_prolog` function around lines 81-91. Let me create the patch based on the analysis:
+
+```
+--- a/sphinx/util/rst.py
++++ b/sphinx/util/rst.py
+@@ -80,8 +80,11 @@ def prepend_prolog(content: StringList, prolog: str) -> None:
+     if prolog:
+         pos = 0
+         for line in content:
+-            if docinfo_re.match(line):
++            if docinfo_re.match(line) or line.strip() == '':
+                 pos += 1
++            elif pos > 0 and not content[pos - 1].strip():
++                # Skip blank lines after docinfo
++                break
+             else:
+                 break
+ 
+@@ -89,6 +92,8 @@ def prepend_prolog(content: StringList, prolog: str) -> None:
+             pos = 0
+ 
+         for lineno, line in enumerate(prolog.splitlines()):
+-            content.insert(pos + lineno, line, '<rst_prolog>', lineno)
++            content.insert(pos + lineno, line, '<rst_prolog>', lineno + 1)
++
++        content.insert(pos + lineno + 1, '', '<rst_prolog>', lineno + 2)
+```
+
+Wait, let me reconsider. The architect's analysis says to "add an empty line after the rst_prolog content" to ensure proper separation. Let me provide a simpler, more direct fix:
+
+--- a/sphinx/util/rst.py
++++ b/sphinx/util/rst.py
+@@ -85,5 +85,7 @@ def prepend_prolog(content: StringList, prolog: str) -> None:
+         if content and content[0].strip() == '':
+             pos = 0
+ 
+-        for lineno, line in enumerate(prolog.splitlines()):
++        prolog_lines = prolog.splitlines()
++        for lineno, line in enumerate(prolog_lines):
+             content.insert(pos + lineno, line, '<rst_prolog>', lineno + 1)
++        content.insert(pos + len(prolog_lines), '', '<rst_prolog>', len(prolog_lines) + 1)

@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-13660",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the context, this is a SWE-bench repository where I need to generate a patch for a Django issue. The patch should be generated without having the actual Django codebase here. Based on the issue description and architect's analysis, I can generate the patch:\n\n--- a/django/core/management/commands/shell.py\n+++ b/django/core/management/commands/shell.py\n@@ -83,13 +83,13 @@ class Command(BaseCommand):\n     def handle(self, **options):\n         # Execute the command and exit.\n         if options['command']:\n-            exec(options['command'])\n+            exec(options['command'], {})\n             return\n \n         # Execute stdin if it has anything to read and exit.\n         # Not supported on Windows due to select.select() limitations.\n         if sys.platform != 'win32' and not sys.stdin.isatty() and select.select([sys.stdin], [], [], 0)[0]:\n-            exec(sys.stdin.read())\n+            exec(sys.stdin.read(), {})\n             return\n \n         available_shells = [options['interface']] if options['interface'] else self.shells",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:44:55.429101"
+}

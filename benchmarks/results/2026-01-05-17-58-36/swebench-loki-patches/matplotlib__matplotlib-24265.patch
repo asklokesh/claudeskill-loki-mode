@@ -1,0 +1,42 @@
+# matplotlib__matplotlib-24265
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Now I understand the format. Based on my knowledge of matplotlib's style system and the issue description, I need to generate a patch that restores backward compatibility for the seaborn style names. In matplotlib 3.6.0+, seaborn styles were renamed from `seaborn-<variant>` to `seaborn-v0_8-<variant>`. The fix should add aliases in the style library registration code to maintain backward compatibility.
+
+Let me generate the patch:
+
+--- a/lib/matplotlib/style/core.py
++++ b/lib/matplotlib/style/core.py
+@@ -110,6 +110,23 @@
+ # Load style library
+ # ==================
+ _base_library = read_style_directory(BASE_LIBRARY_PATH)
++
++# Add backward compatibility aliases for seaborn styles (removed in 3.6.0)
++_seaborn_aliases = {
++    'seaborn': 'seaborn-v0_8',
++    'seaborn-bright': 'seaborn-v0_8-bright',
++    'seaborn-colorblind': 'seaborn-v0_8-colorblind',
++    'seaborn-dark': 'seaborn-v0_8-dark',
++    'seaborn-darkgrid': 'seaborn-v0_8-darkgrid',
++    'seaborn-dark-palette': 'seaborn-v0_8-dark-palette',
++    'seaborn-deep': 'seaborn-v0_8-deep',
++    'seaborn-muted': 'seaborn-v0_8-muted',
++    'seaborn-notebook': 'seaborn-v0_8-notebook',
++    'seaborn-paper': 'seaborn-v0_8-paper',
++    'seaborn-pastel': 'seaborn-v0_8-pastel',
++    'seaborn-poster': 'seaborn-v0_8-poster',
++    'seaborn-talk': 'seaborn-v0_8-talk',
++    'seaborn-ticks': 'seaborn-v0_8-ticks',
++    'seaborn-white': 'seaborn-v0_8-white',
++    'seaborn-whitegrid': 'seaborn-v0_8-whitegrid',
++}
++
++# Add aliases to library
++for old_name, new_name in _seaborn_aliases.items():
++    if new_name in _base_library:
++        _base_library[old_name] = _base_library[new_name]
++
+ library = _base_library.copy()
+ available = library.keys()

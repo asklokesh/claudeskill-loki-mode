@@ -1,0 +1,15 @@
+This appears to be a claudeskill-loki-mode repository, not the matplotlib repository. For this SWE-bench task, I need to create a patch for matplotlib's offsetbox.py file based on the architect's analysis. Since the actual matplotlib source isn't present, I'll generate the patch based on the error description and fix strategy provided.
+
+Based on the architect's analysis, the issue is in the `DraggableBase.disconnect()` method where it tries to access `self.canvas` (which resolves to `self.ref_artist.figure.canvas`) when `self.ref_artist.figure` is `None`.
+
+--- a/lib/matplotlib/offsetbox.py
++++ b/lib/matplotlib/offsetbox.py
+@@ -1565,7 +1565,8 @@ class DraggableBase:
+         """Disconnect the callbacks."""
+         for cid in self.cids:
+-            self.canvas.mpl_disconnect(cid)
++            if self.ref_artist.figure is not None:
++                self.canvas.mpl_disconnect(cid)
+         self.cids.clear()
+ 
+     def _update_offset(self, dx, dy):

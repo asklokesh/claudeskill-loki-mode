@@ -1,0 +1,20 @@
+Based on my analysis, the first patch (from 2026-01-05-10-37-54) is the simpler and more correct approach. It modifies the `__init__` method to handle lists directly when setting up hooks, rather than modifying `register_hook`. The issue specifically mentions that `Request.__init__()` wraps lists in lists, so the fix should be in `__init__`, not `register_hook`.
+
+However, there's a flaw in using `hasattr(v, '__iter__')` because strings are iterable. Let me create a better version:
+
+--- a/requests/models.py
++++ b/requests/models.py
+@@ -47,7 +47,12 @@ class Request(object):
+         # Dictionary mapping (case-insensitive) parsing.
+         hooks = hooks or {}
+         for (k, v) in list(hooks.items()):
+-            self.register_hook(event=k, hook=v)
++            if isinstance(v, (list, tuple)):
++                # v is a list/tuple of hooks
++                for h in v:
++                    self.register_hook(event=k, hook=h)
++            else:
++                self.register_hook(event=k, hook=v)
+ 
+ 
+     def __repr__(self):

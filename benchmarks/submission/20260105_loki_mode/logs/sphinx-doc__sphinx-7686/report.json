@@ -1,0 +1,9 @@
+{
+  "instance_id": "sphinx-doc__sphinx-7686",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the issue and previous analysis, I'll generate a clean patch. The issue is that the `members` variable needs to filter imported members when `autosummary_imported_members=False`. Here's the patch:\n\n--- a/sphinx/ext/autosummary/generate.py\n+++ b/sphinx/ext/autosummary/generate.py\n@@ -246,6 +246,17 @@ def generate_autosummary_content(name: str, obj: Any, parent: Any,\n                 except AttributeError:\n                     pass\n \n+    def is_skipped_member(membername: str) -> bool:\n+        \"\"\"Check if a member is imported and should be skipped.\"\"\"\n+        if imported_members:\n+            return False\n+        try:\n+            member = safe_getattr(obj, membername, None)\n+            return getattr(member, '__module__', None) != name\n+        except Exception:\n+            return False\n+\n+    members = [m for m in members if not is_skipped_member(m)]\n     public = [x for x in members if not x.startswith('_')]\n \n     if doc.objtype == 'module':",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T20:48:00.932049"
+}

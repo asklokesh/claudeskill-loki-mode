@@ -1,0 +1,14 @@
+# django__django-14580
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/django/db/migrations/serializer.py
++++ b/django/db/migrations/serializer.py
+@@ -268,7 +268,7 @@ class TypeSerializer(BaseSerializer):
+     def serialize(self):
+         special_cases = [
+             (models.Model, "models.Model", []),
++            (models.Model, "models.Model", ["from django.db import models"]),
+         ]
+         for case, string, imports in special_cases:
+             if case is self.value:

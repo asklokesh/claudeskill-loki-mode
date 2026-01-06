@@ -1,0 +1,40 @@
+I understand now. This is a SWE-bench task. Based on the architect's analysis, I need to generate a patch for the Django EnumSerializer to handle combined Enum flags. Let me create the patch based on the standard Django structure:
+
+--- a/django/db/migrations/serializer.py
++++ b/django/db/migrations/serializer.py
+@@ -117,12 +117,31 @@ class EnumSerializer(BaseSerializer):
+     def serialize(self):
+         enum_class = self.value.__class__
+         module = enum_class.__module__
+-        return (
+-            "%s.%s[%r]" % (module, enum_class.__qualname__, self.value.name),
+-            {"import %s" % module},
+-        )
++        
++        # Check if this is a combined flag (has no direct name)
++        if self.value.name is None:
++            # Import enum module for _decompose function
++            import enum
++            
++            # Decompose the flag into its constituent flags
++            decomposed = enum._decompose(enum_class, self.value)[0]
++            
++            if decomposed:
++                # Create bitwise OR expression for combined flags
++                flag_parts = [
++                    "%s.%s[%r]" % (module, enum_class.__qualname__, flag.name)
++                    for flag in decomposed
++                ]
++                return (
++                    " | ".join(flag_parts),
++                    {"import %s" % module},
++                )
++        
++        # Standard single enum value serialization
++        return (
++            "%s.%s[%r]" % (module, enum_class.__qualname__, self.value.name),
++            {"import %s" % module},
++        )
+ 
+ 
+ class FloatSerializer(BaseSimpleSerializer):

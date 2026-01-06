@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-18087",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the architect's analysis, I understand the issue and the fix needed. I'll generate the patch for the sympy repository based on the provided information:\n\n--- a/sympy/core/exprtools.py\n+++ b/sympy/core/exprtools.py\n@@ -454,7 +454,20 @@\n             else:\n                 expo = Add(*[e for b, e in elems])\n                 if len(elems) == 1:\n-                    b, e = elems[0]\n+                    b, e = elems[0]\n+                    # Only apply (x**a)**b = x**(a*b) when it's mathematically valid\n+                    # This is safe when:\n+                    # 1. Both exponents are integers, OR\n+                    # 2. The base is guaranteed positive/real\n+                    from sympy.core.power import Pow\n+                    if isinstance(b, Pow):\n+                        base_pow, exp_pow = b.as_base_exp()\n+                        # Check if simplification is valid\n+                        if not (exp_pow.is_integer and e.is_integer):\n+                            if not base_pow.is_positive:\n+                                # Don't simplify - keep as (base**exp1)**exp2\n+                                args.append(b**e)\n+                                continue\n                     if b.is_Rational and e.is_Integer:\n                         b = Rational(b)**e\n                         if b.is_Integer:",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T21:42:31.564339"
+}

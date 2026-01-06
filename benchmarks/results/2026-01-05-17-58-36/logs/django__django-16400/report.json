@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-16400",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the architect's analysis, I need to generate a patch for the Django repository's `django/contrib/auth/management/__init__.py` file. Since I don't have access to the actual Django repository here, I'll generate the patch based on standard Django codebase knowledge and the architect's specific instructions.\n\nThe fix is to set `permission._state.db = using` before assigning the `content_type` foreign key in the `create_permissions` function.\n\n--- a/django/contrib/auth/management/__init__.py\n+++ b/django/contrib/auth/management/__init__.py\n@@ -60,6 +60,7 @@\n             ctype = searched_perms[ctype_pk]\n             for name, codename in searched_perms[ctype_pk]:\n                 permission = Permission(name=name, codename=codename)\n+                permission._state.db = using\n                 permission.content_type = ctype\n                 perms.append(permission)\n         Permission.objects.using(using).bulk_create(perms)",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T19:21:32.011887"
+}

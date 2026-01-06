@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-12708",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the issue description and my understanding of Django's migration system, I can generate the patch. The issue is in `_delete_composed_index()` which finds both unique and index constraints when it should only look for index constraints.\n\n--- a/django/db/backends/base/schema.py\n+++ b/django/db/backends/base/schema.py\n@@ -375,7 +375,11 @@ class BaseDatabaseSchemaEditor:\n         constraint_names = self._constraint_names(model, [columns], index=True)\n         if len(constraint_names) != 1:\n             raise ValueError(\"Found wrong number (%s) of constraints for %s(%s)\" % (\n                 len(constraint_names),\n                 model._meta.db_table,\n                 \", \".join(columns),\n             ))\n+        # Filter out unique constraints - we only want to delete plain indexes\n+        constraint_names = [\n+            name for name in constraint_names\n+            if name not in self._constraint_names(model, [columns], unique=True)\n+        ]\n+        if len(constraint_names) != 1:\n+            raise ValueError(\"Found wrong number (%s) of constraints for %s(%s)\" % (\n+                len(constraint_names),\n+                model._meta.db_table,\n+                \", \".join(columns),\n+            ))\n         self.execute(self._delete_constraint_sql(self.sql_delete_index, model, constraint_names[0]))",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:31:09.491727"
+}

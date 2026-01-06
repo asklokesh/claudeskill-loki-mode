@@ -1,0 +1,29 @@
+# matplotlib__matplotlib-23563
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and architect's analysis, this is for the matplotlib/matplotlib repository. The issue is in `lib/mpl_toolkits/mplot3d/art3d.py`. Let me create the patch based on the standard matplotlib codebase structure and the issue analysis:
+
+```
+--- a/lib/mpl_toolkits/mplot3d/art3d.py
++++ b/lib/mpl_toolkits/mplot3d/art3d.py
+@@ -137,6 +137,7 @@ class Line3D(lines.Line2D):
+ 
+     def __init__(self, xs, ys, zs, *args, **kwargs):
+         super().__init__([], [], *args, **kwargs)
++        self._verts3d = None
+         self.set_3d_properties(xs, ys, zs)
+ 
+     def set_3d_properties(self, xs, ys, zs=0, zdir='z'):
+@@ -209,6 +210,10 @@ class Line3D(lines.Line2D):
+ 
+     @artist.allow_rasterization
+     def draw(self, renderer):
++        if self._verts3d is None:
++            # Line3D was not properly initialized, skip drawing
++            return
++
+         xs3d, ys3d, zs3d = self._verts3d
+         xs, ys, zs = proj3d.proj_transform(xs3d, ys3d, zs3d, self.axes.M)
+         self.set_data(xs, ys)
+```

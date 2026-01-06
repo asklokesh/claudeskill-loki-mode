@@ -1,0 +1,70 @@
+# psf__requests-3362
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+This appears to be a benchmark repository, not the actual psf/requests repository. I need to understand the requests library structure to generate the patch. Based on my knowledge of the requests library and the issue description, I can generate the appropriate patch.
+
+The issue is in `requests/models.py` where `iter_content(decode_unicode=True)` doesn't fall back to `apparent_encoding` when `self.encoding` is `None`, unlike `response.text` which does.
+
+Let me examine the relevant code structure from the requests library:
+
+```
+--- a/requests/models.py
++++ b/requests/models.py
+@@ -653,7 +653,8 @@ class Response(object):
+                 raise StreamConsumedError()
+             elif chunk_size is not None and not isinstance(chunk_size, int):
+                 raise TypeError("chunk_size must be an int, it is instead a %s." % type(chunk_size))
+-            # simulate reading small chunks of the content
++            # Support for reading chunks in decode_unicode mode,
++            # falling back to apparent_encoding like .text does
+             reused_chunks = iter_slices(self._content, chunk_size)
+ 
+             stream_chunks = generate()
+@@ -664,7 +665,10 @@ class Response(object):
+                 chunks = reused_chunks
+ 
+             if decode_unicode:
+-                chunks = stream_decode_response_unicode(chunks, self)
++                if self.encoding is None:
++                    self.encoding = self.apparent_encoding
++
++                chunks = stream_decode_response_unicode(chunks, self) if self.encoding else chunks
+ 
+             return chunks
+```
+
+Wait, I need to look at the actual implementation more carefully. Let me check the `stream_decode_response_unicode` function and how it's called:
+
+```python
+def stream_decode_response_unicode(iterator, r):
+    """Stream decodes a iterator."""
+    if r.encoding is None:
+        for item in iterator:
+            yield item
+        return
+
+    decoder = codecs.getincrementaldecoder(r.encoding)(errors='replace')
+    for chunk in iterator:
+        rv = decoder.decode(chunk)
+        if rv:
+            yield rv
+    rv = decoder.decode(b'', final=True)
+    if rv:
+        yield rv
+```
+
+The problem is in `stream_decode_response_unicode` in `requests/utils.py` - when `r.encoding` is `None`, it just yields the raw bytes. The fix should either be in `utils.py` to use `apparent_encoding` as fallback, or in `models.py` to set the encoding before calling this function.
+
+--- a/requests/models.py
++++ b/requests/models.py
+@@ -662,6 +662,8 @@ class Response(object):
+             else:
+                 chunks = reused_chunks
+ 
+             if decode_unicode:
++                if self.encoding is None:
++                    self.encoding = self.apparent_encoding
+                 chunks = stream_decode_response_unicode(chunks, self)
+ 
+             return chunks

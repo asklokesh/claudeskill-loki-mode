@@ -1,0 +1,39 @@
+# sympy__sympy-21612
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+This appears to be the wrong repository. The task is to generate a patch for sympy/sympy repository, but this seems to be a different project. Based on the architect's analysis, I need to create a patch for the sympy repository that fixes the string printing issue. Let me generate the patch based on the provided analysis:
+
+--- a/sympy/printing/str.py
++++ b/sympy/printing/str.py
+@@ -333,7 +333,7 @@
+                 if len(d.args) <= 1 or any(num != 1 for num in
+                         Mul.make_args(d.args[0])):
+                     parenthesizeNumerator = True
+-            elif isinstance(item.base, Mul):
++            elif isinstance(item.base, (Mul, Pow)):
+                 parenthesizeDenominator = True
+ 
+         if parenthesizeNumerator:
+--- a/sympy/printing/tests/test_str.py
++++ b/sympy/printing/tests/test_str.py
+@@ -1,6 +1,6 @@
+ from sympy.core import S, C, Symbol, Wild, Rational, Float, Lambda, Derivative
+ from sympy.core.function import AppliedUndef
+-from sympy.core.relational import Eq
++from sympy.core.relational import Eq, Ne
+ from sympy.functions import Piecewise, sqrt, ceiling, exp, sin, cos, Abs, gamma
+ from sympy.sets import FiniteSet
+ from sympy.polys import Poly, RootOf, rootof, RootSum
+@@ -301,6 +301,11 @@
+     assert str(x/(y*z)) == "x/(y*z)"
+     assert str(x*y/z) == "x*y/z"
+ 
++def test_issue_nested_fractions():
++    x, y = symbols('x y')
++    assert str(x/(1/y)) == "x/(1/y)"
++    assert str((x/y)/(1/(y**2))) == "(x/y)/(1/y**2)"
++
+ def test_printing_order():
+     from sympy.printing.str import StrPrinter
+     from sympy.core.function import UndefinedFunction

@@ -1,0 +1,16 @@
+# django__django-15814
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and the issue description, I can generate the patch. The issue is at line ~745 in `django/db/models/sql/query.py` where `cur_model._meta` is used but for proxy models, we need to use the concrete model's metadata instead.
+
+--- a/django/db/models/sql/query.py
++++ b/django/db/models/sql/query.py
+@@ -742,6 +742,7 @@ class Query(BaseExpression):
+                     if name in self._filtered_relations:
+                         name = self._filtered_relations[name].relation_name
+                     source = opts.get_field(name)
++                    cur_model = cur_model._meta.concrete_model
+                     opts = cur_model._meta
+                     cur_model = source.remote_field.model
+                     if name in self._filtered_relations:

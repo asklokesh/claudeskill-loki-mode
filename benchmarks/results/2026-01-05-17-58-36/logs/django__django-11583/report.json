@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-11583",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/django/utils/autoreload.py\n+++ b/django/utils/autoreload.py\n@@ -129,7 +129,11 @@ def iter_modules_and_files(modules, extra_files):\n             # During debugging the module's origin may not be set.\n             continue\n         path = Path(filename)\n-        results.add(path.resolve().absolute())\n+        try:\n+            results.add(path.resolve().absolute())\n+        except ValueError:\n+            # Skip paths with embedded null bytes (e.g., inaccessible samba shares)\n+            continue\n     \n     for filename in extra_files:\n         results.add(Path(filename).resolve().absolute())",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:12:31.051022"
+}

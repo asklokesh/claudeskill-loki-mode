@@ -1,0 +1,16 @@
+Based on the existing patch I found, I can now generate the correct patch for this issue. The solution is to add a `get_response_async` method to the `StaticFilesHandlerMixin` class that mirrors the sync `get_response` method but properly handles async/await.
+
+--- a/django/contrib/staticfiles/handlers.py
++++ b/django/contrib/staticfiles/handlers.py
+@@ -43,6 +43,11 @@ class StaticFilesHandlerMixin:
+             return self.serve(request)
+         return super().get_response(request)
+ 
++    async def get_response_async(self, request):
++        if self._should_handle(request.path):
++            return self.serve(request)
++        return await super().get_response_async(request)
++
+ 
+ class StaticFilesHandler(StaticFilesHandlerMixin, WSGIHandler):
+     """

@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-15400",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the context, I understand this is a SWE-bench task to generate a patch for the Django repository. Since I don't have the actual Django source files in the working directory, I'll generate the patch based on the standard Django `SimpleLazyObject` implementation pattern and the architect's analysis.\n\n--- a/django/utils/functional.py\n+++ b/django/utils/functional.py\n@@ -383,6 +383,11 @@ class SimpleLazyObject(LazyObject):\n     __add__ = new_method_proxy(operator.add)\n     __radd__ = new_method_proxy(lambda a, b: operator.add(b, a))\n \n+    def __radd__(self, other):\n+        if self._wrapped is empty:\n+            self._setup()\n+        return other + self._wrapped\n+\n     def __getstate__(self):\n         if self._wrapped is empty:\n             self._setup()",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T19:08:23.340381"
+}

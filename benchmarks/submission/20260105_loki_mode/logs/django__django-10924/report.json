@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-10924",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/django/db/models/fields/__init__.py\n+++ b/django/db/models/fields/__init__.py\n@@ -1749,6 +1749,8 @@ class FilePathField(Field):\n         self.match = match\n         self.recursive = recursive\n         self.allow_files = allow_files\n         self.allow_folders = allow_folders\n+        if callable(path):\n+            path = path()\n         self.path = path\n         kwargs.setdefault(\"max_length\", 100)\n         super().__init__(*args, **kwargs)\n@@ -1759,7 +1761,7 @@ class FilePathField(Field):\n \n     def deconstruct(self):\n         name, path, args, kwargs = super().deconstruct()\n-        if self.path != \"\":\n+        if self.path != \"\" or \"path\" in kwargs:\n             kwargs[\"path\"] = self.path\n         if self.match is not None:\n             kwargs[\"match\"] = self.match\n--- a/django/forms/fields.py\n+++ b/django/forms/fields.py\n@@ -1091,6 +1091,8 @@ class FilePathField(ChoiceField):\n         self.recursive = recursive\n         self.allow_files = allow_files\n         self.allow_folders = allow_folders\n+        if callable(path):\n+            path = path()\n         self.choices = []\n         self.choices.extend(self.widget.choices)",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:05:30.341784"
+}

@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-21614",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/sympy/core/function.py\n+++ b/sympy/core/function.py\n@@ -1165,6 +1165,10 @@ class Derivative(Expr):\n     def expr(self):\n         return self._args[0]\n \n+    @property\n+    def kind(self):\n+        return self.expr.kind\n+\n     @property\n     def _diff_wrt(self):\n         \"\"\"An expression may be differentiated wrt a Derivative if",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T22:01:39.825605"
+}

@@ -1,0 +1,17 @@
+# astropy__astropy-6938
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and the architect's analysis, I can generate the patch. The bug is clear: `output_field.replace()` returns a copy but the result is not assigned back. Let me generate the patch based on the code snippet provided in the issue:
+
+```
+--- a/astropy/io/fits/fitsrec.py
++++ b/astropy/io/fits/fitsrec.py
+@@ -1262,7 +1262,7 @@
+ 
+         # Replace exponent separator in floating point numbers
+         if 'D' in format:
+-            output_field.replace(encode_ascii('E'), encode_ascii('D'))
++            output_field[:] = output_field.replace(encode_ascii('E'), encode_ascii('D'))
+ 
+```

@@ -1,0 +1,72 @@
+# scikit-learn__scikit-learn-13142
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and my knowledge of the scikit-learn codebase, I can generate the patch. The issue is in the `fit_predict` method of `sklearn/mixture/base.py`. The bug is that when `n_init > 1`, the method returns labels computed during the last iteration instead of recomputing them using the best parameters.
+
+Here's the patch:
+
+--- a/sklearn/mixture/base.py
++++ b/sklearn/mixture/base.py
+@@ -257,6 +257,7 @@ class BaseMixture(DensityMixin, BaseEstimator, metaclass=ABCMeta):
+                     best_params = self._get_parameters()
+                     best_n_iter = n_iter
+ 
++        self._set_parameters(best_params)
+         log_resp = self._e_step(X)
+ 
+         self._set_parameters(best_params)
+
+Wait, that's not quite right. Let me reconsider the fix. The issue is that `log_resp` is computed inside the loop during the last iteration, but after the loop, `best_params` is restored. The labels returned are `log_resp.argmax(axis=1)` which was computed with the last iteration's parameters, not the best ones.
+
+Looking at the code flow described, the fix should move the `_e_step` call to after `_set_parameters(best_params)` is called, outside the loop:
+
+--- a/sklearn/mixture/base.py
++++ b/sklearn/mixture/base.py
+@@ -256,9 +256,9 @@ class BaseMixture(DensityMixin, BaseEstimator, metaclass=ABCMeta):
+                 if self.verbose:
+                     print("Initialization %d did not converge. "
+                           "Try different init parameters, "
+-                          "or increase max_iter, tol "
+-                          "or check for degenerate data."
+-                          % (init + 1))
++                          "or increase max_iter, tol "
++                          "or check for degenerate data."
++                          % (init + 1))
+ 
+         self._set_parameters(best_params)
+         self.n_iter_ = best_n_iter
+
+Actually, let me look at this more carefully. Based on the architect's description, the fix needs to ensure `_e_step` is called after `_set_parameters(best_params)`. The current code structure has `_e_step` being called inside the loop, and the final labels are from the last iteration.
+
+Here's the correct patch:
+
+--- a/sklearn/mixture/base.py
++++ b/sklearn/mixture/base.py
+@@ -257,7 +257,6 @@ class BaseMixture(DensityMixin, BaseEstimator, metaclass=ABCMeta):
+                     best_params = self._get_parameters()
+                     best_n_iter = n_iter
+ 
+-        log_resp = self._e_step(X)
+ 
+         self._set_parameters(best_params)
+         self.n_iter_ = best_n_iter
+@@ -265,6 +264,7 @@ class BaseMixture(DensityMixin, BaseEstimator, metaclass=ABCMeta):
+         self.lower_bound_ = max_lower_bound
+ 
++        _, log_resp = self._e_step(X)
+         return log_resp.argmax(axis=1)
+
+Let me reconsider the exact structure. Based on standard scikit-learn code patterns and the architect's analysis:
+
+--- a/sklearn/mixture/base.py
++++ b/sklearn/mixture/base.py
+@@ -259,6 +259,9 @@ class BaseMixture(DensityMixin, BaseEstimator, metaclass=ABCMeta):
+ 
+         self._set_parameters(best_params)
+         self.n_iter_ = best_n_iter
++        self.lower_bound_ = max_lower_bound
++
++        _, log_resp = self._e_step(X)
+ 
+         return log_resp.argmax(axis=1)

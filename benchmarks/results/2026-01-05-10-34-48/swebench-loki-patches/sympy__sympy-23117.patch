@@ -1,0 +1,19 @@
+# sympy__sympy-23117
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description, I can generate the patch from the error traceback which shows the exact code structure. The issue is in `sympy/tensor/array/ndim_array.py` around line 120 where the `_scan_iterable_shape` method's helper function `f()` fails on empty iterables.
+
+```
+--- a/sympy/tensor/array/ndim_array.py
++++ b/sympy/tensor/array/ndim_array.py
+@@ -117,6 +117,8 @@ class NDimArray(Printable):
+         def f(pointer):
+             if not isinstance(pointer, Iterable):
+                 return [pointer], ()
++            if len(pointer) == 0:
++                return [], (0,)
+             result = []
+             elems, shapes = zip(*[f(i) for i in pointer])
+             if len(set(shapes)) != 1:
+```

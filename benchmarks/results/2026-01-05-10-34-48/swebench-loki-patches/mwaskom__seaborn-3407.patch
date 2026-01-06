@@ -1,0 +1,23 @@
+# mwaskom__seaborn-3407
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and the issue description, I can generate the patch. The issue is that when a DataFrame has MultiIndex columns, the `PairGrid` class needs to flatten them before variable extraction. Let me generate the patch based on the error traceback and the architect's recommended fix strategy.
+
+```
+--- a/seaborn/axisgrid.py
++++ b/seaborn/axisgrid.py
+@@ -1299,6 +1299,12 @@ class PairGrid(Grid):
+ 
+         # Sort out the variables that define the grid
+         numeric_cols = self._find_numeric_cols(data)
++
++        # Handle MultiIndex columns by flattening to strings
++        if isinstance(data.columns, pd.MultiIndex):
++            data = data.copy()
++            data.columns = ["_".join(map(str, col)) for col in data.columns]
++            numeric_cols = self._find_numeric_cols(data)
+         if hue in numeric_cols:
+             numeric_cols.remove(hue)
+ 
+```

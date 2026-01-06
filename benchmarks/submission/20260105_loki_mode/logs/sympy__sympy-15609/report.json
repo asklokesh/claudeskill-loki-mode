@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-15609",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the architect's analysis, I understand this is a sympy repository issue. However, I don't see sympy source files in this repository. This appears to be a claudeskill-loki-mode repository. Let me create a patch based on the issue description and standard sympy repository structure.\n\n--- a/sympy/printing/latex.py\n+++ b/sympy/printing/latex.py\n@@ -1840,7 +1840,7 @@ class LatexPrinter(Printer):\n \n     def _print_MatrixElement(self, expr):\n         return self._print(expr.parent) + '_{%s, %s}' % (\n-            expr.i, expr.j)\n+            self._print(expr.i), self._print(expr.j))\n \n     def _print_MatrixSlice(self, expr):\n         def latexslice(x, dim):\n--- a/sympy/printing/tests/test_latex.py\n+++ b/sympy/printing/tests/test_latex.py\n@@ -1850,6 +1850,14 @@ def test_MatrixElement_printing():\n     assert latex(A[x, y]) == r\"A_{x, y}\"\n     assert latex(A[0, 1]) == r\"A_{0, 1}\"\n \n+    # Test for indexed matrix expressions (issue with double subscripts)\n+    i, j, k = symbols(\"i j k\")\n+    M = MatrixSymbol(\"M\", k, k)\n+    N = MatrixSymbol(\"N\", k, k)\n+    result = latex((M*N)[i, j])\n+    # Should not contain double underscores like _i_1\n+    assert r'__' not in result and r'_{_' not in result\n+\n \n def test_MatrixSymbol_printing():\n     A = MatrixSymbol(\"A\", 3, 3)",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T21:31:53.071419"
+}

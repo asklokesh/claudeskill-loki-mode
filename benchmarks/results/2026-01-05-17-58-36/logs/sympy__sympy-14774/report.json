@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-14774",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the context, this is a SWE-bench task where I need to generate a patch for the sympy repository. Since the actual sympy files aren't present in this directory, I'll generate the patch based on the architect's analysis and the issue description.\n\n--- a/sympy/printing/latex.py\n+++ b/sympy/printing/latex.py\n@@ -740,7 +740,7 @@\n         else:\n             name = r\"\\%s\" % func\n \n-        inv_trig_table = [\"asin\", \"acos\", \"atan\", \"acot\"]\n+        inv_trig_table = [\"asin\", \"acos\", \"atan\", \"acsc\", \"asec\", \"acot\"]\n \n         # If the function is an inverse trig function, handle the style\n         if func in inv_trig_table:",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T21:26:08.744598"
+}

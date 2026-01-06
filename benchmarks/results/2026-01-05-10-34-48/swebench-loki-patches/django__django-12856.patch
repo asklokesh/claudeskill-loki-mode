@@ -1,0 +1,72 @@
+# django__django-12856
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on my knowledge of Django's codebase, I can generate the patch. The fix involves modifying `_check_constraints()` in `django/db/models/base.py` to validate that fields in `UniqueConstraint` actually exist on the model, similar to how `_check_unique_together()` does it:
+
+```
+--- a/django/db/models/base.py
++++ b/django/db/models/base.py
+@@ -1934,6 +1934,14 @@ class Model(metaclass=ModelBase):
+     @classmethod
+     def _check_constraints(cls, databases):
+         errors = []
++        for constraint in cls._meta.constraints:
++            # Validate fields for UniqueConstraint.
++            if isinstance(constraint, UniqueConstraint) and constraint.fields:
++                errors.extend(
++                    cls._check_local_fields(
++                        constraint.fields, "constraints"
++                    )
++                )
+         for db in databases:
+             if not router.allow_migrate_model(db, cls):
+                 continue
+```
+
+However, since I don't have access to the exact line numbers in the current Django version, let me provide a more complete patch based on the standard Django structure:
+
+```
+--- a/django/db/models/base.py
++++ b/django/db/models/base.py
+@@ -1,5 +1,6 @@
+ import copy
+ import inspect
++from django.db.models import UniqueConstraint
+ from django.apps import apps
+ from django.conf import settings
+ from django.core import checks
+@@ -1934,6 +1935,12 @@ class Model(metaclass=ModelBase):
+     @classmethod
+     def _check_constraints(cls, databases):
+         errors = []
++        for constraint in cls._meta.constraints:
++            # Validate that fields in UniqueConstraint exist on the model.
++            if isinstance(constraint, UniqueConstraint) and constraint.fields:
++                errors.extend(
++                    cls._check_local_fields(constraint.fields, "constraints")
++                )
+         for db in databases:
+             if not router.allow_migrate_model(db, cls):
+                 continue
+```
+
+Here's the final clean patch:
+
+```
+--- a/django/db/models/base.py
++++ b/django/db/models/base.py
+@@ -1934,6 +1934,12 @@ class Model(metaclass=ModelBase):
+     @classmethod
+     def _check_constraints(cls, databases):
+         errors = []
++        for constraint in cls._meta.constraints:
++            # Validate that fields in UniqueConstraint exist on the model.
++            if isinstance(constraint, UniqueConstraint) and constraint.fields:
++                errors.extend(
++                    cls._check_local_fields(constraint.fields, "constraints")
++                )
+         for db in databases:
+             if not router.allow_migrate_model(db, cls):
+                 continue
+```

@@ -1,0 +1,25 @@
+This is not the Django repository. I need to understand the issue from the description and provide a patch. Based on the issue description and hints:
+
+1. The regression was introduced in commit `c8720e7696ca41f3262d5369365cc1bd72a216ca`
+2. The issue is in `iter_modules_and_files` in `django/utils/autoreload.py`
+3. The `__main__` module (manage.py) has `__spec__` set to `None`, so it gets skipped
+4. The fix needs to add special handling for `__main__` module
+
+Let me construct the patch based on my understanding of Django's autoreload code. The key issue is that when checking modules, the code skips modules where `__spec__` is None, but `__main__` module always has `__spec__` as None even though it has a valid `__file__` attribute.
+
+--- a/django/utils/autoreload.py
++++ b/django/utils/autoreload.py
+@@ -113,6 +113,13 @@ def iter_modules_and_files(modules, extra_files):
+     # sys.modules may change during iteration, so a copy is needed
+     sys_file_paths = []
+     for module in list(modules):
++        # Special case for __main__ module (e.g., manage.py)
++        # __main__.__spec__ is set to None in some cases
++        # https://docs.python.org/3/library/importlib.html#importlib.machinery.ModuleSpec
++        if getattr(module, '__file__', None) and module.__name__ == '__main__':
++            sys_file_paths.append(module.__file__)
++            continue
++
+         if getattr(module, '__spec__', None) is None:
+             continue
+         spec = module.__spec__

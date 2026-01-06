@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-14915",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "I see this is the Loki Mode repository, not a Django repository. Based on the architect's analysis, I need to generate a patch for the Django repository. Let me create the patch based on the analysis provided:\n\n--- a/django/forms/models.py\n+++ b/django/forms/models.py\n@@ -1233,6 +1233,12 @@ class ModelChoiceIteratorValue:\n     def __eq__(self, other):\n         return self.value == other\n \n+    def __hash__(self):\n+        # Make ModelChoiceIteratorValue hashable so it can be used as dict keys\n+        # and in sets. Hash is based on the underlying value to maintain\n+        # consistency with __eq__().\n+        return hash(self.value)\n+\n     def __str__(self):\n         return str(self.value)",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T19:02:08.536277"
+}

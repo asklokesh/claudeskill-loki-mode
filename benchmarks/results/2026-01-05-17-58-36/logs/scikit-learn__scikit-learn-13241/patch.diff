@@ -1,0 +1,25 @@
+I understand now. This repository is the Loki Mode skill project, not the scikit-learn repository. I'm being asked to generate a patch for a scikit-learn issue, but I don't have the scikit-learn code here.
+
+Let me generate the patch based on the issue description and my knowledge of the scikit-learn codebase structure:
+
+--- a/sklearn/decomposition/kernel_pca.py
++++ b/sklearn/decomposition/kernel_pca.py
+@@ -14,6 +14,7 @@ from ..utils import check_random_state
+ from ..utils.validation import check_is_fitted
+ from ..utils.validation import check_array
+ from ..exceptions import NotFittedError
++from ..utils.extmath import svd_flip
+ 
+ 
+ class KernelPCA(BaseEstimator, TransformerMixin):
+@@ -180,6 +181,10 @@ class KernelPCA(BaseEstimator, TransformerMixin):
+             self.lambdas_ = eigvals[-self.n_components:]
+             self.alphas_ = eigvecs[:, -self.n_components:]
+ 
++        # Flip eigenvectors' sign to enforce deterministic output
++        # See: https://github.com/scikit-learn/scikit-learn/issues/8129
++        self.alphas_, _ = svd_flip(self.alphas_, np.empty_like(self.alphas_).T)
++
+         # sort eigenvectors in descending order
+         indices = self.lambdas_.argsort()[::-1]
+         self.lambdas_ = self.lambdas_[indices]

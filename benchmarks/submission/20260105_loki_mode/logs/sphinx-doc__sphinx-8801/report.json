@@ -1,0 +1,9 @@
+{
+  "instance_id": "sphinx-doc__sphinx-8801",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "",
+  "attempts": 1,
+  "success": false,
+  "error": "Architect failed: TIMEOUT",
+  "timestamp": "2026-01-05T21:03:25.421922"
+}

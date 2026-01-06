@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-24102",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/sympy/parsing/mathematica.py\n+++ b/sympy/parsing/mathematica.py\n@@ -582,7 +582,7 @@ class MathematicaParser:\n     # to perform this operation.\n     _regex_tokenize = None\n \n-    _literal = r\"[A-Za-z][A-Za-z0-9]*\"\n+    _literal = r\"[A-Za-z\\u0080-\\uFFFF][A-Za-z0-9\\u0080-\\uFFFF]*\"\n     _number = r\"(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)\"\n \n     _enclosure_open = [\"(\", \"[\", \"[[\", \"{\"]",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T22:08:21.815838"
+}

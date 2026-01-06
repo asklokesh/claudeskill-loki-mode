@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-21379",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the context, I understand this is a SWE-bench benchmark task where I need to generate a patch for the sympy repository issue. The patch should fix the `PolynomialError` in `sympy/core/mod.py` by wrapping the `gcd()` call with a try-except block.\n\nLet me generate the patch in the correct unified diff format:\n\n--- a/sympy/core/mod.py\n+++ b/sympy/core/mod.py\n@@ -1,6 +1,7 @@\n from __future__ import print_function, division\n \n from sympy.core.numbers import nan\n+from sympy.polys.polyerrors import PolynomialError\n from .function import Function\n \n \n@@ -84,7 +85,12 @@ class Mod(Function):\n                 # separating into modulus and offset\n                 # XXX this and other caught PolynomialError are a problem\n                 # because they hide errors that should be raised\n-                G = gcd(p, q)\n+                try:\n+                    G = gcd(p, q)\n+                except PolynomialError:\n+                    # gcd may fail on Piecewise expressions during assumptions\n+                    # queries (e.g., from sinh._eval_is_real). Fall back to no\n+                    # simplification to avoid caching None in assumptions.\n+                    G = S.One\n                 if G != 1:\n                     p, q = [i/G for i in (p, q)]\n             else:",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T22:00:37.176320"
+}

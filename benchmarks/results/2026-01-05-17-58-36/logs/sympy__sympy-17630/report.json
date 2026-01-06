@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-17630",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on my analysis of the issue description and the architect's analysis, I can generate the patch directly. The problem is clear:\n\n1. When `BlockMatrix._blockmul()` performs block multiplication, zero results are returned as scalar `Zero` objects instead of `ZeroMatrix` objects\n2. This causes subsequent operations to fail when trying to access `.cols` attribute on the scalar `Zero`\n3. The fix needs to ensure that zero blocks maintain their matrix dimensions\n\nHere's the patch:\n\n--- a/sympy/matrices/expressions/blockmatrix.py\n+++ b/sympy/matrices/expressions/blockmatrix.py\n@@ -1,6 +1,7 @@\n from sympy import ask, Q\n from sympy.core import Basic, Add\n from sympy.core.compatibility import range\n+from sympy.matrices.expressions.matexpr import ZeroMatrix\n from sympy.matrices.expressions import MatrixExpr\n from sympy.matrices.matrices import MatrixBase\n from sympy.strategies import typed, exhaust, condition, do_one, unpack\n@@ -105,7 +106,16 @@\n                     A.blocks[i, k]*B.blocks[k, j]\n                     for k in range(A.blockshape[1])])\n                 for j in range(B.blockshape[1])])\n-            for i in range(A.blockshape[0])])\n+            for i in range(A.blockshape[0])])\n+        \n+        # Convert scalar Zero to ZeroMatrix with proper dimensions\n+        from sympy.core.numbers import Zero\n+        for i in range(len(blocks)):\n+            for j in range(len(blocks[i])):\n+                if isinstance(blocks[i][j], Zero):\n+                    row_size = A.rowblocksizes[i]\n+                    col_size = B.colblocksizes[j]\n+                    blocks[i][j] = ZeroMatrix(row_size, col_size)\n \n         return BlockMatrix(blocks)",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T21:39:49.898982"
+}

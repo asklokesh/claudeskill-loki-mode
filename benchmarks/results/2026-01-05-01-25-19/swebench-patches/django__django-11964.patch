@@ -1,0 +1,45 @@
+Based on my knowledge of Django and this issue, the problem is well-documented. When you set a field value using a TextChoices/IntegerChoices enum member, Django stores the enum object directly in the model's `__dict__`. However, when retrieving from the database, Django stores the raw string/integer value.
+
+The fix needs to be in the field's `__set__` method (or the descriptor protocol) to convert enum values to their underlying `.value` when being assigned.
+
+Looking at Django's architecture, the fix should be in `django/db/models/fields/__init__.py` in the Field class's descriptor methods. Specifically, in the `__set__` method, we need to check if the value is an instance of an Enum and if so, extract its `.value`.
+
+Here's the patch:
+
+--- a/django/db/models/fields/__init__.py
++++ b/django/db/models/fields/__init__.py
+@@ -16,6 +16,7 @@ from django.core import checks, exceptions, validators
+ from django.db import connection, connections, router
+ from django.db.models.constants import LOOKUP_SEP
+ from django.db.models.query_utils import DeferredAttribute, RegisterLookupMixin
++from django.db.models.enums import ChoicesMeta
+ from django.utils import timezone
+ from django.utils.datastructures import DictWrapper
+ from django.utils.dateparse import (
+@@ -394,6 +395,8 @@ class Field(RegisterLookupMixin):
+ 
+     def __set__(self, instance, value):
+         instance.__dict__[self.attname] = self._check_value(value)
++        if hasattr(value, '_meta') and isinstance(value.__class__, ChoicesMeta):
++            value = value.value
+         instance.__dict__[self.attname] = value
+ 
+     def __delete__(self, instance):
+
+Wait, let me reconsider. The issue is that Django 3.0 introduced TextChoices and IntegerChoices, and the problem is that when you set a field value with an enum member, the enum object is stored directly rather than its value.
+
+Looking at the issue more carefully - the `__set__` method needs to convert the enum to its value. Let me provide the correct patch:
+
+--- a/django/db/models/fields/__init__.py
++++ b/django/db/models/fields/__init__.py
+@@ -394,6 +394,10 @@ class Field(RegisterLookupMixin):
+         return instance.__dict__[self.attname]
+ 
+     def __set__(self, instance, value):
++        # Convert enum values to their underlying value for storage
++        # This ensures consistency between freshly created and retrieved instances
++        if isinstance(value, enum.Enum):
++            value = value.value
+         instance.__dict__[self.attname] = value
+ 
+     def __delete__(self, instance):

@@ -1,0 +1,9 @@
+{
+  "instance_id": "matplotlib__matplotlib-25332",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on my knowledge of matplotlib and the issue description, I can generate a patch. The `align_labels()` method creates weakref references between axes to maintain alignment groups. The fix requires implementing `__getstate__` and `__setstate__` methods to handle these weakrefs during pickling.\n\n--- a/lib/matplotlib/axis.py\n+++ b/lib/matplotlib/axis.py\n@@ -717,6 +717,22 @@ class Axis(martist.Artist):\n         self._minor_tick_kw = dict()\n         self.clear()\n \n+    def __getstate__(self):\n+        state = self.__dict__.copy()\n+        # Remove unpicklable alignment group weakrefs\n+        state['_align_label_groups'] = None\n+        return state\n+\n+    def __setstate__(self, state):\n+        self.__dict__.update(state)\n+        # Restore alignment groups as empty dict\n+        # Alignment information is not preserved across pickle/unpickle\n+        if not hasattr(self, '_align_label_groups'):\n+            self._align_label_groups = {}\n+        if self._align_label_groups is None:\n+            self._align_label_groups = {}\n+        self.stale = True\n+\n     def set_label_coords(self, x, y, transform=None):\n         \"\"\"\n         Set the coordinates of the label.",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T19:42:45.219115"
+}

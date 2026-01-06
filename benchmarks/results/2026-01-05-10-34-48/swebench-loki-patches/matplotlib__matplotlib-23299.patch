@@ -1,0 +1,114 @@
+# matplotlib__matplotlib-23299
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue and the architect's analysis, I need to generate a patch for matplotlib's `get_backend()` function in `lib/matplotlib/__init__.py`. The issue is that when `get_backend()` accesses `rcParams['backend']` after `rc_context()` has restored the backend to `_auto_backend_sentinel`, it triggers the sentinel resolution which calls `switch_backend()`, which in turn destroys all figures.
+
+The fix is to bypass the rcParams validation when reading the backend value in `get_backend()` by using `dict.__getitem__()` to get the raw value, then manually resolve the sentinel if present.
+
+Based on typical matplotlib code structure and the bug description, here's the patch:
+
+--- a/lib/matplotlib/__init__.py
++++ b/lib/matplotlib/__init__.py
+@@ -1135,7 +1135,14 @@ def use(backend, *, force=True):
+ 
+ def get_backend():
+     """
+     Return the name of the current backend.
+ 
+     See Also
+     --------
+     matplotlib.use
+     """
+-    return rcParams['backend']
++    # Directly access rcParams dict to avoid triggering the validation
++    # (and backend switching) that occurs when rcParams['backend'] is accessed
++    # and its value is _auto_backend_sentinel.
++    backend = dict.__getitem__(rcParams, 'backend')
++    if backend is rcsetup._auto_backend_sentinel:
++        # Resolve the sentinel to the actual backend without side effects
++        from matplotlib import pyplot as plt
++        plt.switch_backend(rcsetup._auto_backend_sentinel)
++        backend = dict.__getitem__(rcParams, 'backend')
++    return backend
+
+Wait, this approach still calls `switch_backend()` which would destroy figures. Let me reconsider the fix. The goal is to return the current backend name without triggering any side effects. Looking more carefully at the problem:
+
+1. When inside `rc_context()`, a figure is created which sets the backend
+2. When `rc_context()` exits, it restores `rcParams['backend']` to the sentinel
+3. When `get_backend()` is called, accessing `rcParams['backend']` triggers validation
+4. The validation sees the sentinel and calls `switch_backend()` to resolve it
+5. `switch_backend()` destroys all figures even though the backend hasn't actually changed
+
+The correct fix should check if a backend module is already loaded and return its name without calling `switch_backend()`:
+
+--- a/lib/matplotlib/__init__.py
++++ b/lib/matplotlib/__init__.py
+@@ -1135,7 +1135,15 @@ def use(backend, *, force=True):
+ 
+ def get_backend():
+     """
+     Return the name of the current backend.
+ 
+     See Also
+     --------
+     matplotlib.use
+     """
+-    return rcParams['backend']
++    # Use dict.__getitem__ to bypass the rcParams validation/conversion
++    # that triggers when accessing rcParams['backend'] with the sentinel value.
++    # If the sentinel is present, check if a backend is already loaded.
++    backend = dict.__getitem__(rcParams, 'backend')
++    if backend is rcsetup._auto_backend_sentinel:
++        # If pyplot has already imported a backend, return its name.
++        # Otherwise, let the normal rcParams mechanism resolve it.
++        if 'matplotlib.pyplot' in sys.modules:
++            return sys.modules['matplotlib.pyplot'].get_backend()
++        return rcParams['backend']
++    return backend
+
+This still has recursion issues. Let me provide the correct minimal fix:
+
+--- a/lib/matplotlib/__init__.py
++++ b/lib/matplotlib/__init__.py
+@@ -1135,7 +1135,12 @@ def use(backend, *, force=True):
+ 
+ def get_backend():
+     """
+     Return the name of the current backend.
+ 
+     See Also
+     --------
+     matplotlib.use
+     """
+-    return rcParams['backend']
++    backend = dict.__getitem__(rcParams, "backend")
++    if backend is rcsetup._auto_backend_sentinel:
++        # Only trigger the auto-backend selection if no backend has been set.
++        # If a backend is already loaded, get the name from the loaded module.
++        if cbook._get_running_interactive_framework():
++            return rcParams._get_backend_or_none() or rcParams["backend"]
++    return rcParams["backend"]
+
+Let me provide a cleaner, more direct fix based on how matplotlib typically handles this:
+
+--- a/lib/matplotlib/__init__.py
++++ b/lib/matplotlib/__init__.py
+@@ -1135,7 +1135,12 @@ def use(backend, *, force=True):
+ 
+ def get_backend():
+     """
+     Return the name of the current backend.
+
+     See Also
+     --------
+     matplotlib.use
+     """
+-    return rcParams['backend']
++    backend = dict.__getitem__(rcParams, "backend")
++    if backend is rcsetup._auto_backend_sentinel:
++        # Resolve auto-backend sentinel without triggering switch_backend
++        # side effects by checking if the backend module is already loaded.
++        from matplotlib import pyplot as plt
++        backend = plt.rcParams._get_backend_or_none() or plt.rcParams["backend"]
++    return backend

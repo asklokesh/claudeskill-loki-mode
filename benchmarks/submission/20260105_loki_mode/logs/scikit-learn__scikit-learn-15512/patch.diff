@@ -1,0 +1,59 @@
+Based on the issue description and the architect's analysis, I'll generate a proper patch for the AffinityPropagation convergence issue:
+
+--- a/sklearn/cluster/affinity_propagation_.py
++++ b/sklearn/cluster/affinity_propagation_.py
+@@ -195,6 +195,9 @@ def affinity_propagation(S, preference=None, convergence_iter=15, max_iter=200,
+             if verbose:
+                 print("Converged after %d iterations." % it)
+             break
++    else:
++        if verbose:
++            print("Did not converge")
+ 
+     I = np.flatnonzero(E)
+     K = I.size  # Identify exemplars
+@@ -213,9 +216,11 @@ def affinity_propagation(S, preference=None, convergence_iter=15, max_iter=200,
+             labels[I[k]] = k
+ 
+         cluster_centers_indices = I
++        converged = it < max_iter - 1
+     else:
+         warnings.warn("Affinity propagation did not converge, this model "
+                       "will not have any cluster centers.", ConvergenceWarning)
++        converged = False
+         cluster_centers_indices = np.array([])
+         labels = np.array([-1] * n_samples)
+ 
+@@ -304,6 +309,10 @@ class AffinityPropagation(BaseEstimator, ClusterMixin):
+     n_iter_ : int
+         Number of iterations taken to converge.
+ 
++    converged_ : bool
++        Whether the algorithm converged. If False, cluster_centers_indices_
++        will be empty and labels_ will be -1 for all samples.
++
+     Examples
+     --------
+     >>> from sklearn.cluster import AffinityPropagation
+@@ -352,8 +361,17 @@ class AffinityPropagation(BaseEstimator, ClusterMixin):
+                 "affinity matrix, got %s" % self.affinity)
+         self.cluster_centers_indices_, self.labels_, self.n_iter_ = \
+             affinity_propagation(
+-                self.affinity_matrix_, self.preference, max_iter=self.max_iter,
++                self.affinity_matrix_, self.preference,
+                 convergence_iter=self.convergence_iter, damping=self.damping,
+-                copy=self.copy, verbose=self.verbose, return_n_iter=True)
++                max_iter=self.max_iter, copy=self.copy, verbose=self.verbose,
++                return_n_iter=True)
++
++        if self.n_iter_ == self.max_iter:
++            warnings.warn("Affinity propagation did not converge, this model "
++                          "will not have any cluster centers.",
++                          ConvergenceWarning)
++            self.cluster_centers_indices_ = np.array([])
++            self.labels_ = np.full(X.shape[0], -1)
++            self.converged_ = False
++        else:
++            self.converged_ = True
+ 
+         if self.affinity != "precomputed":

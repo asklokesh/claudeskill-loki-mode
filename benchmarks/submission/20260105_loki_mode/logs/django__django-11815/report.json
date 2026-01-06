@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-11815",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/django/db/migrations/serializer.py\n+++ b/django/db/migrations/serializer.py\n@@ -120,9 +120,9 @@ class EnumSerializer(BaseSerializer):\n     def serialize(self):\n         enum_class = self.value.__class__\n         module = enum_class.__module__\n-        value, imports = EnumSerializer(self.value.value, self.value.value).serialize()\n-        imports.add(\"import %s\" % module)\n-        return \"%s.%s(%s)\" % (module, enum_class.__name__, value), imports\n+        imports = {\"import %s\" % module}\n+        return \"%s.%s[%r]\" % (module, enum_class.__name__, self.value.name), imports\n \n \n class FloatSerializer(BaseSimpleSerializer):",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:17:29.653584"
+}

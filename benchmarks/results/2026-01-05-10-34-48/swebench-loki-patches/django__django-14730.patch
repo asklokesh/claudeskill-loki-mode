@@ -1,0 +1,35 @@
+# django__django-14730
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+I can see this is very close to what's needed. However, I need to generate a proper patch for the Django issue. Let me create the correct patch based on the architect's analysis and Django's codebase structure:
+
+--- a/django/db/models/fields/related.py
++++ b/django/db/models/fields/related.py
+@@ -1173,6 +1173,24 @@ class ManyToManyField(RelatedField):
+                 )
+             )
+ 
++        if self.remote_field.symmetrical and self.remote_field.related_name:
++            warnings.append(
++                checks.Error(
++                    'related_name has no effect on ManyToManyField '
++                    'with a symmetrical relationship, e.g. to "self".',
++                    obj=self,
++                    id='fields.E331',
++                )
++            )
++
++        if self.remote_field.symmetrical and self.remote_field.related_query_name:
++            warnings.append(
++                checks.Error(
++                    'related_query_name has no effect on ManyToManyField '
++                    'with a symmetrical relationship, e.g. to "self".',
++                    obj=self,
++                    id='fields.E332',
++                )
++            )
++
+         return warnings
+ 
+     def _check_relationship_model(self, from_model=None, **kwargs):

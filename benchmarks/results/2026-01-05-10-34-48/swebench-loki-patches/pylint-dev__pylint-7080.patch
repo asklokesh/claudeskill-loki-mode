@@ -1,0 +1,18 @@
+# pylint-dev__pylint-7080
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and my knowledge of pylint's codebase structure, I can generate the patch for the bug fix. The issue is in the `_discover_files` method where `os.walk()` returns paths with `./` prefixes that don't match the user's `ignore-paths` regex patterns.
+
+```
+--- a/pylint/lint/pylinter.py
++++ b/pylint/lint/pylinter.py
+@@ -600,6 +600,7 @@ class PyLinter(
+     def _discover_files(self, files_or_modules: Sequence[str]) -> Iterator[str]:
+         """Discover python modules and packages in subdirectory."""
+         for something in files_or_modules:
++            something = os.path.normpath(something)
+             if os.path.isdir(something) and not os.path.isfile(
+                 os.path.join(something, "__init__.py")
+             ):
+```

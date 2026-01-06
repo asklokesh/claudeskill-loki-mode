@@ -1,0 +1,20 @@
+Based on the issue description, this is a SWE-bench task where I need to generate a patch for a sympy repository issue. The repository files are not in this directory - I'm being asked to generate a patch based on the architect's analysis.
+
+According to the issue and the architect's analysis:
+- The bug is in `sympy/simplify/fu.py` at line 504
+- The problem is `if (rv.exp < 0) == True:` where `rv.exp` is `I` (imaginary unit)
+- The fix is to check if the exponent is real before comparing
+
+Let me generate the appropriate patch:
+
+--- a/sympy/simplify/fu.py
++++ b/sympy/simplify/fu.py
+@@ -501,7 +501,7 @@
+             if rv.func is C:
+                 if isinstance(rv, C):
+                     return rv
+-                if (rv.exp < 0) == True:
++                if rv.exp.is_real and (rv.exp < 0) == True:
+                     return rv
+                 if (rv.exp > max) == True:
+                     return rv

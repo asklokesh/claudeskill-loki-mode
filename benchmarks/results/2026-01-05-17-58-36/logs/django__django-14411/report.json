@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-14411",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the architect's analysis, I understand that this is a SWE-bench task for the Django repository. The issue is about the `ReadOnlyPasswordHashWidget` widget which needs to override the `id_for_label()` method to return `None` to prevent the label from having a `for` attribute.\n\nSince this is a patch generation task for a Django repository that isn't present in the current working directory, I'll generate the patch based on the standard Django file structure and the fix described by the architect.\n\n--- a/django/contrib/auth/forms.py\n+++ b/django/contrib/auth/forms.py\n@@ -45,6 +45,9 @@ class ReadOnlyPasswordHashWidget(forms.Widget):\n     def get_context(self, name, value, attrs):\n         context = super().get_context(name, value, attrs)\n         summary = []\n+        if not value or value.startswith(UNUSABLE_PASSWORD_PREFIX):\n+            summary.append(\n+                {\n@@ -67,6 +70,9 @@ class ReadOnlyPasswordHashWidget(forms.Widget):\n         context[\"summary\"] = summary\n         return context\n \n+    def id_for_label(self, id_):\n+        return None\n+\n \n class ReadOnlyPasswordHashField(forms.Field):\n     widget = ReadOnlyPasswordHashWidget",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:54:05.137926"
+}

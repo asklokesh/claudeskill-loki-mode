@@ -1,0 +1,63 @@
+# django__django-15819
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+This appears to be the claudeskill-loki-mode repository, not a Django repository. For this SWE-bench task, I need to generate a patch for the Django repository based on the architect's analysis. Let me create the patch directly based on the standard Django repository structure.
+
+--- a/django/core/management/commands/inspectdb.py
++++ b/django/core/management/commands/inspectdb.py
+@@ -1,6 +1,7 @@
+ import keyword
+ import re
+ from collections import OrderedDict
++from collections import Counter
+ 
+ from django.core.management.base import BaseCommand, CommandError
+ from django.db import DEFAULT_DB_ALIAS, connections
+@@ -63,6 +64,7 @@ class Command(BaseCommand):
+                 yield "# Unable to inspect table '%s'" % table_name
+                 continue
+             column_to_field_name = self.normalize_col_names(
++                table_name,
+                 row[0], used_column_names, is_relation
+             )
+             yield from self.get_meta(table_name, constraints, column_to_field_name, is_view, is_partition)
+@@ -89,11 +91,25 @@ class Command(BaseCommand):
+             used_column_names = {}  # Holds column names used in the table so far
+             for row in table_description:
+                 comment_notes = []  # Holds Field notes, to be displayed in a Python comment.
+                 extra_params = OrderedDict()  # Holds Field parameters such as 'db_column'.
+                 column_name = row[0]
+                 is_relation = column_name in relations
++                
++                # Track relations to detect multiple FKs to same table
++                if not hasattr(self, '_relation_counts'):
++                    self._relation_counts = {}
++                if table_name not in self._relation_counts:
++                    self._relation_counts[table_name] = Counter()
++                    for rel_column in relations:
++                        rel_table = relations[rel_column][1]
++                        self._relation_counts[table_name][rel_table] += 1
++                
+                 att_name, params, notes = self.normalize_col_names(
++                    table_name, column_name, used_column_names, is_relation
++                )
++                
++                # Add related_name if multiple FKs point to same table
++                if is_relation:
++                    rel_table = relations[column_name][1]
++                    if self._relation_counts[table_name][rel_table] > 1:
++                        extra_params['related_name'] = '%s_set' % att_name
++                
+                 extra_params.update(params)
+                 comment_notes.extend(notes)
+ 
+@@ -187,7 +203,7 @@ class Command(BaseCommand):
+ 
+         return table2model(table_name)
+ 
+-    def normalize_col_names(self, col_name, used_column_names, is_relation):
++    def normalize_col_names(self, table_name, col_name, used_column_names, is_relation):
+         """
+         Modify the column name to make it a valid Python identifier.
+         """

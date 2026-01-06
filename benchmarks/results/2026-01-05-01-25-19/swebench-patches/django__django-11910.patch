@@ -1,0 +1,122 @@
+Let me search for the Django source code pattern based on my knowledge of this issue. The issue is about Django's migration autodetector incorrectly generating AlterField operations with old field names when renaming a primary key that is referenced by ForeignKey's to_field.
+
+Based on my knowledge of Django's codebase and this specific issue:
+
+1. The bug is in `django/db/migrations/autodetector.py`
+2. The commit `dcdd219ee1e062dc6189f382e0298e0adf5d5ddf` added logic to generate AlterField operations when a field is renamed that is referenced by a ForeignKey's to_field
+3. The problem is that when generating AlterField for the ForeignKey, the code uses the old field name in to_field instead of the new name
+
+The fix should ensure that when a field rename triggers an AlterField on a related ForeignKey, the to_field parameter should use the new field name, not the old one.
+
+Here's the patch based on my understanding of this Django issue:
+
+--- a/django/db/migrations/autodetector.py
++++ b/django/db/migrations/autodetector.py
+@@ -939,6 +939,10 @@ class MigrationAutodetector:
+                             ),
+                         )
+                     )
++                    self.renamed_fields[
++                        app_label, model_name, old_field_name
++                    ] = new_field_name
++
+         # You can't just add NOT NULL fields with no default or fields
+         # which don't allow empty strings as default.
+         time_fields = (models.DateField, models.DateTimeField, models.TimeField)
+@@ -1016,6 +1020,14 @@ class MigrationAutodetector:
+                 old_field_dec = self.deep_deconstruct(old_field)
+                 new_field_dec = self.deep_deconstruct(new_field)
+                 if old_field_dec != new_field_dec:
++                    both_m2m = old_field.many_to_many and new_field.many_to_many
++                    neither_m2m = not old_field.many_to_many and not new_field.many_to_many
++                    if both_m2m or neither_m2m:
++                        if self._generate_altered_foo_together_operations(
++                            app_label, model_name
++                        ):
++                            continue
++                    
+                     self.add_operation(
+                         app_label,
+                         operations.AlterField(
+
+Wait, that's not the right approach. Let me reconsider the actual issue.
+
+The issue is that when `generate_renamed_fields` detects a field rename, it should also check if any ForeignKey fields reference that renamed field via `to_field`, and update those references. The problem described in the issue is that an AlterField is being generated with the OLD field name in to_field.
+
+Looking at the hint more carefully: "It looks like a regression in dcdd219ee1e062dc6189f382e0298e0adf5d5ddf, because an AlterField operation wasn't generated in such cases before this change (and I don't think we need it)."
+
+This means the fix is to NOT generate the AlterField operation in this case, rather than to fix the field name. The AlterField operation is unnecessary because the RenameField operation should automatically handle updating the to_field references.
+
+The regression was introduced by adding code that generates AlterField for fields that reference a renamed field, but this is incorrect behavior - the field reference should be handled by the RenameField operation itself.
+
+--- a/django/db/migrations/autodetector.py
++++ b/django/db/migrations/autodetector.py
+@@ -1006,6 +1006,15 @@ class MigrationAutodetector:
+                 old_field = old_model_state.get_field(field_name)
+                 new_field = new_model_state.get_field(field_name)
+                 dependencies = []
++                # Scan to see if this is a ForeignKey with to_field pointing to
++                # a renamed field.
++                if hasattr(new_field, "remote_field") and new_field.remote_field:
++                    remote_field_name = new_field.remote_field.field_name
++                    to_model = new_field.remote_field.model
++                    if isinstance(to_model, str):
++                        to_app_label, to_model_name = to_model.lower().split(".")
++                    else:
++                        to_app_label, to_model_name = to_model._meta.app_label, to_model._meta.model_name
+                 # Implement any model renames on relations; these are handled by RenameModel
+                 # so we need to exclude them from the comparison
+                 if hasattr(new_field, "remote_field") and getattr(
+
+Let me think about this more carefully. The issue says that when a primary key field is renamed, the autodetector generates an unnecessary AlterField operation on the ForeignKey that references it, and that AlterField incorrectly uses the old field name in to_field.
+
+The fix should be to skip generating AlterField for ForeignKey fields when the only change is that the to_field is being renamed (since RenameField handles that).
+
+--- a/django/db/migrations/autodetector.py
++++ b/django/db/migrations/autodetector.py
+@@ -1016,6 +1016,17 @@ class MigrationAutodetector:
+                 old_field_dec = self.deep_deconstruct(old_field)
+                 new_field_dec = self.deep_deconstruct(new_field)
+                 if old_field_dec != new_field_dec:
++                    # If the only difference is to_field pointing to a renamed field,
++                    # skip generating AlterField since RenameField handles this.
++                    if (
++                        hasattr(new_field, "remote_field")
++                        and new_field.remote_field
++                        and hasattr(new_field.remote_field, "field_name")
++                    ):
++                        to_field = new_field.remote_field.field_name
++                        remote_model = new_field.remote_field.model
++                        # Check if to_field was renamed
++                        ...
+                     self.add_operation(
+                         app_label,
+                         operations.AlterField(
+
+Actually, I need to understand the exact code that was changed in the regression commit. Based on the issue description and hints, the problem is in how `generate_altered_fields` handles fields with `remote_field` (like ForeignKey). When comparing old and new field declarations, if a referenced field was renamed, the old declaration has the old name and the new declaration should have the new name, but something is causing them to differ incorrectly.
+
+The key insight from the hint is that **before the regression, an AlterField operation wasn't generated in such cases**. So the fix is to prevent the unnecessary AlterField from being generated when the only difference is a to_field reference to a renamed field.
+
+--- a/django/db/migrations/autodetector.py
++++ b/django/db/migrations/autodetector.py
+@@ -1016,6 +1016,21 @@ class MigrationAutodetector:
+                 old_field_dec = self.deep_deconstruct(old_field)
+                 new_field_dec = self.deep_deconstruct(new_field)
+                 if old_field_dec != new_field_dec:
++                    # If only the to_field changed due to a renamed field, skip AlterField
++                    # since RenameField handles updating references.
++                    if hasattr(old_field, "remote_field") and old_field.remote_field:
++                        old_to_field = old_field.remote_field.field_name  
++                        new_to_field = getattr(new_field.remote_field, "field_name", None)
++                        if old_to_field != new_to_field:
++                            remote_model = new_field.remote_field.model
++                            if isinstance(remote_model, str):
++                                remote_app, remote_model_name = remote_model.lower().split(".")
++                            else:
++                                remote_app = remote_model._meta.app_label
++                                remote_model_name = remote_model._meta.model_name
++                            if (remote_app, remote_model_name, old_to_field) in self.renamed_fields:
++                                continue
+                     self.add_operation(
+                         app_label,
+                         operations.AlterField(

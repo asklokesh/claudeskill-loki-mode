@@ -1,0 +1,9 @@
+{
+  "instance_id": "psf__requests-2674",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "",
+  "attempts": 1,
+  "success": false,
+  "error": "Engineer failed: TIMEOUT",
+  "timestamp": "2026-01-05T19:59:51.789036"
+}

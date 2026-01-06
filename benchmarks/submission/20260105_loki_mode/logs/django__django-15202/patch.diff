@@ -1,0 +1,17 @@
+This appears to be the loki-mode repository, not a Django workspace. Based on the task description, I need to generate a patch for Django's URLField validation issue. Let me create the patch based on the standard Django code structure and the issue description:
+
+--- a/django/core/validators.py
++++ b/django/core/validators.py
+@@ -95,7 +95,11 @@ class URLValidator(RegexValidator):
+             raise ValidationError(self.message, code=self.code, params={'value': value})
+ 
+         # Then check full URL
+-        splitted_url = urlsplit(value)
++        try:
++            splitted_url = urlsplit(value)
++        except ValueError:
++            raise ValidationError(self.message, code=self.code, params={'value': value})
++
+         if not splitted_url.scheme or not splitted_url.netloc:
+             raise ValidationError(self.message, code=self.code, params={'value': value})
+         try:

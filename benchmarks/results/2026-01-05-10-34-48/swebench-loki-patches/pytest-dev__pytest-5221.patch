@@ -1,0 +1,15 @@
+# pytest-dev__pytest-5221
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/src/_pytest/python.py
++++ b/src/_pytest/python.py
+@@ -1329,6 +1329,8 @@ def _showfixtures_main(config, session):
+         if verbose > 0:
+             funcargspec = "%s -- %s" % (argname, bestrel)
+         tw.line(funcargspec, green=True)
++        loc = getlocation(fixturedef.func, curdir)
++        tw.line("    Scope: %s" % fixturedef.scope)
+         if fixturedef.func.__doc__:
+             write_docstring(tw, fixturedef.func.__doc__)
+         else:

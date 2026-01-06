@@ -1,0 +1,9 @@
+{
+  "instance_id": "pytest-dev__pytest-7168",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "I understand now. I'm being asked to generate a patch for the pytest repository issue, not work on the Loki Mode repository. Based on the architect's analysis, I need to create a patch that fixes the `_format_repr_exception` function in `src/_pytest/_io/saferepr.py` by replacing `obj.__class__.__name__` with `type(obj).__name__`.\n\n--- a/src/_pytest/_io/saferepr.py\n+++ b/src/_pytest/_io/saferepr.py\n@@ -20,7 +20,7 @@ def _format_repr_exception(exc: BaseException, obj: object) -> str:\n         exc_info = _try_repr_or_str(exc)\n     except BaseException as exc:\n         exc_info = f\"unpresentable exception ({_try_repr_or_str(exc)})\"\n-    return f\"<[{exc_info} raised in repr()] {obj.__class__.__name__} object at 0x{id(obj):x}>\"\n+    return f\"<[{exc_info} raised in repr()] {type(obj).__name__} object at 0x{id(obj):x}>\"\n \n \n class SafeRepr(reprlib.Repr):",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T20:20:56.400041"
+}

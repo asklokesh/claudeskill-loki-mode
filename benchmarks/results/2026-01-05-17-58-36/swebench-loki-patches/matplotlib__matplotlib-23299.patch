@@ -1,0 +1,67 @@
+# matplotlib__matplotlib-23299
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Good! I can see the format. Now I need to understand the actual fix for issue 23299. Based on the architect's analysis and the bug description, I need to look at how matplotlib's backend system works. Let me search for information about the actual fix needed.
+
+The key insight from the architect's analysis:
+1. `rc_context` restores the sentinel value for `rcParams['backend']`
+2. When `get_backend()` accesses `rcParams['backend']` with the sentinel, it triggers backend resolution
+3. Backend resolution treats this as a backend change and clears all figures
+
+The fix should prevent `get_backend()` from triggering figure cleanup when the backend hasn't actually changed. Based on matplotlib's codebase structure, the solution is to check if the backend module is already loaded before triggering the switch.
+
+Let me generate the correct patch based on understanding how matplotlib handles this:
+
+--- a/lib/matplotlib/__init__.py
++++ b/lib/matplotlib/__init__.py
+@@ -1134,7 +1134,16 @@ def use(backend, *, force=True):
+ 
+ 
+ def get_backend():
+-    """Return the name of the current backend."""
+-    return rcParams['backend']
++    """
++    Return the name of the current backend.
++
++    See Also
++    --------
++    matplotlib.use
++    """
++    # Directly access the backend value without triggering validation,
++    # which can cause unwanted side effects (closing figures) when the
++    # value is the auto backend sentinel.
++    backend = dict.__getitem__(rcParams, 'backend')
++    return backend if backend is not rcsetup._auto_backend_sentinel else rcsetup._auto_backend_sentinel
++
+
+Wait, that's not quite right. The function should return a string, not the sentinel object. Let me reconsider based on understanding the actual matplotlib codebase behavior.
+
+Actually, looking at this more carefully: the fix needs to return the *actual* backend name even when rcParams contains the sentinel. The backend module should already be loaded if figures were created. The solution is to check for the loaded backend module.
+
+Let me generate the final correct patch:
+
+--- a/lib/matplotlib/__init__.py
++++ b/lib/matplotlib/__init__.py
+@@ -1134,7 +1134,20 @@ def use(backend, *, force=True):
+ 
+ 
+ def get_backend():
+-    """Return the name of the current backend."""
+-    return rcParams['backend']
++    """
++    Return the name of the current backend.
++
++    See Also
++    --------
++    matplotlib.use
++    """
++    # Use dict.__getitem__ to bypass rcParams validation which would
++    # trigger unwanted side effects when the value is _auto_backend_sentinel
++    backend = dict.__getitem__(rcParams, 'backend')
++    # If we have the sentinel, check if a backend module is already loaded
++    if backend is rcsetup._auto_backend_sentinel:
++        current_framework = cbook._get_running_interactive_framework()
++        if current_framework is not None:
++            backend = current_framework
++    return backend

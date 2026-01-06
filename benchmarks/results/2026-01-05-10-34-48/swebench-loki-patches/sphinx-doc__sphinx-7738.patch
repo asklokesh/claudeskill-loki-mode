@@ -1,0 +1,40 @@
+# sphinx-doc__sphinx-7738
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on my knowledge of the Sphinx Napoleon extension and the bug description, I can generate the patch. The issue is in the `_escape_args_and_kwargs` function in `sphinx/ext/napoleon/docstring.py`. The function was escaping trailing underscores unnecessarily. In reStructuredText, trailing underscores in names like `hello_` don't need to be escaped when they appear in field names or definition terms.
+
+Here is the patch:
+
+```
+--- a/sphinx/ext/napoleon/docstring.py
++++ b/sphinx/ext/napoleon/docstring.py
+@@ -348,7 +348,7 @@ def _escape_args_and_kwargs(name: str) -> str:
+     if name.endswith('_'):
+         name = name[:-1] + r'\_'
+ 
+-    if name[:2] == '**':
++    if name.startswith('**'):
+         return r'\*\*' + name[2:]
+     elif name[:1] == '*':
+         return r'\*' + name[1:]
+```
+
+Wait, that's not quite right. Let me reconsider the actual bug. The issue is that trailing underscores ARE being escaped when they shouldn't be. Looking at the code flow:
+
+The `_escape_args_and_kwargs` function escapes trailing underscores, but this is incorrect for attribute names in field lists because trailing underscores don't need escaping in that context (they're not creating hyperlinks).
+
+Here's the correct patch:
+
+--- a/sphinx/ext/napoleon/docstring.py
++++ b/sphinx/ext/napoleon/docstring.py
+@@ -345,9 +345,6 @@ class GoogleDocstring:
+ 
+ def _escape_args_and_kwargs(name: str) -> str:
+     """Escape *args and **kwargs to avoid reStructuredText markup issues."""
+-    if name.endswith('_'):
+-        name = name[:-1] + r'\_'
+-
+     if name.startswith('**'):
+         return r'\*\*' + name[2:]
+     elif name.startswith('*'):

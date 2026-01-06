@@ -1,0 +1,17 @@
+# pytest-dev__pytest-7168
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+I understand now. I'm being asked to generate a patch for the pytest repository issue, not work on the Loki Mode repository. Based on the architect's analysis, I need to create a patch that fixes the `_format_repr_exception` function in `src/_pytest/_io/saferepr.py` by replacing `obj.__class__.__name__` with `type(obj).__name__`.
+
+--- a/src/_pytest/_io/saferepr.py
++++ b/src/_pytest/_io/saferepr.py
+@@ -20,7 +20,7 @@ def _format_repr_exception(exc: BaseException, obj: object) -> str:
+         exc_info = _try_repr_or_str(exc)
+     except BaseException as exc:
+         exc_info = f"unpresentable exception ({_try_repr_or_str(exc)})"
+-    return f"<[{exc_info} raised in repr()] {obj.__class__.__name__} object at 0x{id(obj):x}>"
++    return f"<[{exc_info} raised in repr()] {type(obj).__name__} object at 0x{id(obj):x}>"
+ 
+ 
+ class SafeRepr(reprlib.Repr):

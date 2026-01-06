@@ -1,0 +1,32 @@
+I see this is the claudeskill-loki-mode repository, not the Django repository. This is a SWE-bench task where I need to generate a patch for a Django issue. Let me create the patch based on the architect's analysis.
+
+Based on the issue description and architect's analysis, I need to add field validation to `UniqueConstraint._check()` method in Django's constraints.py file. The fix should call `_check_local_fields()` similar to how `unique_together` validates fields.
+
+--- a/django/db/models/constraints.py
++++ b/django/db/models/constraints.py
+@@ -88,6 +88,7 @@ class BaseConstraint:
+ 
+     def _check(self, **kwargs):
+         errors = self._check_required_db_features(**kwargs)
++        errors.extend(self._check_local_fields(**kwargs))
+         return errors
+ 
+     def _check_required_db_features(self, databases=None, **kwargs):
+@@ -110,6 +111,17 @@ class BaseConstraint:
+                 )
+         return errors
+ 
++    def _check_local_fields(self, **kwargs):
++        from django.db import models
++        errors = []
++        fields = getattr(self, 'fields', None)
++        if fields is not None:
++            errors.extend(
++                models.base.ModelBase._check_local_fields(self.model, fields)
++            )
++        return errors
++
++
+ 
+ class CheckConstraint(BaseConstraint):
+     def __init__(self, *, check, name, violation_error_message=None):

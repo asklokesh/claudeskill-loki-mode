@@ -1,0 +1,48 @@
+# pytest-dev__pytest-7432
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description, I need to generate a patch for the pytest repository. The issue clearly states the bug is in `src/_pytest/skipping.py` in the `pytest_runtest_makereport` hook. Let me analyze what the fix should be based on the issue description:
+
+The problem is that when `--runxfail` is used, the skip location reporting shows `src/_pytest/skipping.py:238` instead of the test file location. This means there's likely an early return or different code path in `pytest_runtest_makereport` that runs when `--runxfail` is set, which doesn't properly handle skip markers.
+
+Looking at the pytest source code pattern, the `pytest_runtest_makereport` hook likely has logic like:
+
+```python
+@hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    outcome = yield
+    rep = outcome.get_result()
+    
+    if item.config.option.runxfail:
+        return  # This early return is likely the bug - it skips the skip location fix
+    
+    # ... code that properly sets skip location ...
+```
+
+The fix should ensure that skip location reporting is handled even when `--runxfail` is set. The `--runxfail` flag should only affect xfail behavior.
+
+Here's the patch:
+
+```
+--- a/src/_pytest/skipping.py
++++ b/src/_pytest/skipping.py
+@@ -232,8 +232,6 @@ def pytest_runtest_makereport(item: Item, call: CallInfo[None]):
+     outcome = yield
+     rep = outcome.get_result()
+ 
+-    if item.config.option.runxfail:
+-        return
+     xfailed = item._store.get(xfailed_key, None)
+     # unittest special case, see setting of unexpectedsuccess_key
+     if unexpectedsuccess_key in item._store:
+@@ -247,6 +245,8 @@ def pytest_runtest_makereport(item: Item, call: CallInfo[None]):
+             rep.longrepr = "Unexpected success: {}".format(explanation)
+             rep.outcome = "failed"
+ 
++    if item.config.option.runxfail:
++        return
+     if call.excinfo and isinstance(call.excinfo.value, xfail.Exception):
+         assert call.excinfo.value.msg is not None
+         rep.wasxfail = "reason: " + call.excinfo.value.msg
+```

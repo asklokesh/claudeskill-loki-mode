@@ -1,0 +1,16 @@
+Based on the architect's analysis and the issue description, I can generate the patch. The bug is in the `pytest_runtest_makereport` hook which incorrectly overwrites skip locations for all skipped tests when `--runxfail` is active, instead of only affecting xfail-related skips.
+
+--- a/src/_pytest/skipping.py
++++ b/src/_pytest/skipping.py
+@@ -235,7 +235,10 @@ def pytest_runtest_makereport(item: Item, call: CallInfo[None]):
+         elif item.config.option.runxfail:
+             pass  # don't interfere
+         elif call.excinfo and isinstance(call.excinfo.value, xfail.Exception):
+-            rep.wasxfail = "reason: " + call.excinfo.value.msg
++            assert call.excinfo.value.msg is not None
++            rep.wasxfail = f"reason: {call.excinfo.value.msg}"
+             rep.outcome = "skipped"
++        elif hasattr(item, "_store") and Skipped in item._store:
++            # Don't override location for @pytest.mark.skip/skipif
++            pass
+     return rep

@@ -1,0 +1,9 @@
+{
+  "instance_id": "pytest-dev__pytest-5221",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the architect's analysis, I'll generate the patch for the pytest repository. The issue is to add fixture scope display in the `pytest --fixtures` output by modifying the `showfixtures` function in `src/_pytest/python.py`.\n\n--- a/src/_pytest/python.py\n+++ b/src/_pytest/python.py\n@@ -1320,6 +1320,7 @@\n             tw.line()\n             tw.sep(\"-\", \"%s fixtures defined from %s\" % (currentargname, currentmodule))\n         tw.write(argname, green=True)\n+        tw.write(\" [scope: %s]\" % fixturedef.scope, cyan=True)\n         if fixturedef.params:\n             tw.write(\" [params: %s]\" % (\", \".join(str(x) for x in fixturedef.params)),)\n         tw.line()",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T20:17:15.826232"
+}

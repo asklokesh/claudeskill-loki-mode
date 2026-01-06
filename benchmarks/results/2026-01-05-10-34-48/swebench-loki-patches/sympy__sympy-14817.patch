@@ -1,0 +1,18 @@
+# sympy__sympy-14817
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and the architect's analysis, I can generate the correct patch. The issue is that `_print_MatAdd` uses `S(item.args[0]).is_negative` which calls `sympify` on a string that may contain special characters. The fix is to use `_coeff_isneg(item)` which is the standard approach used in `_print_Add`.
+
+```
+--- a/sympy/printing/pretty/pretty.py
++++ b/sympy/printing/pretty/pretty.py
+@@ -825,7 +825,7 @@ class PrettyPrinter(Printer):
+         for i, item in enumerate(expr.args[1:]):
+             if precedence_traditional(item) < PRECEDENCE["Mul"]:
+                 delim = " + "
+-            if S(item.args[0]).is_negative:
++            if _coeff_isneg(item):
+                 delim = " "
+             pforms.append(self._print(item))
+```

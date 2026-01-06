@@ -1,0 +1,40 @@
+# django__django-16820
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/django/db/migrations/operations/models.py
++++ b/django/db/migrations/operations/models.py
+@@ -733,6 +733,30 @@ class AlterIndexTogether(AlterTogetherOptionOperation):
+     def references_field(self, model_name, name, app_label):
+         return self.references_model(model_name, app_label) and (
+             not self.option_value
+             or any((name in fields) for fields in self.option_value)
+         )
+ 
++    def reduce(self, operation, app_label):
++        if isinstance(operation, AddIndex) and self.model_name_lower == operation.model_name_lower:
++            if self.option_value:
++                # Check if AddIndex replaces one of the index_together entries
++                index = operation.index
++                # Only consider simple indexes (no conditions, includes, etc.)
++                if (
++                    index.fields
++                    and not getattr(index, 'condition', None)
++                    and not getattr(index, 'include', None)
++                    and not getattr(index, 'opclasses', ())
++                    and not getattr(index, 'expressions', None)
++                ):
++                    index_fields = tuple(index.fields)
++                    if index_fields in self.option_value:
++                        new_option_value = self.option_value - {index_fields}
++                        if not new_option_value:
++                            # All index_together entries have been converted to indexes
++                            return [operation]
++                        return [
++                            AlterIndexTogether(self.name, new_option_value),
++                            operation,
++                        ]
++        return super().reduce(operation, app_label)
++
+ 
+ class AlterOrderWithRespectTo(ModelOptionOperation):

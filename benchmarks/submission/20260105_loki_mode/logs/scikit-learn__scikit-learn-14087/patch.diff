@@ -1,0 +1,28 @@
+Based on the issue description and my understanding of the LogisticRegressionCV code, I need to analyze the problem. The issue states that when `refit=False`, there's an IndexError at line 2194 where the code tries to index `coefs_paths` with 4 dimensions but the array doesn't have that many dimensions.
+
+Looking at the error and the architect's analysis, when `refit=False`, the code doesn't refit on all the data, so `coefs_paths` has a different structure. The problem is in the lines around 2193-2194 where it tries to compute the mean of coefficients across folds.
+
+Let me generate the correct patch:
+
+--- a/sklearn/linear_model/logistic.py
++++ b/sklearn/linear_model/logistic.py
+@@ -2187,12 +2187,17 @@
+             else:
+                 best_indices = np.argmax(scores, axis=1)
+ 
+                 if multi_class == 'multinomial':
+                     w = np.mean([coefs_paths[i, best_indices[i], :]
+                                  for i in range(len(folds))], axis=0)
+                 else:
+-                    w = np.mean([coefs_paths[:, i, best_indices[i], :]
+-                                 for i in range(len(folds))], axis=0)
++                    # When refit=False, coefs_paths has shape (n_classes, n_cs, n_features + 1)
++                    # instead of (n_classes, n_folds, n_cs, n_features + 1)
++                    if coefs_paths.ndim == 3:
++                        w = coefs_paths[:, best_indices[0], :]
++                    else:
++                        w = np.mean([coefs_paths[:, i, best_indices[i], :]
++                                     for i in range(len(folds))], axis=0)
+ 
+                 best_indices_C = best_indices % len(self.Cs_)
+                 self.C_.append(self.Cs_[best_indices_C])

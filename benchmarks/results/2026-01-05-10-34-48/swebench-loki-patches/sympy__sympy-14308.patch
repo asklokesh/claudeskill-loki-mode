@@ -1,0 +1,110 @@
+# sympy__sympy-14308
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+This is not the SymPy repository. I need to generate a patch for the SymPy codebase based on my knowledge of the issue. Let me create the patch based on the architect's analysis.
+
+The issue is in the `_print_BasisDependent` method in `sympy/printing/pretty/pretty.py`. When pretty printing vector expressions, the unit vector is being incorrectly duplicated inside power expressions due to how the multiplication is handled.
+
+```
+--- a/sympy/printing/pretty/pretty.py
++++ b/sympy/printing/pretty/pretty.py
+@@ -1,3 +1,4 @@
++from sympy.core.mul import Mul
+ from sympy.core.function import _coeff_isneg
+ from sympy.core.mod import Mod
+ from sympy.core.numbers import Number, Rational
+@@ -2337,6 +2338,33 @@ class PrettyPrinter(Printer):
+ 
+     def _print_BasisDependent(self, expr):
+         from sympy.vector import Vector
++        
++        if not expr.args:
++            return self._print(expr.zero)
++        
++        o1 = []
++        vectstrs = []
++        
++        if isinstance(expr, Vector):
++            items = expr.separate().items()
++        else:
++            items = [(0, expr)]
++        
++        for system, vect in items:
++            inneritems = list(vect.components.items())
++            inneritems.sort(key=lambda x: x[0].__str__())
++            for k, v in inneritems:
++                # Parenthesize scalar if it's a compound expression
++                pform = self._print(v)
++                if (v.is_Add or (isinstance(v, Mul) and
++                        _coeff_isneg(v.args[0]))):
++                    pform = prettyForm(*pform.parens())
++                pform = prettyForm(*pform.right(' ', self._print(k)))
++                o1.append(pform)
++        
++        pform = self._print_Add(Add(*[Integer(0)]*len(o1)), o1, sort=False)
++        return pform
+ 
+         if not self._use_unicode:
+             raise NotImplementedError("ASCII pretty printing of BasisDependent is not implemented")
+```
+
+Wait, let me reconsider this. The issue is more subtle. Let me look at what's happening more carefully. The problem is that the `_print_BasisDependent` method isn't correctly handling the scalar coefficient when it's a Pow expression. The unit vector is getting embedded inside the Pow's prettyForm.
+
+Based on my understanding of the SymPy pretty printing system and this specific bug, here's the correct patch:
+
+```
+--- a/sympy/printing/pretty/pretty.py
++++ b/sympy/printing/pretty/pretty.py
+@@ -2337,7 +2337,7 @@ class PrettyPrinter(Printer):
+ 
+     def _print_BasisDependent(self, expr):
+         from sympy.vector import Vector
+-
++        
+         if not self._use_unicode:
+             raise NotImplementedError("ASCII pretty printing of BasisDependent is not implemented")
+ 
+@@ -2356,10 +2356,14 @@ class PrettyPrinter(Printer):
+             inneritems.sort(key = lambda x: x[0].__str__())
+             for k, v in inneritems:
+                 #Build the pretty form for the coefficient
+-                pform = self._print(v)
+-                vec_str = self._print(k)
+-                pform = prettyForm(*pform.right(' ', vec_str))
+-                o1.append(pform)
++                if v == 1:
++                    pform = self._print(k)
++                else:
++                    pform = self._print(v)
++                    if v.is_Add or _coeff_isneg(v):
++                        pform = prettyForm(*pform.parens())
++                    pform = prettyForm(*pform.right('*', self._print(k)))
++                o1.append(prettyForm(*pform.parens()) if len(inneritems) > 1 else pform)
+ 
+         #Omit printing of the 0 vector
+         if len(o1) == 0:
+```
+
+Actually, I need to look at the actual SymPy code to understand this better. Let me generate a proper patch based on the bug report and the architect's analysis:
+
+--- a/sympy/printing/pretty/pretty.py
++++ b/sympy/printing/pretty/pretty.py
+@@ -2356,9 +2356,14 @@ class PrettyPrinter(Printer):
+             inneritems.sort(key = lambda x: x[0].__str__())
+             for k, v in inneritems:
+                 #Build the pretty form for the coefficient
+-                pform = self._print(v)
+-                vec_str = self._print(k)
+-                pform = prettyForm(*pform.right(' ', vec_str))
++                if v == 1:
++                    pform = self._print(k)
++                else:
++                    pform = self._print(v)
++                    # Parenthesize if needed (Add or negative leading coefficient)
++                    if v.is_Add or _coeff_isneg(v):
++                        pform = prettyForm(*pform.parens())
++                    pform = prettyForm(*pform.right('*', self._print(k)))
+                 o1.append(pform)
+ 
+         #Omit printing of the 0 vector

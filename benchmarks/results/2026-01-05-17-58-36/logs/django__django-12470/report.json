@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-12470",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the task description and the architect's analysis, I need to generate a patch for the Django issue about inherited models not correctly ordering by \"-pk\". The issue is in the `find_ordering_name()` method in `django/db/models/sql/compiler.py` where the descending flag is lost when resolving the \"pk\" alias.\n\nHere's the patch:\n\n--- a/django/db/models/sql/compiler.py\n+++ b/django/db/models/sql/compiler.py\n@@ -719,7 +719,7 @@ class SQLCompiler:\n                     # 'pk' works just as well, however, and is more consistent.\n                     field = model._meta.pk\n                 if field.model != model:\n-                    field = model._meta.get_field(field.name)\n+                    return OrderBy(field.get_col(alias), descending=descending)\n                 return OrderBy(field.get_col(alias), descending=descending)\n         \n         if field.model != model:",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:28:24.938588"
+}

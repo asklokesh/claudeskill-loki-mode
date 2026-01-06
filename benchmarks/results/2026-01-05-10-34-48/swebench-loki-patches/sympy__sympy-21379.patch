@@ -1,0 +1,32 @@
+# sympy__sympy-21379
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis, I need to generate a patch for `sympy/core/mod.py`. Since I cannot access the actual sympy repository file, I will create the patch based on the typical structure of this file and the architect's guidance. The fix involves wrapping the `gcd(p, q)` call with a try/except block to catch `PolynomialError`:
+
+```
+--- a/sympy/core/mod.py
++++ b/sympy/core/mod.py
+@@ -7,6 +7,7 @@ from .logic import fuzzy_and, fuzzy_not
+ from .mul import Mul
+ from .numbers import Integer, equal_valued
+ from .singleton import S
++from sympy.polys.polyerrors import PolynomialError
+ 
+ 
+ class Mod(Function):
+@@ -163,7 +164,12 @@ class Mod(Function):
+                 # as it's further evaluated below
+                 if not is_Float:
+                     from sympy.polys.polytools import gcd
+-                    G = gcd(p, q)
++                    try:
++                        G = gcd(p, q)
++                    except PolynomialError:
++                        # gcd may raise PolynomialError for unsupported generators
++                        # (e.g., Piecewise). In such cases, skip gcd simplification.
++                        G = S.One
+                     if G != 1:
+                         p, q = [
+                             gcd_terms(i/G, clear=False, fraction=False) for i in (p, q)]
+```

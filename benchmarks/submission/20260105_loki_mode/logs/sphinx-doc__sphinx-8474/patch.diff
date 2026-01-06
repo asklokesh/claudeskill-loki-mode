@@ -1,0 +1,11 @@
+--- a/sphinx/environment/collectors/toctree.py
++++ b/sphinx/environment/collectors/toctree.py
+@@ -211,8 +211,6 @@ class TocTreeCollector(EnvironmentCollector):
+                             for child in node:
+                                 if isinstance(child, nodes.caption):
+                                     break
+-                            else:
+-                                continue
+ 
+                             if fig_nodeclass == nodes.section:
+                                 sequential_ids = self.memo_seq_ids.setdefault(figtype, {})

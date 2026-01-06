@@ -1,0 +1,28 @@
+# sympy__sympy-12419
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+There's already a patch file with an approach. However, I notice it has an issue - the `Eq` import is not included. Let me generate a clean, correct patch:
+
+--- a/sympy/matrices/expressions/matexpr.py
++++ b/sympy/matrices/expressions/matexpr.py
+@@ -1,6 +1,7 @@
+ from __future__ import print_function, division
+ 
+ from functools import wraps
++from sympy.functions.special.tensor_functions import KroneckerDelta
+ 
+ from sympy.core import S, Symbol, Tuple, Integer, Basic, Expr
+ from sympy.core.decorators import call_highest_priority
+@@ -278,10 +279,7 @@ class Identity(MatrixExpr):
+         return self.rows
+ 
+     def _entry(self, i, j):
+-        if i == j:
+-            return S.One
+-        else:
+-            return S.Zero
++        return KroneckerDelta(i, j)
+ 
+     def _eval_transpose(self):
+         return self

@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-16229",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/django/forms/models.py\n+++ b/django/forms/models.py\n@@ -91,6 +91,9 @@ def fields_for_model(\n             continue\n         kwargs = {}\n+        # Fields with callable defaults should not show hidden initial.\n+        if f.has_default() and callable(f.default):\n+            kwargs[\"show_hidden_initial\"] = False\n         if widgets and f.name in widgets:\n             kwargs[\"widget\"] = widgets[f.name]\n         if localized_fields == ALL_FIELDS or (",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T19:20:08.827894"
+}

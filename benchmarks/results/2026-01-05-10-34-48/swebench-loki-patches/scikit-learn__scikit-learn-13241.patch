@@ -1,0 +1,29 @@
+# scikit-learn__scikit-learn-13241
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+This appears to be a request to generate a patch for the scikit-learn repository, but we're in a different repository. Let me generate the patch based on the architect's analysis and my knowledge of scikit-learn's codebase structure:
+
+```
+--- a/sklearn/decomposition/kernel_pca.py
++++ b/sklearn/decomposition/kernel_pca.py
+@@ -8,6 +8,7 @@ import numpy as np
+ from scipy import linalg
+ from scipy.sparse.linalg import eigsh
+ 
++from ..utils.extmath import svd_flip
+ from ..utils import check_random_state
+ from ..utils.validation import check_is_fitted, check_array
+ from ..exceptions import NotFittedError
+@@ -197,6 +198,10 @@ class KernelPCA(BaseEstimator, TransformerMixin, _UnstableOn32BitMixin):
+             self.alphas_ = self.alphas_[:, indices]
+             self.lambdas_ = self.lambdas_[indices]
+ 
++        # Flip eigenvectors' sign to enforce deterministic output
++        self.alphas_, _ = svd_flip(self.alphas_,
++                                   np.zeros_like(self.alphas_).T)
++
+         # remove eigenvectors with a zero eigenvalue
+         if self.remove_zero_eig or self.n_components is None:
+             self.alphas_ = self.alphas_[:, self.lambdas_ > 0]
+```

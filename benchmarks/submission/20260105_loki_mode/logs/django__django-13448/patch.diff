@@ -1,0 +1,65 @@
+Based on my analysis of the issue description and Django's architecture, I can generate the patch. The problem is that when `MIGRATE` is set to `False`, Django should use `run_syncdb` to create tables directly from models, but currently it doesn't handle this properly. The fix involves modifying the database creation logic to temporarily set `MIGRATION_MODULES` to disable migrations when `MIGRATE` is False.
+
+--- a/django/db/backends/base/creation.py
++++ b/django/db/backends/base/creation.py
+@@ -1,6 +1,7 @@
+ import os
+ import sys
+ from io import StringIO
++from unittest import mock
+ 
+ from django.apps import apps
+ from django.conf import settings
+@@ -29,18 +30,23 @@ class BaseDatabaseCreation:
+         test_database_name = self._get_test_db_name()
+ 
+         if verbosity >= 1:
+             action = 'Creating'
+             if keepdb:
+                 action = "Using existing"
+ 
+             print("%s test database for alias %s..." % (
+                 action,
+                 self._get_database_display_str(verbosity, test_database_name),
+             ))
+ 
+         # We could skip this call if keepdb is True, but we instead
+         # give it the keepdb param. This is to handle the case
+         # when the test DB doesn't exist, in which case we need to
+         # create it, then just not destroy it. If we instead skip
+         # this, we will get an exception.
+-        self._create_test_db(verbosity, autoclobber, keepdb)
++        test_db_params = {'verbosity': verbosity, 'autoclobber': autoclobber, 'keepdb': keepdb}
++        if self.connection.settings_dict['TEST'].get('MIGRATE') is False:
++            # Force syncdb by disabling migrations
++            with mock.patch.object(settings, 'MIGRATION_MODULES', {}):
++                self._create_test_db(**test_db_params)
++        else:
++            self._create_test_db(**test_db_params)
+ 
+         self.connection.close()
+         settings.DATABASES[self.connection.alias]["NAME"] = test_database_name
+@@ -72,7 +78,16 @@ class BaseDatabaseCreation:
+             if self.connection.settings_dict['TEST']['MIGRATE']:
+                 # We report migrate messages at one level lower than that
+                 # requested. This ensures we don't get flooded with messages
+                 # during testing (unless you really ask to be flooded).
+                 call_command(
+                     'migrate',
+                     verbosity=max(verbosity - 1, 0),
+                     interactive=False,
+                     database=self.connection.alias,
+                     run_syncdb=True,
+                 )
++            else:
++                # If MIGRATE is False, we still need to create tables
++                call_command(
++                    'migrate',
++                    verbosity=max(verbosity - 1, 0),
++                    interactive=False,
++                    database=self.connection.alias,
++                    run_syncdb=True,
++                )
+ 
+         # We then serialize the current state of the database into a string
+         # and store it on the connection. This slightly horrific process is so people

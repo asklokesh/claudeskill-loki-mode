@@ -1,0 +1,13 @@
+Based on my knowledge of Sphinx's index entry grouping logic, I can generate the patch. The issue is in how Sphinx categorizes symbols - it uses different collation keys for ASCII symbols vs Unicode symbols, creating two separate "Symbols" sections. The fix needs to normalize all non-alphabetic characters to use the same category key.
+
+--- a/sphinx/environment/adapters/indexentries.py
++++ b/sphinx/environment/adapters/indexentries.py
+@@ -142,7 +142,7 @@ class IndexEntries:
+                 category_key = chr(127)
+             else:
+                 # symbol
+-                category_key = '!'
++                category_key = chr(127)
+         else:
+             # ascii alphabetic
+             category_key = chr(ord(entry[0][0].upper()) & ~0x20)

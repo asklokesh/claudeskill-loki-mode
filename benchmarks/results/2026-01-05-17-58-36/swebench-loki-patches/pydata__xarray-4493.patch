@@ -1,0 +1,25 @@
+# pydata__xarray-4493
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis, I need to generate a patch for the xarray repository. Since this is a SWE-bench task for the pydata/xarray repository, I'll create the patch based on the analysis provided.
+
+The fix is to modify the `as_compatible_data` function in `xarray/core/variable.py` to handle `DataArray` objects properly by extracting their underlying data without triggering computation.
+
+--- a/xarray/core/variable.py
++++ b/xarray/core/variable.py
+@@ -202,6 +202,14 @@ def as_compatible_data(data, fastpath=False):
+     # validate whether the data is valid data types.
+     if isinstance(data, Variable):
+         return data.data
++    
++    # Check for DataArray to avoid triggering computation
++    # Import here to avoid circular imports
++    if hasattr(data, '__module__') and hasattr(data, '__class__'):
++        if data.__class__.__name__ == 'DataArray' and 'xarray' in data.__module__:
++            # Extract the underlying data without triggering .values
++            return data.data
++    
+     if isinstance(data, NON_NUMPY_SUPPORTED_ARRAY_TYPES):
+         return data
+     if isinstance(data, tuple):

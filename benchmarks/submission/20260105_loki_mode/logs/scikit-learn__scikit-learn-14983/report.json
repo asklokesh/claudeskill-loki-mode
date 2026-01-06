@@ -1,0 +1,9 @@
+{
+  "instance_id": "scikit-learn__scikit-learn-14983",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/sklearn/model_selection/_split.py\n+++ b/sklearn/model_selection/_split.py\n@@ -1170,6 +1170,9 @@ class _RepeatedSplits(metaclass=ABCMeta):\n                      **self.cvargs)\n         return cv.get_n_splits(X, y, groups) * self.n_repeats\n \n+    def __repr__(self):\n+        return _build_repr(self)\n+\n \n class RepeatedKFold(_RepeatedSplits):\n     \"\"\"Repeated K-Fold cross validator.\n@@ -2152,6 +2155,8 @@ def _build_repr(self):\n         try:\n             with warnings.catch_warnings(record=True) as w:\n                 value = getattr(self, key, None)\n+                if value is None and hasattr(self, 'cvargs'):\n+                    value = self.cvargs.get(key, None)\n             if len(w) and w[0].category == DeprecationWarning:\n                 # if the parameter is deprecated, don't show it\n                 continue",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T20:38:37.209933"
+}

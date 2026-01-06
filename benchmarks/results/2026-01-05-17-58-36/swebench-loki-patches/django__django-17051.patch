@@ -1,0 +1,20 @@
+# django__django-17051
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and the issue description, I'll generate the patch for the Django repository. The key information is:
+1. The issue is in `django/db/models/query.py` around line 1840
+2. Need to change the condition from `on_conflict is None` to `on_conflict is None or on_conflict == OnConflict.UPDATE`
+3. This allows returning IDs when using `update_conflicts=True`
+
+--- a/django/db/models/query.py
++++ b/django/db/models/query.py
+@@ -1837,7 +1837,7 @@
+                     unique_fields=unique_fields,
+                 )
+ 
+-            if on_conflict is None:
++            if on_conflict is None or on_conflict == OnConflict.UPDATE:
+                 # Only return the ids if we haven't ignored or updated any rows.
+                 returning_fields = opts.db_returning_fields
+             else:

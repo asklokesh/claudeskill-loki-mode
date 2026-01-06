@@ -1,0 +1,20 @@
+# django__django-13551
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis, I need to generate a patch for the Django repository. Since this is for the django/django repository and the file doesn't exist in the current working directory, I'll generate the patch based on the standard Django structure and the issue description.
+
+--- a/django/contrib/auth/tokens.py
++++ b/django/contrib/auth/tokens.py
+@@ -79,7 +79,10 @@ class PasswordResetTokenGenerator:
+         # Truncate microseconds so that tokens are consistent even if the
+         # database doesn't support microseconds.
+         login_timestamp = '' if user.last_login is None else user.last_login.replace(microsecond=0, tzinfo=None)
+-        return str(user.pk) + user.password + str(login_timestamp) + str(timestamp)
++        email_field = user.get_email_field_name()
++        email = getattr(user, email_field, '') or ''
++        return str(user.pk) + user.password + str(login_timestamp) + str(timestamp) + email
++
+ 
+     def _num_seconds(self, dt):
+         return int((dt - datetime(2001, 1, 1)).total_seconds())

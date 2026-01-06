@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-15347",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/django/contrib/messages/storage/cookie.py\n+++ b/django/contrib/messages/storage/cookie.py\n@@ -17,7 +17,7 @@ class MessageEncoder(json.JSONEncoder):\n     def default(self, obj):\n         if isinstance(obj, Message):\n             # Using 0/1 here instead of False/True to produce more compact json\n             is_safedata = 1 if isinstance(obj.message, SafeData) else 0\n             message = [self.message_key, is_safedata, obj.level, obj.message]\n-            if obj.extra_tags:\n+            if obj.extra_tags is not None:\n                 message.append(obj.extra_tags)\n             return message\n         return super().default(obj)",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T19:07:21.110664"
+}

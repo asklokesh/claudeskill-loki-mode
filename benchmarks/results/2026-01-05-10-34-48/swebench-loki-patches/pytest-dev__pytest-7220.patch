@@ -1,0 +1,59 @@
+# pytest-dev__pytest-7220
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis, I need to generate a patch for the pytest repository to fix the issue where paths are shown relative to a changed working directory instead of the original directory. Let me create the patch based on my knowledge of the pytest codebase structure.
+
+--- a/src/_pytest/_code/code.py
++++ b/src/_pytest/_code/code.py
+@@ -13,6 +13,7 @@ from types import TracebackType
+ from typing import Any
+ from typing import Callable
+ from typing import Dict
++from typing import ClassVar
+ from typing import Generic
+ from typing import Iterable
+ from typing import List
+@@ -523,6 +524,9 @@ class ReprFileLocation(TerminalRepr):
+     lineno: int
+     message: str
+ 
++    # Class variable to store the invocation directory
++    _invocation_dir: ClassVar[Optional[py.path.local]] = None
++
+     def toterminal(self, tw: TerminalWriter) -> None:
+         # filename and samples path as relative to config.invocation_dir
+         msg = self.message
+@@ -532,7 +536,16 @@ class ReprFileLocation(TerminalRepr):
+             i = 4
+         else:
+             i = 2
+-        tw.write(self.path, **{location_colour: True})
++        path = self.path
++        # If an invocation directory is set, compute path relative to it
++        # rather than the current working directory (which may have changed
++        # in a fixture)
++        if self._invocation_dir is not None:
++            try:
++                path = py.path.local(self.path).relto(self._invocation_dir)
++                if not path:
++                    path = self.path
++            except Exception:
++                path = self.path
++        tw.write(path, **{location_colour: True})
+         tw.write(":")
+         tw.write(str(self.lineno), **{location_colour: True})
+         if msg:
+--- a/src/_pytest/config/__init__.py
++++ b/src/_pytest/config/__init__.py
+@@ -954,6 +954,10 @@ class Config:
+             self.addinivalue_line("markers", marker)
+ 
+     def _validate_args(self, args):
++        # Store invocation directory in ReprFileLocation for proper path computation
++        from _pytest._code.code import ReprFileLocation
++        ReprFileLocation._invocation_dir = self.invocation_dir
++
+         from _pytest._io.saferepr import saferepr
+ 
+         all_kwargs_values = []

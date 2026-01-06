@@ -1,0 +1,98 @@
+Based on the issue description and my exploration, I need to create a patch that adds `__getstate__` and `__setstate__` methods to the draggable classes to handle pickling. Let me generate the patch:
+
+--- a/lib/matplotlib/legend.py
++++ b/lib/matplotlib/legend.py
+@@ -1160,6 +1160,24 @@ class Legend(Artist):
+             self._draggable = None
+         return self._draggable
+ 
++    def __getstate__(self):
++        state = self.__dict__.copy()
++        # Store draggable state for restoration after unpickling
++        if self._draggable is not None:
++            state['_was_draggable'] = {
++                'use_blit': self._draggable._use_blit,
++                'update': self._draggable._update,
++            }
++        # Remove unpicklable draggable object
++        state['_draggable'] = None
++        return state
++
++    def __setstate__(self, state):
++        draggable_state = state.pop('_was_draggable', None)
++        self.__dict__.update(state)
++        if draggable_state is not None:
++            self.set_draggable(True, **draggable_state)
++
+ 
+ class DraggableLegend(DraggableOffsetBox):
+     def __init__(self, legend, use_blit=False, update="loc"):
+--- a/lib/matplotlib/offsetbox.py
++++ b/lib/matplotlib/offsetbox.py
+@@ -997,11 +997,36 @@ class DraggableBase:
+ 
+     def disconnect(self):
+         """Disconnect the callbacks."""
+-        for cid in self.cids:
+-            self.canvas.mpl_disconnect(cid)
++        if self.ref_artist.figure is not None:
++            for cid in self.cids:
++                self.canvas.mpl_disconnect(cid)
+         self.cids.clear()
+         self.got_artist = False
+ 
++    def __getstate__(self):
++        state = self.__dict__.copy()
++        # Remove unpicklable attributes
++        # canvas is a property, so it's not in __dict__
++        state['cids'] = []
++        # Store the draggable configuration for restoration
++        state['_use_blit_saved'] = self._use_blit
++        state['_update_saved'] = self._update
++        return state
++
++    def __setstate__(self, state):
++        # Restore saved configuration
++        use_blit = state.pop('_use_blit_saved', False)
++        update = state.pop('_update_saved', 'loc')
++        self.__dict__.update(state)
++        # Reinitialize with saved configuration
++        self._use_blit = use_blit
++        self._update = update
++        # Don't reconnect callbacks immediately - they will be reconnected
++        # when the figure is next displayed or when explicitly re-enabled
++        if not self.cids:
++            # Re-establish the connections
++            self.connect()
++
++
+ class DraggableOffsetBox(DraggableBase):
+     def __init__(self, ref_artist, offsetbox, use_blit=False):
+         super().__init__(ref_artist, use_blit=use_blit)
+--- a/lib/matplotlib/text.py
++++ b/lib/matplotlib/text.py
+@@ -2468,6 +2468,24 @@ class Annotation(Text, _AnnotationBase):
+             self._draggable.disconnect()
+         self._draggable = None
+ 
++    def __getstate__(self):
++        state = self.__dict__.copy()
++        # Store draggable state for restoration after unpickling
++        if self._draggable is not None:
++            state['_was_draggable'] = {
++                'use_blit': self._draggable._use_blit,
++            }
++        # Remove unpicklable draggable object
++        state['_draggable'] = None
++        return state
++
++    def __setstate__(self, state):
++        draggable_state = state.pop('_was_draggable', None)
++        self.__dict__.update(state)
++        if draggable_state is not None:
++            self.set_draggable(True, **draggable_state)
++
++
+ class _AnnotationBase:
+     def __init__(self,
+                  xy,

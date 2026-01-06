@@ -1,0 +1,78 @@
+# psf__requests-2674
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/requests/adapters.py
++++ b/requests/adapters.py
+@@ -17,6 +17,9 @@ from .packages.urllib3.util.retry import Retry
+ from .compat import urlparse, basestring
+ from .utils import (DEFAULT_CA_BUNDLE_PATH, get_encoding_from_headers,
+                     prepend_scheme_if_needed, get_auth_from_url, urldefragauth)
++from .packages.urllib3.exceptions import ClosedPoolError
++from .packages.urllib3.exceptions import TimeoutError as _TimeoutError
++from .packages.urllib3.exceptions import DecodeError as _DecodeError
+ from .structures import CaseInsensitiveDict
+ from .packages.urllib3.exceptions import MaxRetryError
+ from .packages.urllib3.exceptions import TimeoutError
+@@ -330,6 +333,15 @@ class HTTPAdapter(BaseAdapter):
+         except _ProxyError as e:
+             raise ProxyError(e)
+ 
++        except (_TimeoutError, TimeoutError) as e:
++            raise Timeout(e)
++
++        except ClosedPoolError as e:
++            raise ConnectionError(e)
++
++        except _DecodeError as e:
++            raise ContentDecodingError(e)
++
+         except MaxRetryError as e:
+             if isinstance(e.reason, ConnectTimeoutError):
+                 raise ConnectTimeout(e, request=request)
+--- a/requests/models.py
++++ b/requests/models.py
+@@ -20,6 +20,8 @@ from .packages.urllib3.fields import RequestField
+ from .packages.urllib3.filepost import encode_multipart_formdata
+ from .packages.urllib3.util import parse_url
+ from .packages.urllib3.exceptions import (
++    DecodeError,
++    LocationParseError,
+     ReadTimeoutError,
+     ResponseNotChunked)
+ from .hooks import default_hooks
+@@ -336,7 +338,10 @@ class PreparedRequest(RequestEncodingMixin, RequestHooksMixin):
+         if not scheme:
+             raise MissingSchema("Invalid URL {0!r}: No schema supplied. "
+                                 "Perhaps you meant http://{0}?".format(url))
+-        if not host:
++        except LocationParseError as e:
++            raise InvalidURL(e)
++
++        if not host:
+             raise InvalidURL("Invalid URL %r: No host supplied" % url)
+ 
+         # Only want to apply IDNA to the hostname
+@@ -332,6 +337,8 @@ class PreparedRequest(RequestEncodingMixin, RequestHooksMixin):
+ 
+         try:
+             scheme, auth, host, port, path, query, fragment = parse_url(url)
++        except LocationParseError as e:
++            raise InvalidURL(e)
+ 
+         if not scheme:
+             raise MissingSchema("Invalid URL {0!r}: No schema supplied. "
+@@ -569,10 +576,13 @@ class Response(object):
+                     for chunk in self.raw.stream(chunk_size, decode_content=True):
+                         yield chunk
+                 except ProtocolError as e:
+                     raise ChunkedEncodingError(e)
++                except DecodeError as e:
++                    raise ContentDecodingError(e)
+                 except ReadTimeoutError as e:
+                     raise ConnectionError(e)
+-            except AttributeError:
++            except AttributeError as e:
+                 # Standard file-like object.
+                 while True:
+                     chunk = self.raw.read(chunk_size)

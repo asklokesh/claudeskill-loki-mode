@@ -1,0 +1,30 @@
+Based on the issue description, this appears to be a SWE-bench task where I need to generate a patch for Django's compiler.py file. Since the Django repository is not present in the current directory, I'll generate the patch based on the architect's analysis provided.
+
+The fix is for `django/db/models/sql/compiler.py` around lines 1270-1294, where multi-level FilteredRelations incorrectly use `local_setter`. The solution is to use a no-op `no_local_setter` function when `len(joins) > 2`.
+
+--- a/django/db/models/sql/compiler.py
++++ b/django/db/models/sql/compiler.py
+@@ -1267,6 +1267,9 @@
+                         else:
+                             obj = None
+                         setter(obj)
++                def no_local_setter(obj):
++                    # Multi-level FilteredRelations should not set intermediate cached values
++                    pass
+                 def remote_setter(name, obj, from_obj):
+                     setattr(from_obj, name, obj)
+                 def local_setter(name, obj, from_obj):
+@@ -1277,7 +1280,11 @@
+                         remote_field, f.model._meta.get_field(f.related_query_name())
+                     )
+                 for columns_pos, (rel_cls, fields) in enumerate(related_klass_infos):
+-                    if fields[0].field.related_query_name() in self.query._filtered_relations:
++                    filtered_relation = fields[0].field.related_query_name() in self.query._filtered_relations
++                    # For multi-level FilteredRelations (len(joins) > 2), the intermediate
++                    # object at joins[-2] is not fetched, so local_setter cannot work correctly.
++                    # Use no_local_setter to prevent incorrect cache assignments.
++                    if filtered_relation and len(joins) > 2:
++                        setter = functools.partial(no_local_setter, fields[0].attname)
++                    elif filtered_relation:
+                         obj = setup_join_cache(row, self.query._filtered_relations[fields[0].field.related_query_name()].relation_name)
+                         setter = functools.partial(remote_setter, fields[0].attname)

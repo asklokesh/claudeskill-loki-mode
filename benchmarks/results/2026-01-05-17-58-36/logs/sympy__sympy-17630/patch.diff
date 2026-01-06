@@ -1,0 +1,35 @@
+Based on my analysis of the issue description and the architect's analysis, I can generate the patch directly. The problem is clear:
+
+1. When `BlockMatrix._blockmul()` performs block multiplication, zero results are returned as scalar `Zero` objects instead of `ZeroMatrix` objects
+2. This causes subsequent operations to fail when trying to access `.cols` attribute on the scalar `Zero`
+3. The fix needs to ensure that zero blocks maintain their matrix dimensions
+
+Here's the patch:
+
+--- a/sympy/matrices/expressions/blockmatrix.py
++++ b/sympy/matrices/expressions/blockmatrix.py
+@@ -1,6 +1,7 @@
+ from sympy import ask, Q
+ from sympy.core import Basic, Add
+ from sympy.core.compatibility import range
++from sympy.matrices.expressions.matexpr import ZeroMatrix
+ from sympy.matrices.expressions import MatrixExpr
+ from sympy.matrices.matrices import MatrixBase
+ from sympy.strategies import typed, exhaust, condition, do_one, unpack
+@@ -105,7 +106,16 @@
+                     A.blocks[i, k]*B.blocks[k, j]
+                     for k in range(A.blockshape[1])])
+                 for j in range(B.blockshape[1])])
+-            for i in range(A.blockshape[0])])
++            for i in range(A.blockshape[0])])
++        
++        # Convert scalar Zero to ZeroMatrix with proper dimensions
++        from sympy.core.numbers import Zero
++        for i in range(len(blocks)):
++            for j in range(len(blocks[i])):
++                if isinstance(blocks[i][j], Zero):
++                    row_size = A.rowblocksizes[i]
++                    col_size = B.colblocksizes[j]
++                    blocks[i][j] = ZeroMatrix(row_size, col_size)
+ 
+         return BlockMatrix(blocks)

@@ -1,0 +1,34 @@
+# django__django-12983
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and my knowledge of Django's `slugify` function, I can generate the patch. The function typically normalizes unicode, replaces non-alphanumeric characters with dashes, removes invalid characters, and strips whitespace. The fix requires adding `.strip('-_')` at the end.
+
+```
+--- a/django/utils/text.py
++++ b/django/utils/text.py
+@@ -394,6 +394,7 @@ def slugify(value, allow_unicode=False):
+         value = unicodedata.normalize('NFKC', value)
+     value = re.sub(r'[^\w\s-]', '', value.lower())
+     return re.sub(r'[-\s]+', '-', value).strip()
++    return re.sub(r'[-\s]+', '-', value).strip('-_')
+ 
+ 
+ def camel_case_to_spaces(value):
+```
+
+Wait, that's not right - let me generate the correct patch that replaces the line rather than adding a new one:
+
+```
+--- a/django/utils/text.py
++++ b/django/utils/text.py
+@@ -394,7 +394,7 @@ def slugify(value, allow_unicode=False):
+     if allow_unicode:
+         value = unicodedata.normalize('NFKC', value)
+     value = re.sub(r'[^\w\s-]', '', value.lower())
+-    return re.sub(r'[-\s]+', '-', value).strip()
++    return re.sub(r'[-\s]+', '-', value).strip('-_')
+ 
+ 
+ def camel_case_to_spaces(value):
+```

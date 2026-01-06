@@ -1,0 +1,35 @@
+# pytest-dev__pytest-11148
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+I understand the task now. This is a benchmark scenario where I need to generate a patch for the pytest-dev/pytest repository based on the issue description. I don't have access to the actual pytest source code in this repository, but I can generate the patch based on my knowledge of the pytest codebase and the issue description.
+
+Based on the architect's analysis, the bug is in the `import_path()` function in `src/_pytest/pathlib.py`. The issue is that when using `import-mode=importlib`, pytest can import the same module twice - creating two separate module objects. The fix is to check `sys.modules` first before performing a fresh import.
+
+Here's the patch:
+
+```
+--- a/src/_pytest/pathlib.py
++++ b/src/_pytest/pathlib.py
+@@ -522,6 +522,21 @@ def import_path(
+         pkg_root = path.parent
+         module_name = path.stem
+ 
++    # If the module is already in sys.modules, return the cached version
++    # to avoid creating duplicate module instances. This is particularly
++    # important for import-mode=importlib where the same module may be
++    # imported via different code paths (e.g., doctest collection and
++    # regular test imports).
++    if module_name in sys.modules:
++        existing_module = sys.modules[module_name]
++        # Verify the module comes from the expected path before reusing
++        mod_file = getattr(existing_module, "__file__", None)
++        if mod_file is not None:
++            existing_path = Path(mod_file)
++            if existing_path == path.absolute() or existing_path.resolve() == path.resolve():
++                return existing_module
++
+     for meta_importer in sys.meta_path:
+         spec = meta_importer.find_spec(module_name, [str(pkg_root)])
+         if spec is not None:
+```

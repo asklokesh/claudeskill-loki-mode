@@ -1,0 +1,22 @@
+# pylint-dev__pylint-7993
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and the architect's analysis, I need to generate a patch for the pylint repository. Since this is a well-known issue in pylint (the issue describes the exact location at `pylint/reporters/text.py:206`), I can create the patch based on the standard pylint codebase structure and the bug description.
+
+The issue is that the regex `re.findall(r'\{(.+?)(:.*)?\}', template)` doesn't account for escaped braces (`{{` and `}}`). The fix should handle these escaped braces before extracting arguments.
+
+```
+--- a/pylint/reporters/text.py
++++ b/pylint/reporters/text.py
+@@ -175,6 +175,9 @@ class TextReporter(BaseReporter):
+         """Check that the template supplied by the user is valid."""
+         self._template = template
+         # For backwards compatibility with legacy template format
++        # Remove escaped braces {{ and }} before checking for valid arguments
++        # to avoid treating them as argument boundaries
++        template = template.replace("{{", "").replace("}}", "")
+         arguments = re.findall(r"\{(.+?)(:.*)?\}", template)
+         for argument in arguments:
+             if argument[0] not in MESSAGE_FIELDS:
+```

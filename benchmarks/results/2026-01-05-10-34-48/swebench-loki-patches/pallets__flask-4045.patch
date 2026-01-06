@@ -1,0 +1,22 @@
+# pallets__flask-4045
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and my knowledge of Flask's codebase structure, I can generate the patch. The `Blueprint` class in Flask's `blueprints.py` has an `__init__` method where the name validation should be added.
+
+```
+--- a/src/flask/blueprints.py
++++ b/src/flask/blueprints.py
+@@ -187,6 +187,11 @@ class Blueprint(Scaffold):
+         """
+         super().__init__(import_name, static_folder, static_url_path, template_folder, root_path)
+ 
++        if "." in name:
++            raise ValueError(
++                f"'{name}' is not a valid blueprint name. Names cannot contain dots."
++            )
++
+         self.name = name
+         self.url_prefix = url_prefix
+         self.subdomain = subdomain
+```

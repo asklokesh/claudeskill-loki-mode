@@ -1,0 +1,54 @@
+# sphinx-doc__sphinx-8721
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on my knowledge of the Sphinx viewcode extension and the bug description, I can generate the patch. The issue is that when running `make html epub` together, the `doctree_read` event handler stores module information during the HTML build, and then `collect_pages` generates pages for epub even though `viewcode_enable_epub=False`. The fix needs to check the builder in both `doctree_read` (to avoid collecting data) and `collect_pages` (to avoid generating pages).
+
+Here's the patch:
+
+```
+--- a/sphinx/ext/viewcode.py
++++ b/sphinx/ext/viewcode.py
+@@ -181,6 +181,12 @@ def collect_pages(app: Sphinx) -> Generator[Tuple[str, Dict[str, Any], str], Non
+     env = app.builder.env
+     if not hasattr(env, '_viewcode_modules'):
+         return
++    if app.builder.name.startswith('epub') and not app.config.viewcode_enable_epub:
++        return
+     highlighter = app.builder.highlighter  # type: ignore
+     urito = app.builder.get_relative_uri
+ 
+--- a/sphinx/ext/viewcode.py
++++ b/sphinx/ext/viewcode.py
+@@ -67,6 +67,8 @@ def doctree_read(app: Sphinx, doctree: Node) -> None:
+     env = app.builder.env
+     if not hasattr(env, '_viewcode_modules'):
+         env._viewcode_modules = {}  # type: ignore
++    if app.builder.name.startswith('epub') and not app.config.viewcode_enable_epub:
++        return
+ 
+     def has_tag(modname: str, fullname: str, docname: str, refname: str) -> bool:
+         entry = env._viewcode_modules.get(modname, None)  # type: ignore
+```
+
+Let me provide the complete unified diff:
+
+--- a/sphinx/ext/viewcode.py
++++ b/sphinx/ext/viewcode.py
+@@ -67,6 +67,8 @@ def doctree_read(app: Sphinx, doctree: Node) -> None:
+     env = app.builder.env
+     if not hasattr(env, '_viewcode_modules'):
+         env._viewcode_modules = {}  # type: ignore
++    if app.builder.name.startswith('epub') and not app.config.viewcode_enable_epub:
++        return
+ 
+     def has_tag(modname: str, fullname: str, docname: str, refname: str) -> bool:
+         entry = env._viewcode_modules.get(modname, None)  # type: ignore
+@@ -181,6 +183,8 @@ def collect_pages(app: Sphinx) -> Generator[Tuple[str, Dict[str, Any], str], Non
+     env = app.builder.env
+     if not hasattr(env, '_viewcode_modules'):
+         return
++    if app.builder.name.startswith('epub') and not app.config.viewcode_enable_epub:
++        return
+     highlighter = app.builder.highlighter  # type: ignore
+     urito = app.builder.get_relative_uri

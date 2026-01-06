@@ -1,0 +1,20 @@
+# django__django-16527
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and the issue description, I can generate the patch for the Django admin `show_save_as_new` permission fix. The issue is well-documented and the fix is straightforward - adding `has_add_permission` to the condition.
+
+```
+--- a/django/contrib/admin/templatetags/admin_modify.py
++++ b/django/contrib/admin/templatetags/admin_modify.py
+@@ -99,7 +99,8 @@ def submit_row(context):
+             and context.get("show_delete", True)
+         ),
+         "show_save_as_new": not is_popup
+-        and has_change_permission
++        and has_add_permission
++        and has_change_permission
+         and change
+         and save_as,
+         "show_save_and_add_another": (
+```

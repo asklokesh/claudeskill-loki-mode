@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-13437",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the architect's analysis and standard sympy structure, I'll generate the patch for the bell function to handle the infinity case:\n\n--- a/sympy/functions/combinatorial/numbers.py\n+++ b/sympy/functions/combinatorial/numbers.py\n@@ -1,6 +1,6 @@\n from sympy.core import S, Symbol, Rational, Integer, Add, Dummy\n from sympy.core.function import Function, ArgumentIndexError\n-from sympy.core.numbers import Integer\n+from sympy.core.numbers import Integer, Infinity\n from sympy.core.cache import cacheit\n from sympy.functions.combinatorial.factorials import binomial, factorial\n from sympy.functions.elementary.exponentials import log, exp\n@@ -500,6 +500,13 @@ class bell(Function):\n     def _eval_rewrite_as_Sum(self, n, k_sym=None, symbols=None, **kwargs):\n         from sympy import Sum\n         return Sum(S.BellPolynomial(n, k, symbols), (k, 0, n))\n+\n+    def _eval_is_infinite(self):\n+        from sympy import oo\n+        arg = self.args[0]\n+        if arg is S.Infinity:\n+            return True\n+        if arg is S.NegativeInfinity or arg.is_infinite:\n+            return True\n \n     @classmethod\n     def _eval_evalf(cls, n):",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T21:15:02.812807"
+}

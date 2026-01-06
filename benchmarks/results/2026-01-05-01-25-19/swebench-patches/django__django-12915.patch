@@ -1,0 +1,45 @@
+Based on the traceback and problem description, I can understand the issue:
+
+1. `ASGIStaticFilesHandler` extends some ASGI handler
+2. There's a `StaticFilesHandlerMixin` that provides `get_response` for synchronous handling
+3. When using ASGI, `get_response_async` is called but the mixin doesn't provide it
+4. The `_middleware_chain` is `None` because the async version wasn't set up properly
+
+The fix should add a `get_response_async` method to `StaticFilesHandlerMixin` that mirrors the synchronous `get_response` but works asynchronously.
+
+Looking at the traceback:
+- `django/contrib/staticfiles/handlers.py` line 86 - `ASGIStaticFilesHandler.__call__`
+- `django/core/handlers/asgi.py` line 161 - calls `get_response_async`
+- `django/core/handlers/base.py` line 148 - `get_response_async` calls `_middleware_chain`
+
+The issue is that `StaticFilesHandlerMixin.get_response` handles static files before calling the middleware chain, but there's no async equivalent. Here's the patch:
+
+--- a/django/contrib/staticfiles/handlers.py
++++ b/django/contrib/staticfiles/handlers.py
+@@ -1,5 +1,6 @@
+ from urllib.parse import urlparse
+ from urllib.request import url2pathname
++from asgiref.sync import sync_to_async
+ 
+ from django.conf import settings
+ from django.contrib.staticfiles import utils
+@@ -43,6 +44,19 @@ class StaticFilesHandlerMixin:
+             return response
+         return super().get_response(request)
+ 
++    async def get_response_async(self, request):
++        """
++        Async version of get_response. Check if the request URL matches a
++        static file and serve it. Otherwise, handle the request via the
++        async middleware chain.
++        """
++        try:
++            return await sync_to_async(self.serve, thread_sensitive=False)(request)
++        except Http404:
++            pass
++        if self._should_handle(request.path_info):
++            raise Http404("File not found: %s" % request.path_info)
++        return await super().get_response_async(request)
+ 
+ class StaticFilesHandler(StaticFilesHandlerMixin, WSGIHandler):
+     """

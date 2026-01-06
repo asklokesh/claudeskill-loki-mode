@@ -1,0 +1,38 @@
+# django__django-11905
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and my knowledge of Django's codebase, I'll generate the patch. The `IsNull` lookup class is in `django/db/models/lookups.py` and needs a deprecation warning when non-boolean values are used.
+
+```
+--- a/django/db/models/lookups.py
++++ b/django/db/models/lookups.py
+@@ -1,4 +1,5 @@
+ import itertools
++import warnings
+ 
+ from django.core.exceptions import EmptyResultSet
+ from django.db.models.expressions import Case, Exists, Func, Value, When
+@@ -6,6 +7,7 @@ from django.db.models.fields import (
+     DateTimeField, Field, IntegerField, UUIDField,
+ )
+ from django.db.models.query_utils import RegisterLookupMixin
++from django.utils.deprecation import RemovedInDjango40Warning
+ from django.utils.functional import cached_property
+ 
+ 
+@@ -463,6 +465,14 @@ class IsNull(BuiltinLookup):
+     prepare_rhs = False
+ 
+     def as_sql(self, compiler, connection):
++        if not isinstance(self.rhs, bool):
++            warnings.warn(
++                'Using a non-boolean value for __isnull is deprecated. '
++                'Use True or False instead.',
++                RemovedInDjango40Warning,
++                stacklevel=2,
++            )
+         sql, params = compiler.compile(self.lhs)
+         if self.rhs:
+             return "%s IS NULL" % sql, params
+```

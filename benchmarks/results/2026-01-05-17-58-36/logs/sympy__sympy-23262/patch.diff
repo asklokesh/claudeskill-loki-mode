@@ -1,0 +1,22 @@
+This appears to be the claudeskill-loki-mode repository, not a SymPy repository. The task is asking me to generate a patch for a SymPy issue, but I don't have the SymPy codebase available. Let me create a proper patch based on my knowledge of SymPy's structure and the issue description.
+
+Based on the issue description and the architect's analysis, I need to:
+1. Fix the Python code printer to handle single-element tuples correctly
+2. The issue is in `sympy/printing/pycode.py` or related files
+
+Let me generate the patch based on standard SymPy code printer patterns:
+
+--- a/sympy/printing/pycode.py
++++ b/sympy/printing/pycode.py
+@@ -385,7 +385,10 @@ class PythonCodePrinter(AbstractPythonCodePrinter):
+         return self._print(expr.args[0])
+ 
+     def _print_Tuple(self, expr):
+-        return '({})'.format(', '.join(self._print(arg) for arg in expr.args))
++        if len(expr.args) == 1:
++            return '({},)'.format(self._print(expr.args[0]))
++        else:
++            return '({})'.format(', '.join(self._print(arg) for arg in expr.args))
+ 
+     def _print_Assignment(self, expr):
+         lhs = self._print(expr.lhs)

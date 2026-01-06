@@ -1,0 +1,28 @@
+Looking at the patches, I see they use `hasattr` which would check if the method exists on the parent class too. But based on the issue discussion, the real fix should check `cls.__dict__` to only skip if the method is defined directly on the current class (not inherited). This allows child classes to get the new method binding with updated choices while still preserving user-defined overrides.
+
+Let me verify the correct approach by understanding the problem better:
+
+1. When abstract parent has `get_foo_display`, it's bound to parent's field with parent's choices
+2. When child redefines the field with new choices, `contribute_to_class` is called
+3. The `hasattr` check sees the method exists (inherited from parent), so it skips setting a new one
+4. But the child needs a NEW binding with the child's field that has the extended choices
+
+The fix should use `'get_%s_display' % self.name not in cls.__dict__` instead of `not hasattr(cls, 'get_%s_display' % self.name)`.
+
+Wait, let me re-read the issue discussion more carefully. The issue says the regression was in 2d38eb0ab9f78d68c083a5b78b1eca39027b279a which **added** the `hasattr` check. So before that commit, there was no check and it always set the method. The check was added to allow user overrides, but it broke inheritance.
+
+So the fix is NOT to add `hasattr` - it's to change FROM `hasattr` TO `cls.__dict__` check.
+
+--- a/django/db/models/fields/__init__.py
++++ b/django/db/models/fields/__init__.py
+@@ -763,8 +763,9 @@ class Field(RegisterLookupMixin):
+         self.model = cls
+         cls._meta.add_field(self, private=private_only)
+         if self.choices is not None:
+-            if not hasattr(cls, 'get_%s_display' % self.name):
+-                setattr(cls, 'get_%s_display' % self.name,
+-                        partialmethod(cls._get_FIELD_display, field=self))
++            setattr(cls, 'get_%s_display' % self.name,
++                    partialmethod(cls._get_FIELD_display, field=self))
+ 
+     def contribute_to_class(self, cls, name, private_only=False):

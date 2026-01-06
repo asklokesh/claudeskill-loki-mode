@@ -1,0 +1,9 @@
+{
+  "instance_id": "pallets__flask-4045",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the architectural analysis and Flask's structure, here is the patch:\n\n--- a/src/flask/blueprints.py\n+++ b/src/flask/blueprints.py\n@@ -158,6 +158,10 @@ class Blueprint(Scaffold):\n         self.name = name\n         self.url_prefix = url_prefix\n         self.subdomain = subdomain\n+        \n+        if \".\" in name:\n+            raise ValueError(\"Blueprint names cannot contain dots ('.').\")\n+        \n         self.deferred_functions: t.List[DeferredSetupFunction] = []\n \n         if url_defaults is None:",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T19:52:22.148272"
+}

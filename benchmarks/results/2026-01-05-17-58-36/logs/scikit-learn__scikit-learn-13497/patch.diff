@@ -1,0 +1,11 @@
+--- a/sklearn/feature_selection/_mutual_info.py
++++ b/sklearn/feature_selection/_mutual_info.py
+@@ -47,7 +47,7 @@ def _estimate_mi(X, y, discrete_features='auto', discrete_target=False,
+     if isinstance(discrete_features, bool):
+         discrete_features = np.full(n_features, discrete_features)
+     
+-    if discrete_features == 'auto':
++    if isinstance(discrete_features, str) and discrete_features == 'auto':
+         discrete_features = issparse(X)
+     
+     if issparse(X):

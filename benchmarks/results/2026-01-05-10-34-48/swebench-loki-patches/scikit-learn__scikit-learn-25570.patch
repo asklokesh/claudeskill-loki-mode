@@ -1,0 +1,66 @@
+# scikit-learn__scikit-learn-25570
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and my knowledge of sklearn's ColumnTransformer, I can generate the patch. The issue is in the `_hstack` method where `transformer_names` is collected from `_iter(fitted=True)` but this doesn't account for transformers with 0 output features, while `Xs` already filters out empty arrays.
+
+Here's the patch:
+
+```
+--- a/sklearn/compose/_column_transformer.py
++++ b/sklearn/compose/_column_transformer.py
+@@ -853,9 +853,11 @@ class ColumnTransformer(TransformerMixin, _BaseComposition):
+             output = pd.concat(Xs, axis=1)
+ 
+             # If all transformers define `get_feature_names_out`, then transform
+-            # will return a DataFrame. We use the column names defined by
+-            # `get_feature_names_out` but prefix it with the name of transformer.
+-            transformer_names = [name for name, _, _, _ in self._iter(fitted=True)]
++            # will return a DataFrame. We use the column names from each transformer
++            # but only include names for transformers that produced output columns.
++            transformer_names = [
++                name for name, trans, cols, _ in self._iter(fitted=True) if len(cols) > 0
++            ]
+             names_out = self._add_prefix_for_feature_names_out(
+                 list(googletrans(t) for t in transformer_names)
+             )
+```
+
+Wait, I need to look more carefully at the actual code structure. Let me reason through this based on the issue description and the traceback:
+
+The error occurs at line 862 in `_hstack`:
+```python
+output.columns = names_out
+```
+
+The issue is that `names_out` has 0 elements while `output` has 3 columns. This happens because:
+1. `Xs` contains the actual transformed data (3 columns from numerical transformer)
+2. `transformer_names` is built from `_iter(fitted=True)` which skips transformers that weren't fitted (those with 0 features)
+3. `_add_prefix_for_feature_names_out` is then called but something goes wrong
+
+Looking at the traceback more carefully, the `names_out` has 0 elements. This suggests that `_add_prefix_for_feature_names_out` is returning an empty list because there's a mismatch between what's being passed to it.
+
+The issue is that `_iter(fitted=True)` skips transformers with no features (they're not fitted), but the code still tries to get feature names for all transformers. The fix should ensure we only collect transformer names for those that actually produce output.
+
+Here's the correct patch:
+
+--- a/sklearn/compose/_column_transformer.py
++++ b/sklearn/compose/_column_transformer.py
+@@ -853,9 +853,13 @@ class ColumnTransformer(TransformerMixin, _BaseComposition):
+             output = pd.concat(Xs, axis=1)
+ 
+             # If all transformers define `get_feature_names_out`, then transform
+-            # will return a DataFrame. We use the column names defined by
+-            # `get_feature_names_out` but prefix it with the name of transformer.
+-            transformer_names = [name for name, _, _, _ in self._iter(fitted=True)]
++            # will return a DataFrame. We use the column names from each transformer
++            # but only include names for transformers that actually have features,
++            # since transformers with no features are not fitted and produce no output.
++            transformer_names = [
++                name
++                for name, trans, cols, _ in self._iter(fitted=True)
++                if len(cols) > 0
++            ]
+             names_out = self._add_prefix_for_feature_names_out(
+                 list(googletrans(t) for t in transformer_names)
+             )

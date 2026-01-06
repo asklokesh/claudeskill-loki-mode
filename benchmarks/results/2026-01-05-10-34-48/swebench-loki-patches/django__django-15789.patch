@@ -1,0 +1,64 @@
+# django__django-15789
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/django/utils/html.py
++++ b/django/utils/html.py
+@@ -62,7 +62,7 @@ _json_script_escapes = {
+ }
+ 
+ 
+-def json_script(value, element_id):
++def json_script(value, element_id, encoder=DjangoJSONEncoder):
+     """
+     Escape all the HTML/XML special characters with their unicode escapes, so
+     value is safe to be output anywhere except for inside a tag attribute. Wrap
+@@ -70,7 +70,7 @@ def json_script(value, element_id):
+     """
+     from django.core.serializers.json import DjangoJSONEncoder
+     json_str = json.dumps(value, cls=DjangoJSONEncoder).translate(_json_script_escapes)
+-    return format_html(
++    json_str = json.dumps(value, cls=encoder).translate(_json_script_escapes)
++    return format_html(
+         '<script id="{}" type="application/json">{}</script>',
+         element_id, mark_safe(json_str)
+     )
+--- a/django/utils/html.py
++++ b/django/utils/html.py
+@@ -62,7 +62,7 @@ _json_script_escapes = {
+ }
+ 
+ 
+-def json_script(value, element_id):
++def json_script(value, element_id, encoder=None):
+     """
+     Escape all the HTML/XML special characters with their unicode escapes, so
+     value is safe to be output anywhere except for inside a tag attribute. Wrap
+@@ -70,7 +70,9 @@ def json_script(value, element_id):
+     """
+     from django.core.serializers.json import DjangoJSONEncoder
+-    json_str = json.dumps(value, cls=DjangoJSONEncoder).translate(_json_script_escapes)
++    if encoder is None:
++        encoder = DjangoJSONEncoder
++    json_str = json.dumps(value, cls=encoder).translate(_json_script_escapes)
+     return format_html(
+         '<script id="{}" type="application/json">{}</script>',
+         element_id, mark_safe(json_str)
+--- a/docs/ref/utils.txt
++++ b/docs/ref/utils.txt
+@@ -183,6 +183,15 @@ escaping HTML.
+     apostrophe (``'``) are not quoted. Also, it adds colon after ``style`` and
+     ``class``.
+ 
++.. function:: json_script(value, element_id, encoder=None)
++
++    Escapes all HTML/XML special characters with their unicode escapes, so
++    value is safe to be output anywhere except for inside a tag attribute.
++    Wraps the escaped JSON in a ``<script>`` tag with the given ``element_id``.
++
++    The ``encoder`` parameter allows specifying a custom JSON encoder class.
++    If not provided, defaults to
++    :class:`~django.core.serializers.json.DjangoJSONEncoder`.
+ 
+ ``django.utils.http``
+ =====================

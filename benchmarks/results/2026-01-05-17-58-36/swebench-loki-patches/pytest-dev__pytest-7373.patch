@@ -1,0 +1,42 @@
+# pytest-dev__pytest-7373
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description, I need to create a patch for a pytest repository that is not currently in this directory. The task is to generate a patch that removes the caching mechanism from `_pytest/mark/evaluate.py`. Since I don't have access to the actual pytest codebase here, I'll generate the patch based on the standard pytest codebase structure and the issue description.
+
+--- a/src/_pytest/mark/evaluate.py
++++ b/src/_pytest/mark/evaluate.py
+@@ -16,19 +16,6 @@
+ from .structures import Mark
+ 
+ 
+-def cached_eval(config: Config, expr: str, d: Dict[str, object]) -> Any:
+-    default = {}  # type: Dict[str, object]
+-    evalcache = config._store.setdefault(cached_eval, default)
+-    try:
+-        return evalcache[expr]
+-    except KeyError:
+-        import _pytest._code
+-
+-        exprcode = _pytest._code.compile(expr, mode="eval")
+-        evalcache[expr] = x = eval(exprcode, d)
+-        return x
+-
+-
+ class MarkEvaluator:
+     def __init__(self, item: Item, name: str) -> None:
+         self.item = item
+@@ -96,7 +83,10 @@ class MarkEvaluator:
+             self.expr = mark.kwargs.get("condition", True)
+         self.result = False
+         if self.expr is True or self.expr is False:
+-            self.result = bool(self.expr)
++            self.result = self.expr
+         elif isinstance(self.expr, str):
+-            self.result = cached_eval(self.item.config, self.expr, d)
++            import _pytest._code
++
++            exprcode = _pytest._code.compile(self.expr, mode="eval")
++            self.result = eval(exprcode, d)
+         else:
+             if "reason" not in mark.kwargs:

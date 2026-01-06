@@ -1,0 +1,14 @@
+Based on the architect's analysis, I need to generate a patch for the Django repository's `django/contrib/auth/management/__init__.py` file. Since I don't have access to the actual Django repository here, I'll generate the patch based on standard Django codebase knowledge and the architect's specific instructions.
+
+The fix is to set `permission._state.db = using` before assigning the `content_type` foreign key in the `create_permissions` function.
+
+--- a/django/contrib/auth/management/__init__.py
++++ b/django/contrib/auth/management/__init__.py
+@@ -60,6 +60,7 @@
+             ctype = searched_perms[ctype_pk]
+             for name, codename in searched_perms[ctype_pk]:
+                 permission = Permission(name=name, codename=codename)
++                permission._state.db = using
+                 permission.content_type = ctype
+                 perms.append(permission)
+         Permission.objects.using(using).bulk_create(perms)

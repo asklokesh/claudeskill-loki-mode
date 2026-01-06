@@ -1,0 +1,19 @@
+Based on the GitHub issue details and the hints provided, I can create the patch for the Django bug. The issue is in `django/db/models/lookups.py` in the `Exact.process_rhs` method. According to the hints:
+
+1. The `Exact.process_rhs` method at lines 265-267 performs `clear_select_clause` and `add_fields(['pk'])` unconditionally
+2. The fix should check `has_select_fields` similar to how `In.process_rhs` does it
+3. The fix should only perform the clear/add operations when the query is NOT already selecting fields
+
+Based on the Django source code structure and the hints provided, here's the patch:
+
+--- a/django/db/models/lookups.py
++++ b/django/db/models/lookups.py
+@@ -263,9 +263,10 @@ class Exact(FieldGetDbPrepValueIterableMixin, BuiltinLookup):
+ 
+     def process_rhs(self, compiler, connection):
+         from django.db.models.sql import Query
+-        if isinstance(self.rhs, Query):
++        if isinstance(self.rhs, Query) and not getattr(self.rhs, 'has_select_fields', True):
+             self.rhs.clear_select_clause()
+             self.rhs.add_fields(['pk'])
+         return super().process_rhs(compiler, connection)

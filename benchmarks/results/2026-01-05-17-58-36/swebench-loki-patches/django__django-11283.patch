@@ -1,0 +1,133 @@
+# django__django-11283
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+I understand - this is a SWE-bench task where I need to generate a patch for the Django repository based on the issue description. I don't have direct access to the Django codebase files, but I need to create a patch based on my knowledge of Django's structure and the issue described.
+
+Based on the issue description and architect's analysis, I need to fix the `auth.0011_update_proxy_permissions` migration to handle the case where permissions already exist for a model that was recreated as a proxy.
+
+The problem is that when a model is recreated as a proxy model, the old permissions still exist in the database, and the migration tries to create duplicate entries, causing an IntegrityError.
+
+The fix should modify the migration to check if permissions already exist before attempting to create them, or update them if they exist.
+
+--- a/django/contrib/auth/migrations/0011_update_proxy_permissions.py
++++ b/django/contrib/auth/migrations/0011_update_proxy_permissions.py
+@@ -1,17 +1,44 @@
+ from django.db import migrations
+ from django.db.models import Q
+ 
+ 
++def update_proxy_model_permissions(apps, schema_editor, reverse=False):
++    """
++    Update the content_type of proxy model permissions to use the ContentType
++    of the proxy model.
++    """
++    Permission = apps.get_model('auth', 'Permission')
++    ContentType = apps.get_model('contenttypes', 'ContentType')
++    
++    alias = schema_editor.connection.alias
++    for Model in apps.get_models():
++        opts = Model._meta
++        if not opts.proxy:
++            continue
++        
++        proxy_content_type = ContentType.objects.using(alias).get_for_model(
++            Model, for_concrete_model=False
++        )
++        concrete_content_type = ContentType.objects.using(alias).get_for_model(
++            Model, for_concrete_model=True
++        )
++        
++        proxy_permissions = Permission.objects.using(alias).filter(
++            content_type=proxy_content_type,
++        )
++        concrete_permissions = Permission.objects.using(alias).filter(
++            content_type=concrete_content_type,
++        )
++        for permission in concrete_permissions:
++            # Check if a permission with the same codename already exists for the proxy model
++            if not proxy_permissions.filter(codename=permission.codename).exists():
++                permission.pk = None
++                permission.content_type = proxy_content_type
++                permission.save()
++
++
+ def update_proxy_permissions(apps, schema_editor, reverse=False):
+     """
+-    Update the content_type of proxy model permissions to use the ContentType
+-    of the proxy model.
++    Update existing proxy model permissions that were incorrectly created.
+     """
+-    style = schema_editor.style
+     Permission = apps.get_model('auth', 'Permission')
+     ContentType = apps.get_model('contenttypes', 'ContentType')
+@@ -27,19 +54,6 @@ def update_proxy_permissions(apps, schema_editor, reverse=False):
+             concrete_content_type = ContentType.objects.db_manager(
+                 alias
+             ).get_for_model(Model, for_concrete_model=True)
+-            proxy_permissions = Permission.objects.using(alias).filter(
+-                permissions_query,
+-                content_type=proxy_content_type,
+-            )
+-            concrete_permissions = Permission.objects.using(alias).filter(
+-                permissions_query,
+-                content_type=concrete_content_type,
+-            )
+-            concrete_permissions.update(content_type=proxy_content_type)
+-            proxy_permissions_count = proxy_permissions.count()
+-            if proxy_permissions_count:
+-                print(style.WARNING(
+-                    f'{proxy_permissions_count} proxy permissions for {opts.label} already existed.'
+-                ))
+         else:
+             proxy_content_type = ContentType.objects.db_manager(alias).get_for_model(
+                 Model, for_concrete_model=False
+@@ -47,13 +61,31 @@ def update_proxy_permissions(apps, schema_editor, reverse=False):
+             concrete_content_type = ContentType.objects.db_manager(alias).get_for_model(
+                 Model, for_concrete_model=True
+             )
+-            proxy_permissions = Permission.objects.using(alias).filter(
+-                permissions_query,
+-                content_type=proxy_content_type,
+-            )
+-            concrete_permissions = Permission.objects.using(alias).filter(
+-                permissions_query,
+-                content_type=concrete_content_type,
++        
++        proxy_permissions = Permission.objects.using(alias).filter(
++            permissions_query,
++            content_type=proxy_content_type,
++        )
++        concrete_permissions = Permission.objects.using(alias).filter(
++            permissions_query,
++            content_type=concrete_content_type,
++        )
++        
++        # Build a set of proxy permission codenames that already exist
++        proxy_codenames = set(proxy_permissions.values_list('codename', flat=True))
++        
++        # Update concrete permissions to proxy, but only for codenames that don't
++        # already exist in proxy permissions (to avoid IntegrityError)
++        for permission in concrete_permissions.iterator():
++            if permission.codename not in proxy_codenames:
++                permission.content_type = proxy_content_type
++                permission.save()
++            else:
++                # If proxy permission already exists with this codename,
++                # delete the concrete permission to avoid duplicates
++                permission.delete()
++        
++        if reverse:
++            # When reversing, update proxy permissions back to concrete
++            proxy_permissions.update(content_type=concrete_content_type)
+-            )
+-            concrete_permissions.update(content_type=proxy_content_type)
+-            proxy_permissions_count = proxy_permissions.count()
+-            if proxy_permissions_count:
+-                print(
+-                    f'Deleted {proxy_permissions_count} {opts.label} proxy permissions.'
+-                )
+-                proxy_permissions.delete()
+ 
+ 
+ def revert_proxy_permissions(apps, schema_editor):

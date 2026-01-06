@@ -1,0 +1,66 @@
+# sympy__sympy-13031
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and my knowledge of the sympy codebase, I can generate the patch. The issue is that `SparseMatrix` has a `col_join` method that doesn't properly handle zero-dimension matrices, and it needs to implement `_eval_col_join` instead to work with the base class's fix.
+
+```
+--- a/sympy/matrices/sparse.py
++++ b/sympy/matrices/sparse.py
+@@ -985,26 +985,17 @@ class MutableSparseMatrix(SparseMatrix, MatrixBase):
+             self._smat[key] = sympify(value)
+ 
+ 
+-    def col_join(self, other):
++    def _eval_col_join(self, other):
+         """Returns B augmented beneath A (row-wise joining)::
+ 
+             [A]
+             [B]
+ 
+         See Also
+         ========
+ 
+         col
+         row_join
+         """
+-        # A null matrix can always be stacked (see  #10770)
+-        if self.rows == 0 and self.cols != other.cols:
+-            return self._new(other.rows, other.cols, self._smat).row_join(other)
+-
+-        A, B = self, other
+-        if not A.cols == B.cols:
+-            raise ShapeError()
+-        A = A.tolist()
+-        B = B.tolist()
+-        return classof(self, other)._new(A + B)
++        return self._new(self.rows + other.rows, self.cols, lambda i, j:
++            self[i, j] if i < self.rows else other[i - self.rows, j])
+ 
+ 
+-    def row_join(self, other):
++    def _eval_row_join(self, other):
+         """Returns B augmented beside A (column-wise joining)::
+ 
+             [A B]
+ 
+         See Also
+         ========
+ 
+         row
+         col_join
+         """
+-        # A null matrix can always be stacked (see  #10770)
+-        if self.cols == 0 and self.rows != other.rows:
+-            return self._new(other.rows, other.cols, self._smat).col_join(other)
+-
+-        A, B = self, other
+-        if not A.rows == B.rows:
+-            raise ShapeError()
+-
+-        A = A.tolist()
+-        B = B.tolist()
+-        return classof(self, other)._new([a + b for a, b in zip(A, B)])
++        return self._new(self.rows, self.cols + other.cols, lambda i, j:
++            self[i, j] if j < self.cols else other[i, j - self.cols])
+ ```

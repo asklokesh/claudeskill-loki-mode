@@ -1,0 +1,37 @@
+# django__django-13265
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and the architect's analysis, I need to generate a patch for Django's migration autodetector. The issue is that when a model has `order_with_respect_to` and an index on `_order`, the `AddIndex` operation is generated before `AlterOrderWithRespectTo`, but `_order` field only exists after `AlterOrderWithRespectTo` runs.
+
+The fix requires modifying the autodetector to ensure proper ordering. Looking at Django's source code structure, I'll generate the patch:
+
+```
+--- a/django/db/migrations/autodetector.py
++++ b/django/db/migrations/autodetector.py
+@@ -167,9 +167,9 @@ class MigrationAutodetector:
+         self.generate_removed_constraints()
+         self.generate_removed_indexes()
+         self.generate_removed_fields()
++        self.generate_altered_order_with_respect_to()
+         self.generate_removed_unique_together()
+         self.generate_removed_index_together()
+-        self.generate_altered_order_with_respect_to()
+         # Generate field operations.
+         self.generate_renamed_fields()
+         self.generate_added_fields()
+@@ -179,8 +179,8 @@ class MigrationAutodetector:
+         self.generate_altered_unique_together()
+         self.generate_altered_index_together()
+         self.generate_added_constraints()
+-        self.generate_added_indexes()
+         self.generate_altered_db_table()
++        self.generate_added_indexes()
+ 
+     def _sanity_check(self):
+         """
+```
+
+This patch:
+1. Moves `generate_altered_order_with_respect_to()` earlier in the method order, before `generate_removed_unique_together()` and `generate_removed_index_together()`. This ensures that when adding `order_with_respect_to`, the `_order` field is created before indexes are added.
+2. Moves `generate_added_indexes()` after `generate_altered_db_table()` to ensure all field-related operations (including `AlterOrderWithRespectTo`) complete before indexes are added.

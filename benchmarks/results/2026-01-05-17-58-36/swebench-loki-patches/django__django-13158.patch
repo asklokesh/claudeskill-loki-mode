@@ -1,0 +1,22 @@
+# django__django-13158
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the task description, I'm being asked to generate a patch for a Django issue. This appears to be a SWE-bench style task where I need to create a unified diff patch that fixes the QuerySet.none() bug with combined queries.
+
+Let me create the patch based on the architect's analysis:
+
+--- a/django/db/models/query.py
++++ b/django/db/models/query.py
+@@ -891,6 +891,11 @@ class QuerySet:
+         """
+         Return an empty QuerySet.
+         """
++        if self.query.combinator:
++            clone = self._chain()
++            clone.query.set_empty()
++            return clone
++        
+         clone = self._chain()
+         clone.query.set_empty()
+         return clone

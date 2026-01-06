@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-15781",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "This appears to be the loki-mode repository, not a Django repository. Based on the context provided, I need to generate a patch for the Django repository that makes the management command formatter customizable. I'll create the patch based on the architect's analysis.\n\n--- a/django/core/management/base.py\n+++ b/django/core/management/base.py\n@@ -267,6 +267,7 @@ class BaseCommand:\n             prog=\"%s %s\" % (os.path.basename(prog_name), subcommand),\n             description=self.help or None,\n         )\n+        kwargs.setdefault(\"formatter_class\", DjangoHelpFormatter)\n         parser = CommandParser(\n             **kwargs,\n-            formatter_class=DjangoHelpFormatter,\n             missing_args_message=getattr(self, \"missing_args_message\", None),\n             called_from_command_line=getattr(self, \"_called_from_command_line\", None),",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T19:11:15.927556"
+}

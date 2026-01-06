@@ -1,0 +1,20 @@
+# django__django-14915
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+I see this is the Loki Mode repository, not a Django repository. Based on the architect's analysis, I need to generate a patch for the Django repository. Let me create the patch based on the analysis provided:
+
+--- a/django/forms/models.py
++++ b/django/forms/models.py
+@@ -1233,6 +1233,12 @@ class ModelChoiceIteratorValue:
+     def __eq__(self, other):
+         return self.value == other
+ 
++    def __hash__(self):
++        # Make ModelChoiceIteratorValue hashable so it can be used as dict keys
++        # and in sets. Hash is based on the underlying value to maintain
++        # consistency with __eq__().
++        return hash(self.value)
++
+     def __str__(self):
+         return str(self.value)

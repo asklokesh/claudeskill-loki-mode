@@ -1,0 +1,55 @@
+# sphinx-doc__sphinx-7686
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and the architect's analysis, I can generate the patch for the Sphinx autosummary bug. The issue is in `sphinx/ext/autosummary/generate.py` where the `members` template variable is populated without filtering imported members, even when `autosummary_imported_members=False`.
+
+Looking at the typical structure of this file in Sphinx 3.1.0, the `members` variable is populated using `dir(obj)` but doesn't apply the same `imported_members` filtering that's applied to `functions`, `classes`, etc. The fix should filter the `members` variable the same way.
+
+Here's the patch:
+
+```
+--- a/sphinx/ext/autosummary/generate.py
++++ b/sphinx/ext/autosummary/generate.py
+@@ -246,6 +246,15 @@ def generate_autosummary_content(name: str, obj: Any, parent: Any,
+                 except AttributeError:
+                     pass
+ 
++    def is_skipped_member(name: str) -> bool:
++        """Check if a member should be skipped based on imported_members setting."""
++        try:
++            member = safe_getattr(obj, name, None)
++            return getattr(member, '__module__', None) != name
++        except Exception:
++            return False
++
++    members = [name for name in members if imported_members or not is_skipped_member(name)]
+     public = [x for x in members if not x.startswith('_')]
+ 
+     if doc.objtype == 'module':
+```
+
+Wait, I need to reconsider. The `is_skipped_member` function should check against the module's name (`obj.__name__`), not the member's name. Let me provide the correct patch:
+
+```
+--- a/sphinx/ext/autosummary/generate.py
++++ b/sphinx/ext/autosummary/generate.py
+@@ -246,6 +246,17 @@ def generate_autosummary_content(name: str, obj: Any, parent: Any,
+                 except AttributeError:
+                     pass
+ 
++    def is_skipped_member(membername: str) -> bool:
++        """Check if a member is imported and should be skipped."""
++        if imported_members:
++            return False
++        try:
++            member = safe_getattr(obj, membername, None)
++            return getattr(member, '__module__', None) != name
++        except Exception:
++            return False
++
++    members = [m for m in members if not is_skipped_member(m)]
+     public = [x for x in members if not x.startswith('_')]
+ 
+     if doc.objtype == 'module':
+```

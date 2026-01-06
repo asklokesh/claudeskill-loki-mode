@@ -1,0 +1,14 @@
+# sympy__sympy-15609
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on my analysis of the issue and the existing patches in the repository, I can now generate the correct patch. The fix is to use `self._print()` on the indices instead of directly converting them to strings.
+
+--- a/sympy/printing/latex.py
++++ b/sympy/printing/latex.py
+@@ -1519,4 +1519,4 @@
+ 
+     def _print_MatrixElement(self, expr):
+         return self.parenthesize(expr.parent, PRECEDENCE["Atom"], strict=True) \
+-            + '_{%s, %s}' % (expr.i, expr.j)
++            + '_{%s, %s}' % (self._print(expr.i), self._print(expr.j))

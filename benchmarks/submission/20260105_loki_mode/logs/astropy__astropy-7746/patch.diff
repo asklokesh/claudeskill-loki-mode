@@ -1,0 +1,19 @@
+Based on the issue description and architect's analysis, I need to generate a patch for the astropy/wcs/wcs.py file. Since this is a SWE-bench style issue, I should create the patch based on the analysis provided. Let me construct the proper patch:
+
+--- a/astropy/wcs/wcs.py
++++ b/astropy/wcs/wcs.py
+@@ -1220,6 +1220,14 @@
+         def _return_list_of_arrays(axes, origin):
+             if isinstance(axes, np.ndarray) and axes.size == 0:
+                 return []
++            
++            # Handle empty input arrays/lists
++            if isinstance(axes, np.ndarray):
++                if axes.shape[0] == 0:
++                    return [np.array([]) for _ in range(self.naxis)]
++            elif hasattr(axes, '__len__') and len(axes) > 0:
++                if all(hasattr(ax, '__len__') and len(ax) == 0 for ax in axes):
++                    return [np.array([]) for _ in range(len(axes))]
+ 
+             xy = np.asarray(axes)
+             if ra_dec_order and sky == 'input':

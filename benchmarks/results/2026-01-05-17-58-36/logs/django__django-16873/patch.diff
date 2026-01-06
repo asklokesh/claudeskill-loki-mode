@@ -1,0 +1,15 @@
+Perfect! I can see the existing patch. Let me generate the correct unified diff format patch:
+
+--- a/django/template/defaultfilters.py
++++ b/django/template/defaultfilters.py
+@@ -586,7 +586,10 @@ def join(value, arg, autoescape=True):
+     try:
+         if autoescape:
+             value = [conditional_escape(v) for v in value]
+-        data = conditional_escape(arg).join(value)
++            data = conditional_escape(arg).join(value)
++        else:
++            data = arg.join(value)
+     except TypeError:  # Fail silently if arg isn't iterable.
+         return value
+     return mark_safe(data)

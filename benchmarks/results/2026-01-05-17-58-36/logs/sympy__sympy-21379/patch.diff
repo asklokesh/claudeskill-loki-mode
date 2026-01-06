@@ -1,0 +1,29 @@
+Based on the context, I understand this is a SWE-bench benchmark task where I need to generate a patch for the sympy repository issue. The patch should fix the `PolynomialError` in `sympy/core/mod.py` by wrapping the `gcd()` call with a try-except block.
+
+Let me generate the patch in the correct unified diff format:
+
+--- a/sympy/core/mod.py
++++ b/sympy/core/mod.py
+@@ -1,6 +1,7 @@
+ from __future__ import print_function, division
+ 
+ from sympy.core.numbers import nan
++from sympy.polys.polyerrors import PolynomialError
+ from .function import Function
+ 
+ 
+@@ -84,7 +85,12 @@ class Mod(Function):
+                 # separating into modulus and offset
+                 # XXX this and other caught PolynomialError are a problem
+                 # because they hide errors that should be raised
+-                G = gcd(p, q)
++                try:
++                    G = gcd(p, q)
++                except PolynomialError:
++                    # gcd may fail on Piecewise expressions during assumptions
++                    # queries (e.g., from sinh._eval_is_real). Fall back to no
++                    # simplification to avoid caching None in assumptions.
++                    G = S.One
+                 if G != 1:
+                     p, q = [i/G for i in (p, q)]
+             else:

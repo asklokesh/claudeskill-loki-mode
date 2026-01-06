@@ -1,0 +1,27 @@
+# sympy__sympy-17655
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+I understand now. This is a Loki Mode repository for SWE-bench benchmarking. The user is asking me to act as an ENGINEER AGENT to generate a patch for a sympy issue. I need to generate the patch based on the issue description and architect's analysis provided.
+
+Based on the issue and analysis, I need to create a patch that adds `__rmul__` method to the Point class in sympy. Let me generate the patch:
+
+--- a/sympy/geometry/point.py
++++ b/sympy/geometry/point.py
+@@ -304,6 +304,16 @@ class Point(GeometryEntity):
+         """
+         return Point([simplify(x*factor) for x in self.args], evaluate=False)
+ 
++    def __rmul__(self, factor):
++        """Multiply a Point by a factor (when Point is on the right).
++
++        Notes
++        =====
++
++        This method enables left multiplication: factor * Point
++        """
++        return Point([simplify(factor*x) for x in self.args], evaluate=False)
++
+     def __div__(self, divisor):
+         """Divide point's coordinates by a factor."""
+         divisor = sympify(divisor)

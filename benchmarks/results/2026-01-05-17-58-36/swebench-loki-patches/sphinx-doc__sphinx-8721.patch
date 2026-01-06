@@ -1,0 +1,29 @@
+# sphinx-doc__sphinx-8721
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the context, I need to create a patch for the sphinx-doc/sphinx repository, specifically for `sphinx/ext/viewcode.py`. Since this is a patch generation task for an external repository issue, I'll create the patch based on the architect's analysis.
+
+--- a/sphinx/ext/viewcode.py
++++ b/sphinx/ext/viewcode.py
+@@ -138,6 +138,10 @@ def doctree_read(app: Sphinx, doctree: Node) -> None:
+     if app.builder.name == "singlehtml":
+         return
+ 
++    if app.builder.name.startswith('epub') and \
++            not app.config.viewcode_enable_epub:
++        return
++
+     if app.builder.name.startswith("epub") and not env.config.viewcode_enable_epub:
+         return
+ 
+@@ -205,6 +209,10 @@ def collect_pages(app: Sphinx) -> Generator[Tuple[str, Dict[str, Any], str], No
+     if not env.config.viewcode_import:
+         return
+ 
++    if app.builder.name.startswith('epub') and \
++            not app.config.viewcode_enable_epub:
++        return
++
+     if app.builder.name.startswith("epub") and not env.config.viewcode_enable_epub:
+         return

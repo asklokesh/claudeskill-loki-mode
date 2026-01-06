@@ -1,0 +1,9 @@
+{
+  "instance_id": "psf__requests-3362",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/requests/utils.py\n+++ b/requests/utils.py\n@@ -555,7 +555,7 @@ def stream_decode_response_unicode(iterator, r):\n     \"\"\"Stream decodes an iterator.\"\"\"\n \n     if r.encoding is None:\n-        yield from iterator\n+        r.encoding = r.apparent_encoding\n         return\n \n     decoder = codecs.getincrementaldecoder(r.encoding)(errors=\"replace\")",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T20:00:31.733572"
+}

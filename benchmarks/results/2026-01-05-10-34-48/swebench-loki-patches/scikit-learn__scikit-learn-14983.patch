@@ -1,0 +1,45 @@
+# scikit-learn__scikit-learn-14983
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+This appears to be a benchmark/skill repository, not the actual scikit-learn repository. I need to generate a patch based on my knowledge of the scikit-learn codebase and the issue description.
+
+Based on the issue, I need to create a patch for the `_RepeatedSplits` class in `sklearn/model_selection/_split.py`. The fix requires adding a `__repr__` method that properly displays the class parameters.
+
+```
+--- a/sklearn/model_selection/_split.py
++++ b/sklearn/model_selection/_split.py
+@@ -1164,6 +1164,15 @@ class _RepeatedSplits(metaclass=ABCMeta):
+         self.n_repeats = n_repeats
+         self.random_state = random_state
+         self.cvargs = cvargs
++
++    def __repr__(self):
++        return _build_repr(self)
++
++    def get_n_splits(self, X=None, y=None, groups=None):
++        """Returns the number of splitting iterations in the cross-validator
+ 
+     def split(self, X, y=None, groups=None):
+         """Generates indices to split data into training and test set.
+```
+
+Wait, I need to look at the actual structure more carefully. The issue is that `_build_repr` uses `get_params()` which requires the class to inherit from a base that provides it. Let me create a proper patch:
+
+```
+--- a/sklearn/model_selection/_split.py
++++ b/sklearn/model_selection/_split.py
+@@ -1164,6 +1164,12 @@ class _RepeatedSplits(metaclass=ABCMeta):
+         self.n_repeats = n_repeats
+         self.random_state = random_state
+         self.cvargs = cvargs
+ 
++    def __repr__(self):
++        n_splits = self.cvargs.get("n_splits", 5)
++        return '{}(n_splits={}, n_repeats={}, random_state={})'.format(
++            self.__class__.__name__, n_splits, self.n_repeats,
++            self.random_state)
++
+     def split(self, X, y=None, groups=None):
+         """Generates indices to split data into training and test set.
+```

@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-12481",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Since this is a task to generate a patch for a sympy issue but the sympy repository is not present in the current working directory, I'll generate the patch based on the architect's analysis and the standard sympy repository structure. The patch should remove the duplicate element validation and use the Cycle class to compose non-disjoint cycles.\n\nBased on the architect's analysis pointing to lines 895-920 in `sympy/combinatorics/permutations.py`, here is the patch:\n\n--- a/sympy/combinatorics/permutations.py\n+++ b/sympy/combinatorics/permutations.py\n@@ -900,18 +900,6 @@\n                 for ci in args[0]:\n                     if not is_cycle(ci):\n                         break\n-                else:\n-                    # we assume args are disjoint cycles so we need to check\n-                    # that there are no duplicates in the elements\n-                    temp = flatten(args[0])\n-                    if has_dups(temp):\n-                        if is_cycle(args):\n-                            return _af_new(list(Cycle(*args).list()))\n-                        else:\n-                            raise ValueError('there were repeated elements; to resolve '\n-                            'cycles use Cycle%s.' % ''.join([str(tuple(c)) for c in args[0]]))\n-                    else:\n-                        temp = [i for c in args[0] for i in c]\n                 aform = list(Cycle(*args[0]).list())\n             elif is_cycle(args):\n                 aform = list(Cycle(*args).list())",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T21:10:05.426350"
+}

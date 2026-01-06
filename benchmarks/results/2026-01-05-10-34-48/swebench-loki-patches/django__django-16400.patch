@@ -1,0 +1,26 @@
+# django__django-16400
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/django/contrib/auth/management/__init__.py
++++ b/django/contrib/auth/management/__init__.py
+@@ -94,12 +94,15 @@ def create_permissions(
+     ctypes = set(ctype_cache.get(ctype_key, ctype_cache.get((ctype_key[0], ctype_key[1]))) for ctype_key in ctype_natural_keys)
+     ctypes.discard(None)
+ 
+-    perms = [
+-        Permission(codename=codename, name=name, content_type=ctype_cache[ctype_natural_key])
+-        for codename, name, ctype_natural_key in sorted(perms)
+-        if (codename, ctype_cache[ctype_natural_key].pk) not in all_perms
+-    ]
++    perms = []
++    for codename, name, ctype_natural_key in sorted(perms):
++        ctype = ctype_cache[ctype_natural_key]
++        if (codename, ctype.pk) not in all_perms:
++            perm = Permission(codename=codename, name=name)
++            perm._state.db = using
++            perm.content_type = ctype
++            perms.append(perm)
+     Permission.objects.using(using).bulk_create(perms)
+     if verbosity >= 2:
+         for perm in perms:

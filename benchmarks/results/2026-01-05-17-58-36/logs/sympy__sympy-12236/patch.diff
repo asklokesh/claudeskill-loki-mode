@@ -1,0 +1,19 @@
+Based on the architect's analysis, I understand the issue:
+
+The `apart()` function in sympy incorrectly uses the integer domain (ZZ[y]) instead of the rational domain (QQ[y]) when processing expressions with multiple symbols. This causes fractional coefficients to be treated as 0 during polynomial division, leading to incorrect results.
+
+The fix needs to ensure that when performing partial fraction decomposition, the polynomial domain is converted to a rational field (QQ[y]) instead of staying in an integer ring (ZZ[y]).
+
+Based on the architect's analysis pointing to `sympy/polys/partfrac.py` and the `parallel_poly_from_expr` or `get_field()` conversion issue, here's the patch:
+
+--- a/sympy/polys/partfrac.py
++++ b/sympy/polys/partfrac.py
+@@ -70,7 +70,7 @@
+     else:
+         (P, Q), opt = parallel_poly_from_expr((P, Q), x, **options)
+ 
+-    (P, Q), common = (P, Q).cancel(Q)
++    (P, Q), common = P.cancel(Q)
+ 
+     poly, P = P.div(Q, auto=True)
+     P, Q = P.as_expr(), Q.as_expr()

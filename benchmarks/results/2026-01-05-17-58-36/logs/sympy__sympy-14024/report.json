@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-14024",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "I need to work with the information provided. Let me analyze the issue based on the architect's analysis and generate the appropriate patch for the `sympy/core/power.py` file.\n\nBased on the issue description:\n1. When `a` is a symbolic positive integer, `(-a)**x * a**(-x)` simplifies to `(-1)**x` correctly\n2. When `a = 2` (concrete value), the same expression simplifies to `(-1)**x` but gives wrong numerical results\n3. The problem is in how `(-2)**(-10/3)` is evaluated - it doesn't respect the principal branch\n\nThe issue is in the `Pow.eval()` method where negative integer bases with fractional exponents are simplified. The fix should prevent incorrect simplification of expressions like `(-2)**(-10/3)` that don't preserve the principal branch.\n\n--- a/sympy/core/power.py\n+++ b/sympy/core/power.py\n@@ -250,6 +250,15 @@\n                 return None\n             if e.is_even:\n                 return Pow(Abs(b), e)\n+            # For negative integer bases (except -1) with fractional exponents,\n+            # preserve the principal branch by not simplifying\n+            if b.is_Integer and b.is_negative and b != S.NegativeOne:\n+                if e.is_Rational and not e.is_Integer:\n+                    # Keep (-n)**(p/q) in its original form to preserve\n+                    # the principal branch (arg = pi for negative reals)\n+                    # Only -1 can be safely simplified since (-1)**(p/q)\n+                    # follows consistent rules\n+                    return None\n \n         # handle x**(2*n)**(p/q) -> x**(2*n*p/q) for n, p, q integers\n         if (isinstance(b, Pow) and b.exp.is_Integer and",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T21:22:24.071469"
+}

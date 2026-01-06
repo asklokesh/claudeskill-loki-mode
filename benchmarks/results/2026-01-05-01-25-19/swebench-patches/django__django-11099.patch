@@ -1,0 +1,22 @@
+Based on the issue description, I can generate the patch directly. The issue is clear: in Django's `contrib/auth/validators.py`, the `ASCIIUsernameValidator` and `UnicodeUsernameValidator` classes use the regex `r'^[\w.@+-]+$'` which allows a trailing newline due to Python's regex behavior where `$` matches before a trailing newline. The fix is to use `\A` and `\Z` instead of `^` and `$`.
+
+--- a/django/contrib/auth/validators.py
++++ b/django/contrib/auth/validators.py
+@@ -7,7 +7,7 @@
+ 
+ @deconstructible
+ class ASCIIUsernameValidator(validators.RegexValidator):
+-    regex = r'^[\w.@+-]+$'
++    regex = r'\A[\w.@+-]+\Z'
+     message = _(
+         'Enter a valid username. This value may contain only English letters, '
+         'numbers, and @/./+/-/_ characters.'
+@@ -17,7 +17,7 @@
+ 
+ @deconstructible
+ class UnicodeUsernameValidator(validators.RegexValidator):
+-    regex = r'^[\w.@+-]+$'
++    regex = r'\A[\w.@+-]+\Z'
+     message = _(
+         'Enter a valid username. This value may contain only letters, '
+         'numbers, and @/./+/-/_ characters.'

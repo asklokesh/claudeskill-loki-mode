@@ -1,0 +1,62 @@
+Based on my analysis of the Sphinx autodoc issue and the architect's analysis, I need to create a patch that fixes the duplication of `*args` and `**kwargs` when using `autodoc_typehints = "description"`. The issue is in the type hints merging logic in `sphinx/ext/autodoc/typehints.py`.
+
+The problem is that when merging type hints into parameter descriptions, the code doesn't properly handle variadic arguments. It needs to:
+1. Detect `*args` and `**kwargs` parameters 
+2. Match them with existing field list entries (which may have the asterisk prefix in the docstring)
+3. Merge the type information without creating duplicates
+4. Preserve the correct number of asterisks for proper reST formatting
+
+Here's the patch:
+
+--- a/sphinx/ext/autodoc/typehints.py
++++ b/sphinx/ext/autodoc/typehints.py
+@@ -44,6 +44,20 @@ def merge_typehints(app: Sphinx, domain: str, objtype: str, contentnode: Elemen
+             if _name in annotations and _name not in arguments:
+                 field = cast(nodes.field, field_list[i])
+                 arguments[_name] = _annotation
++        
++        # Handle *args and **kwargs - match with or without asterisks
++        for field_list_item in field_list:
++            field_name = field_list_item[0].astext()
++            if field_name.startswith('**'):
++                # **kwargs case
++                clean_name = field_name.lstrip('*')
++                if clean_name in annotations and clean_name not in arguments:
++                    arguments[clean_name] = field_list_item
++            elif field_name.startswith('*'):
++                # *args case  
++                clean_name = field_name.lstrip('*')
++                if clean_name in annotations and clean_name not in arguments:
++                    arguments[clean_name] = field_list_item
+     
+     for field_list in field_lists:
+         if app.config.autodoc_typehints_description_target == "all":
+@@ -58,6 +72,14 @@ def merge_typehints(app: Sphinx, domain: str, objtype: str, contentnode: Elemen
+                 elif _name in annotations:
+                     field = cast(nodes.field, field_list[i])
+                     _inject_types_to_field(field, annotations[_name])
++                
++                # Check if this is a *args or **kwargs field that needs type merging
++                if _name.startswith('*'):
++                    clean_name = _name.lstrip('*')
++                    if clean_name in annotations:
++                        field = cast(nodes.field, field_list[i])
++                        _inject_types_to_field(field, annotations[clean_name])
++                        annotations.pop(clean_name, None)  # Remove to prevent duplication
+     
+     for field_list in field_lists:
+         for field in field_list:
+@@ -80,6 +102,13 @@ def merge_typehints(app: Sphinx, domain: str, objtype: str, contentnode: Elemen
+         for name, annotation in annotations.items():
+             if name in arguments:
+                 continue
++            
++            # Skip if this is args/kwargs and already documented with asterisks
++            if name in ('args', 'kwargs'):
++                if any(field[0].astext().lstrip('*') == name for field in field_list):
++                    continue
++            
++            # Create new field for undocumented parameters with type hints
+             field = nodes.field()
+             field += nodes.field_name('', name)
+             field += nodes.field_body('', nodes.paragraph('', annotation))

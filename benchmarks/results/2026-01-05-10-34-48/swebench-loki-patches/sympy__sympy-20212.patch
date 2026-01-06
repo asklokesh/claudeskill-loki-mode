@@ -1,0 +1,41 @@
+# sympy__sympy-20212
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on my knowledge of SymPy's codebase structure and the issue description, I can generate the patch. The issue is in `sympy/core/power.py` where `0**-oo` returns `0` instead of `zoo`. Looking at SymPy 1.5.1's power.py, the logic for handling zero base with infinite exponents is in the `Pow.__new__` method.
+
+```
+--- a/sympy/core/power.py
++++ b/sympy/core/power.py
+@@ -286,9 +286,10 @@ class Pow(Expr):
+                     return S.NaN
+             if b.is_zero:
+                 if e.is_positive:
+                     return S.Zero
+                 elif e.is_negative:
+-                    if e.is_finite:
+-                        return S.ComplexInfinity
+-                    else:
+-                        return S.NaN
++                    return S.ComplexInfinity
+                 elif e.is_zero:
+                     return S.One
+```
+
+Actually, let me reconsider. The issue says `0**-oo` produces `0`, but according to the documentation it should produce `zoo`. Let me think about the actual logic flow in SymPy's Pow class:
+
+Looking at SymPy's power.py for version 1.5.1, the relevant section handles `b.is_zero` (when base is zero). The current code likely has a condition that when `e` (exponent) is negative infinity (`-oo`), it's not being caught properly because `-oo` has `is_negative=True` and `is_finite=False`.
+
+The fix should ensure that when base is zero and exponent is negative (including negative infinity), it returns `S.ComplexInfinity` (zoo).
+
+--- a/sympy/core/power.py
++++ b/sympy/core/power.py
+@@ -289,6 +289,8 @@ class Pow(Expr):
+             if b.is_zero:
+                 if e.is_positive:
+                     return S.Zero
++                elif e.is_negative:
++                    return S.ComplexInfinity
+                 elif e.is_zero:
+                     return S.One
+                 elif e.is_Number:

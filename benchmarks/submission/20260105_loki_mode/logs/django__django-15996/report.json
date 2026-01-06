@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-15996",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "I understand now. This is a SWE-bench task. Based on the architect's analysis, I need to generate a patch for the Django EnumSerializer to handle combined Enum flags. Let me create the patch based on the standard Django structure:\n\n--- a/django/db/migrations/serializer.py\n+++ b/django/db/migrations/serializer.py\n@@ -117,12 +117,31 @@ class EnumSerializer(BaseSerializer):\n     def serialize(self):\n         enum_class = self.value.__class__\n         module = enum_class.__module__\n-        return (\n-            \"%s.%s[%r]\" % (module, enum_class.__qualname__, self.value.name),\n-            {\"import %s\" % module},\n-        )\n+        \n+        # Check if this is a combined flag (has no direct name)\n+        if self.value.name is None:\n+            # Import enum module for _decompose function\n+            import enum\n+            \n+            # Decompose the flag into its constituent flags\n+            decomposed = enum._decompose(enum_class, self.value)[0]\n+            \n+            if decomposed:\n+                # Create bitwise OR expression for combined flags\n+                flag_parts = [\n+                    \"%s.%s[%r]\" % (module, enum_class.__qualname__, flag.name)\n+                    for flag in decomposed\n+                ]\n+                return (\n+                    \" | \".join(flag_parts),\n+                    {\"import %s\" % module},\n+                )\n+        \n+        # Standard single enum value serialization\n+        return (\n+            \"%s.%s[%r]\" % (module, enum_class.__qualname__, self.value.name),\n+            {\"import %s\" % module},\n+        )\n \n \n class FloatSerializer(BaseSimpleSerializer):",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T19:18:02.251656"
+}

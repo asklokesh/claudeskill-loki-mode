@@ -1,0 +1,17 @@
+# django__django-11133
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+This appears to be a test repository for the loki-mode skill. I need to generate a patch based on the Django repository structure. Let me create the patch based on the architect's analysis:
+
+--- a/django/http/response.py
++++ b/django/http/response.py
+@@ -252,6 +252,10 @@ class HttpResponseBase:
+         # Handle string types -- we can't rely on force_bytes here because:
+         # - Python attempts str conversion first
+         # - when self._charset != 'utf-8' it re-encodes the content
++        if isinstance(value, memoryview):
++            return bytes(value)
+         if isinstance(value, bytes):
+             return bytes(value)
+         if isinstance(value, str):

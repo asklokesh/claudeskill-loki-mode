@@ -1,0 +1,20 @@
+# sympy__sympy-16988
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on my knowledge of the SymPy codebase and the issue description, I'll generate the patch. The `Intersection.__new__` method in `sympy/sets/sets.py` processes arguments and the fix requires deduplicating arguments early in the method.
+
+```
+--- a/sympy/sets/sets.py
++++ b/sympy/sets/sets.py
+@@ -1250,6 +1250,9 @@ class Intersection(Set):
+         if not args:
+             return S.UniversalSet
+ 
++        # Remove duplicates
++        args = list(ordered(set(args), Set._infimum_key))
++
+         # Reduce sets using known rules
+         if evaluate:
+             args = list(cls._new_args_filter(args))
+```

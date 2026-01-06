@@ -1,0 +1,14 @@
+This appears to be the loki-mode repository, not a Django repository. Based on the context provided, I need to generate a patch for the Django repository that makes the management command formatter customizable. I'll create the patch based on the architect's analysis.
+
+--- a/django/core/management/base.py
++++ b/django/core/management/base.py
+@@ -267,6 +267,7 @@ class BaseCommand:
+             prog="%s %s" % (os.path.basename(prog_name), subcommand),
+             description=self.help or None,
+         )
++        kwargs.setdefault("formatter_class", DjangoHelpFormatter)
+         parser = CommandParser(
+             **kwargs,
+-            formatter_class=DjangoHelpFormatter,
+             missing_args_message=getattr(self, "missing_args_message", None),
+             called_from_command_line=getattr(self, "_called_from_command_line", None),

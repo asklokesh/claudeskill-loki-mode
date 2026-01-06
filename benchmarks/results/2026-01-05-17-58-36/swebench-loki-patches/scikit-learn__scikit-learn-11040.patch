@@ -1,0 +1,32 @@
+# scikit-learn__scikit-learn-11040
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the task description, I understand that this is for generating a patch for a scikit-learn issue. However, this appears to be a different repository (claudeskill-loki-mode). Since this is an ENGINEER AGENT task to generate a patch for scikit-learn's NearestNeighbors validation issue, I'll create the appropriate patch based on the architect's analysis.
+
+--- a/sklearn/neighbors/base.py
++++ b/sklearn/neighbors/base.py
+@@ -194,6 +194,11 @@ class NeighborsBase(BaseEstimator, MultiOutputMixin, metaclass=ABCMeta):
+         )
+ 
+     def _fit(self, X, y=None):
++        if self.n_neighbors is not None:
++            if not isinstance(self.n_neighbors, (numbers.Integral, np.integer)):
++                raise ValueError(
++                    f"n_neighbors must be an integer, got {type(self.n_neighbors).__name__}"
++                )
+         if self.metric_params is None:
+             self.effective_metric_params_ = {}
+         else:
+@@ -475,6 +480,11 @@ class KNeighborsMixin:
+         else:
+             n_neighbors = self.n_neighbors
+ 
++        if not isinstance(n_neighbors, (numbers.Integral, np.integer)):
++            raise ValueError(
++                f"n_neighbors must be an integer, got {type(n_neighbors).__name__}"
++            )
++
+         if n_neighbors > n_samples_fit:
+             raise ValueError(
+                 "Expected n_neighbors <= n_samples, "

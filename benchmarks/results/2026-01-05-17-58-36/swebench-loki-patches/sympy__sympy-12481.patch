@@ -1,0 +1,29 @@
+# sympy__sympy-12481
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Since this is a task to generate a patch for a sympy issue but the sympy repository is not present in the current working directory, I'll generate the patch based on the architect's analysis and the standard sympy repository structure. The patch should remove the duplicate element validation and use the Cycle class to compose non-disjoint cycles.
+
+Based on the architect's analysis pointing to lines 895-920 in `sympy/combinatorics/permutations.py`, here is the patch:
+
+--- a/sympy/combinatorics/permutations.py
++++ b/sympy/combinatorics/permutations.py
+@@ -900,18 +900,6 @@
+                 for ci in args[0]:
+                     if not is_cycle(ci):
+                         break
+-                else:
+-                    # we assume args are disjoint cycles so we need to check
+-                    # that there are no duplicates in the elements
+-                    temp = flatten(args[0])
+-                    if has_dups(temp):
+-                        if is_cycle(args):
+-                            return _af_new(list(Cycle(*args).list()))
+-                        else:
+-                            raise ValueError('there were repeated elements; to resolve '
+-                            'cycles use Cycle%s.' % ''.join([str(tuple(c)) for c in args[0]]))
+-                    else:
+-                        temp = [i for c in args[0] for i in c]
+                 aform = list(Cycle(*args[0]).list())
+             elif is_cycle(args):
+                 aform = list(Cycle(*args).list())

@@ -1,0 +1,44 @@
+# matplotlib__matplotlib-26020
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+This appears to be the Loki Mode skill repository, not the matplotlib repository. Based on the issue description, I need to generate a patch for the matplotlib repository. Let me create the patch based on the issue analysis:
+
+--- a/lib/mpl_toolkits/axes_grid1/axes_grid.py
++++ b/lib/mpl_toolkits/axes_grid1/axes_grid.py
+@@ -1,5 +1,6 @@
+ from numbers import Number
+ import functools
++import inspect
+ 
+ from matplotlib import _api, cbook
+ from matplotlib.gridspec import SubplotSpec
+@@ -20,12 +21,25 @@ def _tick_only(ax, bottom_on, left_on):
+     bottom_off = not bottom_on
+     left_off = not left_on
+     if isinstance(ax.axis, dict):
+-        # This is for mpl_toolkits.axes_grid1.mpl_axes.Axes
++        # mpl_toolkits.axes_grid1.mpl_axes.Axes has axis as a dict
+         ax.axis["bottom"].toggle(ticklabels=bottom_off, label=bottom_off)
+         ax.axis["left"].toggle(ticklabels=left_off, label=left_off)
++    elif callable(ax.axis):
++        # For standard Axes and third-party axes (e.g., GeoAxes), axis is a method
++        # Manually toggle tick labels and labels
++        if bottom_off:
++            ax.xaxis.set_tick_params(which='both', labelbottom=False)
++            ax.xaxis.label.set_visible(False)
++        if left_off:
++            ax.yaxis.set_tick_params(which='both', labelleft=False)
++            ax.yaxis.label.set_visible(False)
+     else:
+-        ax.axis["bottom"].toggle(ticklabels=bottom_off, label=bottom_off)
+-        ax.axis["left"].toggle(ticklabels=left_off, label=left_off)
++        # Unknown axis type, try to access as dict for backwards compatibility
++        try:
++            ax.axis["bottom"].toggle(ticklabels=bottom_off, label=bottom_off)
++            ax.axis["left"].toggle(ticklabels=left_off, label=left_off)
++        except (TypeError, KeyError):
++            pass
+ 
+ 
+ class CbarAxesBase:

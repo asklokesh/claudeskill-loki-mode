@@ -1,0 +1,37 @@
+Based on my knowledge of the Django codebase and the issue description, I can analyze this bug. The issue is in `django/db/models/deletion.py`. When a model instance has no dependencies and `can_fast_delete` returns `True`, the `delete()` method performs a fast delete but doesn't clear the primary key on the instance afterward.
+
+Looking at the hints:
+- The regression was introduced in commit `bc7dd8490b882b2cefdc7faf431dc64c532b79c9`
+- The fix should mimic what lines 320-326 do for multiple objects (setting PK to None after deletion)
+- The issue is around line 280 where the fast delete happens
+
+The fix needs to set the instance's PK to None after the fast delete operation completes. Here's the patch:
+
+--- a/django/db/models/deletion.py
++++ b/django/db/models/deletion.py
+@@ -277,6 +277,10 @@ class Collector:
+                 # database.
+                 return count, {model._meta.label: count}
+ 
++        if del_query._raw_delete(using=self.using):
++            setattr(instance, model._meta.pk.attname, None)
++            return 1, {model._meta.label: 1}
++
+         with transaction.mark_for_rollback_on_error():
+             count = sql.DeleteQuery(model).delete_batch([instance.pk], self.using)
+
+Wait, let me reconsider the code structure. Based on the issue description referencing lines 276-281 for the fast delete path, and lines 320-326 for the normal path that properly clears PKs, the fix should be simpler - just adding the `setattr` to set PK to None in the fast delete path.
+
+Looking at the code flow more carefully:
+1. In the fast delete path (around line 280), the delete happens but PK is not cleared
+2. In the normal path (lines 320-326), after deletion, it iterates through instances and sets their PKs to None
+
+The minimal fix is to add `setattr(instance, model._meta.pk.attname, None)` after the fast delete succeeds.
+
+--- a/django/db/models/deletion.py
++++ b/django/db/models/deletion.py
+@@ -278,6 +278,7 @@ class Collector:
+             with transaction.mark_for_rollback_on_error():
+                 count = sql.DeleteQuery(model).delete_batch([instance.pk], self.using)
++            setattr(instance, model._meta.pk.attname, None)
+         return count, {model._meta.label: count}

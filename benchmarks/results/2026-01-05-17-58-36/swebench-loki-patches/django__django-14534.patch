@@ -1,0 +1,19 @@
+# django__django-14534
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the context, I'm being asked to generate a patch for a Django issue as an "ENGINEER AGENT". This appears to be a SWE-bench style task. I need to create a patch file that fixes the `BoundWidget.id_for_label()` issue.
+
+Let me create the patch based on the analysis provided. The fix should change `BoundWidget.id_for_label()` to return `self.data['attrs']['id']` instead of reconstructing the ID.
+
+--- a/django/forms/boundfield.py
++++ b/django/forms/boundfield.py
+@@ -260,7 +260,7 @@ class BoundWidget:
+         return self.data['attrs'].get('id')
+ 
+     def id_for_label(self):
+-        return 'id_%s_%s' % (self.data['name'], self.data['index'])
++        return self.data['attrs'].get('id')
+ 
+     def __str__(self):
+         return self.tag(wrap_label=True)

@@ -1,0 +1,34 @@
+# django__django-13028
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description, this is a SWE-bench task where I need to generate a patch for the Django repository. The issue states that the repository is "django/django" but the files are not present in this directory. This is a patch generation task where I need to create the unified diff based on the architect's analysis.
+
+The fix is straightforward: In the `check_filterable()` method in `django/db/models/sql/query.py`, I need to add a check to ensure the object has `resolve_expression` method before checking its `filterable` attribute.
+
+Based on the architect's analysis, the current code around line 1127-1131 looks like:
+
+```python
+def check_filterable(self, expression):
+    if not getattr(expression, 'filterable', True):
+        raise NotSupportedError(...)
+```
+
+And it should be changed to:
+
+```python
+def check_filterable(self, expression):
+    if hasattr(expression, 'resolve_expression') and not getattr(expression, 'filterable', True):
+        raise NotSupportedError(...)
+```
+
+--- a/django/db/models/sql/query.py
++++ b/django/db/models/sql/query.py
+@@ -1128,7 +1128,7 @@
+     def check_filterable(self, expression):
+         """Raise an error if expression cannot be used in a WHERE clause."""
+-        if not getattr(expression, 'filterable', True):
++        if hasattr(expression, 'resolve_expression') and not getattr(expression, 'filterable', True):
+             raise NotSupportedError(
+                 expression.__class__.__name__ + ' is disallowed in the filter '
+                 'clause.'

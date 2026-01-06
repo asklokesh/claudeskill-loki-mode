@@ -1,0 +1,55 @@
+# sympy__sympy-20049
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and the traceback provided, I can generate the patch. The issue is in `sympy/physics/vector/point.py` in the `vel()` method. The fix needs to:
+
+1. Check if velocity is in `_vel_dict` first (existing behavior)
+2. If not found, try to calculate it by finding a point with a known position relationship and computing the time derivative of the position vector
+
+Here's the patch:
+
+```
+--- a/sympy/physics/vector/point.py
++++ b/sympy/physics/vector/point.py
+@@ -449,9 +449,21 @@ class Point(object):
+         frame : ReferenceFrame
+             The frame in which the returned velocity vector will be defined in
+ 
++        Examples
++        ========
++
++        >>> from sympy.physics.vector import Point, ReferenceFrame, dynamicsymbols
++        >>> N = ReferenceFrame('N')
++        >>> p1 = Point('p1')
++        >>> p2 = Point('p2')
++        >>> p1.set_vel(N, 0)
++        >>> q = dynamicsymbols('q')
++        >>> p2.set_pos(p1, q*N.x)
++        >>> p2.vel(N)
++        q'*N.x
++
+         """
+ 
+-        if not (frame in self._vel_dict):
+-            raise ValueError('Velocity of point ' + self.name + ' has not been'
+-                             ' defined in ReferenceFrame ' + frame.name)
+-        return self._vel_dict[frame]
++        _check_frame(frame)
++        if frame in self._vel_dict:
++            return self._vel_dict[frame]
++        else:
++            visited = []
++            queue = [self]
++            while queue:
++                node = queue.pop(0)
++                if node not in visited:
++                    visited.append(node)
++                    for otherpoint in node._pos_dict:
++                        if otherpoint not in visited:
++                            queue.append(otherpoint)
++                        if frame in otherpoint._vel_dict:
++                            return self.pos_from(otherpoint).dt(frame) + otherpoint._vel_dict[frame]
++            raise ValueError('Velocity of point ' + self.name + ' has not been'
++                             ' defined in ReferenceFrame ' + frame.name)
+```

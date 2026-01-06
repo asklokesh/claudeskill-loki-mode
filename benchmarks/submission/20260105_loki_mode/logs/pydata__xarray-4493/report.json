@@ -1,0 +1,9 @@
+{
+  "instance_id": "pydata__xarray-4493",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the architect's analysis, I need to generate a patch for the xarray repository. Since this is a SWE-bench task for the pydata/xarray repository, I'll create the patch based on the analysis provided.\n\nThe fix is to modify the `as_compatible_data` function in `xarray/core/variable.py` to handle `DataArray` objects properly by extracting their underlying data without triggering computation.\n\n--- a/xarray/core/variable.py\n+++ b/xarray/core/variable.py\n@@ -202,6 +202,14 @@ def as_compatible_data(data, fastpath=False):\n     # validate whether the data is valid data types.\n     if isinstance(data, Variable):\n         return data.data\n+    \n+    # Check for DataArray to avoid triggering computation\n+    # Import here to avoid circular imports\n+    if hasattr(data, '__module__') and hasattr(data, '__class__'):\n+        if data.__class__.__name__ == 'DataArray' and 'xarray' in data.__module__:\n+            # Extract the underlying data without triggering .values\n+            return data.data\n+    \n     if isinstance(data, NON_NUMPY_SUPPORTED_ARRAY_TYPES):\n         return data\n     if isinstance(data, tuple):",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T20:05:50.394760"
+}

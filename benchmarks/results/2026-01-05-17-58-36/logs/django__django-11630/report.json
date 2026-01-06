@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-11630",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/django/core/checks/model_checks.py\n+++ b/django/core/checks/model_checks.py\n@@ -1,5 +1,6 @@\n import inspect\n import types\n+from django.conf import settings\n from itertools import chain\n \n from django.apps import apps\n@@ -35,13 +36,22 @@ def check_all_models(app_configs=None, **kwargs):\n         indexes[model_index.name].append(model._meta.label)\n         constraints[model_constraint.name].append(model._meta.label)\n     for db_table, model_labels in db_table_models.items():\n         if len(model_labels) != 1:\n+            # If DATABASE_ROUTERS is configured, models may be routed to\n+            # different databases where having the same table name is valid.\n+            # Downgrade to a warning in this case.\n+            if settings.DATABASE_ROUTERS:\n+                error_class = Warning\n+                error_id = 'models.W028'\n+            else:\n+                error_class = Error\n+                error_id = 'models.E028'\n             errors.append(\n-                Error(\n+                error_class(\n                     \"db_table '%s' is used by multiple models: %s.\"\n                     % (db_table, ', '.join(sorted(model_labels))),\n                     obj=db_table,\n-                    id='models.E028',\n+                    id=error_id,\n                 )\n             )\n     for index_name, model_labels in indexes.items():",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:13:35.890381"
+}

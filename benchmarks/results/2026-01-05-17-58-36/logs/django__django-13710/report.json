@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-13710",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the issue description and the previous patch, I can now generate the complete unified diff patch. The fix needs to:\n\n1. Add a helper to detect if `verbose_name` was explicitly set on the Inline\n2. Modify the `verbose_name_plural` property to use the Inline's `verbose_name` with proper pluralization if it was explicitly set\n3. Import necessary utilities like `format_lazy`\n\n--- a/django/contrib/admin/options.py\n+++ b/django/contrib/admin/options.py\n@@ -1,6 +1,7 @@\n import copy\n import json\n import re\n+from functools import cached_property\n from functools import partial, update_wrapper\n from urllib.parse import quote as urlquote\n \n@@ -2034,14 +2035,30 @@ class InlineModelAdmin(BaseModelAdmin):\n         if self.verbose_name is None:\n             return self.model._meta.verbose_name\n         return self.verbose_name\n+    \n+    @cached_property\n+    def _verbose_name_set_explicitly(self):\n+        \"\"\"\n+        Check if verbose_name was explicitly set on this class or any of its\n+        ancestors (up to but not including InlineModelAdmin).\n+        \"\"\"\n+        for cls in type(self).__mro__:\n+            if cls is InlineModelAdmin:\n+                break\n+            if 'verbose_name' in cls.__dict__:\n+                return True\n+        return False\n \n     @property\n     def verbose_name_plural(self):\n         if self.verbose_name_plural_override is None:\n+            if self._verbose_name_set_explicitly:\n+                return format_lazy('{}s', self.verbose_name)\n             return self.model._meta.verbose_name_plural\n         return self.verbose_name_plural_override\n \n \n class StackedInline(InlineModelAdmin):\n     template = \"admin/edit_inline/stacked.html\"",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:46:48.701759"
+}

@@ -1,0 +1,9 @@
+{
+  "instance_id": "pydata__xarray-4094",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/xarray/core/dataarray.py\n+++ b/xarray/core/dataarray.py\n@@ -1956,7 +1956,7 @@ class DataArray(AbstractArray, DataWithCoords):\n         # pull variables out of datarray\n         data_dict = {}\n         for k in variables:\n-            data_dict[k] = self.sel({dim: k}).squeeze(drop=True)\n+            data_dict[k] = self.sel({dim: k}).squeeze(drop=True).drop_vars(dim)\n \n         # unstacked dataset\n         return Dataset(data_dict)",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T20:04:29.523538"
+}

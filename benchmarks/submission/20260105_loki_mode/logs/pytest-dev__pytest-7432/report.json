@@ -1,0 +1,9 @@
+{
+  "instance_id": "pytest-dev__pytest-7432",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the architect's analysis and the issue description, I can generate the patch. The bug is in the `pytest_runtest_makereport` hook which incorrectly overwrites skip locations for all skipped tests when `--runxfail` is active, instead of only affecting xfail-related skips.\n\n--- a/src/_pytest/skipping.py\n+++ b/src/_pytest/skipping.py\n@@ -235,7 +235,10 @@ def pytest_runtest_makereport(item: Item, call: CallInfo[None]):\n         elif item.config.option.runxfail:\n             pass  # don't interfere\n         elif call.excinfo and isinstance(call.excinfo.value, xfail.Exception):\n-            rep.wasxfail = \"reason: \" + call.excinfo.value.msg\n+            assert call.excinfo.value.msg is not None\n+            rep.wasxfail = f\"reason: {call.excinfo.value.msg}\"\n             rep.outcome = \"skipped\"\n+        elif hasattr(item, \"_store\") and Skipped in item._store:\n+            # Don't override location for @pytest.mark.skip/skipif\n+            pass\n     return rep",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T20:24:13.522196"
+}

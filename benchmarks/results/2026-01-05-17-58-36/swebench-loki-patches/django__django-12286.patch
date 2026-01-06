@@ -1,0 +1,20 @@
+# django__django-12286
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and the architect's analysis, I need to generate a patch for Django's translation.E004 check. The patch should modify the check to allow sublanguages when their base language is available. Here's the patch:
+
+--- a/django/core/checks/translation.py
++++ b/django/core/checks/translation.py
+@@ -55,7 +55,12 @@ def check_language_settings_consistent(app_configs, **kwargs):
+     available_tags = {i for i, _ in settings.LANGUAGES} | {'en-us'}
+     messages = []
+     if settings.LANGUAGE_CODE not in available_tags:
+-        messages.append(E004)
++        # Check if base language is available when using sublanguages.
++        # For example, if LANGUAGE_CODE is "de-at" but only "de" is available,
++        # Django will fall back to "de" per documented behavior.
++        base_language = settings.LANGUAGE_CODE.split('-')[0]
++        if base_language not in available_tags:
++            messages.append(E004)
+     return messages

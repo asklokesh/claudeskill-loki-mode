@@ -1,0 +1,9 @@
+{
+  "instance_id": "sphinx-doc__sphinx-8721",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the context, I need to create a patch for the sphinx-doc/sphinx repository, specifically for `sphinx/ext/viewcode.py`. Since this is a patch generation task for an external repository issue, I'll create the patch based on the architect's analysis.\n\n--- a/sphinx/ext/viewcode.py\n+++ b/sphinx/ext/viewcode.py\n@@ -138,6 +138,10 @@ def doctree_read(app: Sphinx, doctree: Node) -> None:\n     if app.builder.name == \"singlehtml\":\n         return\n \n+    if app.builder.name.startswith('epub') and \\\n+            not app.config.viewcode_enable_epub:\n+        return\n+\n     if app.builder.name.startswith(\"epub\") and not env.config.viewcode_enable_epub:\n         return\n \n@@ -205,6 +209,10 @@ def collect_pages(app: Sphinx) -> Generator[Tuple[str, Dict[str, Any], str], No\n     if not env.config.viewcode_import:\n         return\n \n+    if app.builder.name.startswith('epub') and \\\n+            not app.config.viewcode_enable_epub:\n+        return\n+\n     if app.builder.name.startswith(\"epub\") and not env.config.viewcode_enable_epub:\n         return",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T21:01:25.408175"
+}

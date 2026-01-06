@@ -1,0 +1,13 @@
+# sympy__sympy-15345
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/sympy/printing/mathematica.py
++++ b/sympy/printing/mathematica.py
+@@ -31,6 +31,8 @@ known_functions = {
+     "conjugate": [((1,), "Conjugate")],
+     "ExpPolar": [((1,), "Exp")],
+     "factorial": [((1,), "Factorial")],
++    "Max": [((lambda *args: True,), "Max")],
++    "Min": [((lambda *args: True,), "Min")],
+ }

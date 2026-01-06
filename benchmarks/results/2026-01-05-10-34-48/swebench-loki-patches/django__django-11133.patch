@@ -1,0 +1,16 @@
+# django__django-11133
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/django/http/response.py
++++ b/django/http/response.py
+@@ -230,6 +230,9 @@ class HttpResponseBase:
+         # Handle string types -- we can't rely on force_bytes here because:
+         # - Python attempts str conversion first
+         # - when self._charset != 'utf-8' it re-encodes the content
++        if isinstance(value, memoryview):
++            return bytes(value)
++
+         if isinstance(value, bytes):
+             return value
+         if isinstance(value, str):

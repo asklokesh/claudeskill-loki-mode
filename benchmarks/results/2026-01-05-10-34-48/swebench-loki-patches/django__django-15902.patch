@@ -1,0 +1,15 @@
+# django__django-15902
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/django/forms/formsets.py
++++ b/django/forms/formsets.py
+@@ -26,6 +26,8 @@ ORDERING_FIELD_NAME = "ORDER"
+ 
+ 
+ class ManagementForm(Form):
++    # Use explicit template to avoid "default.html" deprecation warning.
++    template_name = "django/forms/div.html"
+     """
+     Keep track of how many form instances are displayed on the page. If adding
+     new forms via JavaScript, you should increment the count field of this form

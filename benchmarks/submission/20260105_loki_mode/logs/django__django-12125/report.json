@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-12125",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "This appears to be a request to generate a patch for Django's repository, but I'm not working within a Django repository clone. Based on the architect's analysis, I need to create a patch that modifies the `TypeSerializer` class in `django/db/migrations/serializer.py` to use `__qualname__` instead of `__name__`.\n\nLet me generate the patch based on the typical Django codebase structure and the issue description:\n\n--- a/django/db/migrations/serializer.py\n+++ b/django/db/migrations/serializer.py\n@@ -263,7 +263,7 @@ class TypeSerializer(BaseSerializer):\n     def serialize(self):\n         special_cases = [\n             (models.Model, \"models.Model\", []),\n-            (type(None), \"type(None)\", []),\n+            (type(None), \"type(None)\", []),\n         ]\n         for case, string, imports in special_cases:\n             if case is self.value:\n@@ -271,7 +271,7 @@ class TypeSerializer(BaseSerializer):\n         if hasattr(self.value, \"__module__\"):\n             module = self.value.__module__\n             if module == builtins.__name__:\n-                return self.value.__name__, set()\n+                return self.value.__qualname__, set()\n             else:\n-                return \"%s.%s\" % (module, self.value.__name__), {\"import %s\" % module}\n+                return \"%s.%s\" % (module, self.value.__qualname__), {\"import %s\" % module}",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:22:12.142525"
+}

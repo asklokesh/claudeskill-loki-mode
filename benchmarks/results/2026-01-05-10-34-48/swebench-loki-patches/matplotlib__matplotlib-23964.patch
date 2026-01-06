@@ -1,0 +1,23 @@
+# matplotlib__matplotlib-23964
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and the architect's analysis, I have enough information to generate the patch. The issue states:
+- Error occurs at line 673: `for ps_name, xs_names in stream:`
+- `stream` contains `None` values for empty text lines
+- The fix is to add `if curr_stream:` before line 669 where `curr_stream` is appended to `stream`
+
+Let me create the patch based on the standard matplotlib v3.6.0 code structure:
+
+--- a/lib/matplotlib/backends/backend_ps.py
++++ b/lib/matplotlib/backends/backend_ps.py
+@@ -666,7 +666,8 @@ class RendererPS(_backend_pdf_ps.RendererPDFPSBase):
+                     lastgind = gind
+                 else:
+                     curr_stream.append((ps_name, gind))
+-            stream.append(curr_stream)
++            if curr_stream:
++                stream.append(curr_stream)
+         for ps_name, xs_names in stream:
+             self.set_font(ps_name, prop.get_size_in_points(), False)
+             thetext = "\n".join(googletrans_encoded_text(googletrans_decode(googletrans_encode(xs_names))))

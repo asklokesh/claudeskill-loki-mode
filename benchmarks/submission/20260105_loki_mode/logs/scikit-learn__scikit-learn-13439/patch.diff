@@ -1,0 +1,15 @@
+Perfect! I can see the patch that was previously generated. Let me output a clean version of just the essential patch for implementing `__len__`:
+
+--- a/sklearn/pipeline.py
++++ b/sklearn/pipeline.py
+@@ -175,6 +175,10 @@ class Pipeline(_BaseComposition):
+             return self.named_steps[ind]
+         return est
+ 
++    def __len__(self):
++        """Returns the length of the Pipeline"""
++        return len(self.steps)
++
+     def _pre_transform(self, X, y=None, **fit_params):
+         fit_params_steps = self._check_fit_params(**fit_params)
+         Xt = X

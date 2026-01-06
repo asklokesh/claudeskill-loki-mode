@@ -1,0 +1,38 @@
+# matplotlib__matplotlib-25442
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and the issue description, I can generate the patch directly since the bug location and fix are well-defined. The issue is in the `disconnect()` method of the `DraggableBase` class in `lib/matplotlib/offsetbox.py`.
+
+```
+--- a/lib/matplotlib/offsetbox.py
++++ b/lib/matplotlib/offsetbox.py
+@@ -1563,8 +1563,9 @@ class DraggableBase:
+             self.canvas.mpl_disconnect(cid)
+         self.cids.clear()
+ 
+     def disconnect(self):
+         """Disconnect the callbacks."""
+-        for cid in self.cids:
+-            self.canvas.mpl_disconnect(cid)
+-        self.cids.clear()
++        if self.ref_artist.figure is not None:
++            for cid in self.cids:
++                self.canvas.mpl_disconnect(cid)
++            self.cids.clear()
+```
+
+Wait, I need to reconsider - the `self.cids.clear()` should always run. Let me provide the correct patch:
+
+--- a/lib/matplotlib/offsetbox.py
++++ b/lib/matplotlib/offsetbox.py
+@@ -1565,6 +1565,8 @@ class DraggableBase:
+ 
+     def disconnect(self):
+         """Disconnect the callbacks."""
+-        for cid in self.cids:
+-            self.canvas.mpl_disconnect(cid)
++        if self.ref_artist.figure is not None:
++            for cid in self.cids:
++                self.canvas.mpl_disconnect(cid)
+         self.cids.clear()

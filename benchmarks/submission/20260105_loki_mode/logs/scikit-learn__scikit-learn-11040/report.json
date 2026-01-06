@@ -1,0 +1,9 @@
+{
+  "instance_id": "scikit-learn__scikit-learn-11040",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the task description, I understand that this is for generating a patch for a scikit-learn issue. However, this appears to be a different repository (claudeskill-loki-mode). Since this is an ENGINEER AGENT task to generate a patch for scikit-learn's NearestNeighbors validation issue, I'll create the appropriate patch based on the architect's analysis.\n\n--- a/sklearn/neighbors/base.py\n+++ b/sklearn/neighbors/base.py\n@@ -194,6 +194,11 @@ class NeighborsBase(BaseEstimator, MultiOutputMixin, metaclass=ABCMeta):\n         )\n \n     def _fit(self, X, y=None):\n+        if self.n_neighbors is not None:\n+            if not isinstance(self.n_neighbors, (numbers.Integral, np.integer)):\n+                raise ValueError(\n+                    f\"n_neighbors must be an integer, got {type(self.n_neighbors).__name__}\"\n+                )\n         if self.metric_params is None:\n             self.effective_metric_params_ = {}\n         else:\n@@ -475,6 +480,11 @@ class KNeighborsMixin:\n         else:\n             n_neighbors = self.n_neighbors\n \n+        if not isinstance(n_neighbors, (numbers.Integral, np.integer)):\n+            raise ValueError(\n+                f\"n_neighbors must be an integer, got {type(n_neighbors).__name__}\"\n+            )\n+\n         if n_neighbors > n_samples_fit:\n             raise ValueError(\n                 \"Expected n_neighbors <= n_samples, \"",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T20:29:36.911914"
+}

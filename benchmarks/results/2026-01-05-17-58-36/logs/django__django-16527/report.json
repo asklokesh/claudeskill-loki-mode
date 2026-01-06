@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-16527",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the issue description and architect's analysis, I can generate the patch directly. The issue states that at line 102 in `django/contrib/admin/templatetags/admin_modify.py`, the `show_save_as_new` condition needs to add a check for `has_add_permission`.\n\n--- a/django/contrib/admin/templatetags/admin_modify.py\n+++ b/django/contrib/admin/templatetags/admin_modify.py\n@@ -99,6 +99,7 @@ def submit_row(context):\n         'show_delete_link': show_delete_link,\n         'show_save_as_new': not is_popup\n             and has_change_permission\n+            and has_add_permission\n             and change\n             and save_as,\n         'show_save_and_add_another': (",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T19:23:04.070881"
+}

@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-11400",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the architecture analysis and my knowledge of SymPy's codebase structure, I'll generate the patch for fixing the `ccode(sinc(x))` issue. The fix involves adding a `_print_sinc` method to the C code printer that rewrites `sinc(x)` to its piecewise definition.\n\n--- a/sympy/printing/ccode.py\n+++ b/sympy/printing/ccode.py\n@@ -1,6 +1,6 @@\n from sympy.core import S\n from sympy.core.numbers import equal_valued\n-from sympy.functions import Piecewise\n+from sympy.functions import Piecewise, sinc\n from sympy.printing.c import C89CodePrinter, C99CodePrinter\n from sympy.printing.codeprinter import Assignment\n \n@@ -100,6 +100,13 @@ class C89CodePrinter(C89CodePrinter):\n     def _print_Pow(self, expr):\n         return self._print_Function(expr)\n \n+    def _print_sinc(self, expr):\n+        from sympy import sin, Ne\n+        x = expr.args[0]\n+        # sinc(x) = Piecewise((sin(x)/x, Ne(x, 0)), (1, True))\n+        piecewise = Piecewise((sin(x)/x, Ne(x, 0)), (1, True))\n+        return self._print(piecewise)\n+\n \n class C99CodePrinter(C99CodePrinter):\n     pass",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T21:04:23.365343"
+}

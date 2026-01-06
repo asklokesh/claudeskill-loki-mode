@@ -1,0 +1,43 @@
+# pydata__xarray-4094
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and my knowledge of xarray's codebase, I can generate the patch. The `to_unstacked_dataset` method in xarray v0.15.1 is in `xarray/core/dataarray.py`. The issue is that when reconstructing variables from the stacked array, the stacking dimension coordinate is not being dropped, causing merge conflicts.
+
+Here's the patch:
+
+```
+--- a/xarray/core/dataarray.py
++++ b/xarray/core/dataarray.py
+@@ -1960,7 +1960,7 @@ class DataArray(AbstractArray, DataWithCoords):
+         idx = self.indexes[dim]
+         if not isinstance(idx, pd.MultiIndex):
+             raise ValueError(f"'{dim}' is not a stacked coordinate")
+ 
+         level_number = idx._get_level_number(level)
+         variables = idx.levels[level_number]
+         variable_dim = idx.names[level_number]
+@@ -1968,8 +1968,8 @@ class DataArray(AbstractArray, DataWithCoords):
+         # pull variables out of datarray
+         data_dict = {}
+         for k in variables:
+-            data_dict[k] = self.sel({variable_dim: k}).squeeze(drop=True)
++            data_dict[k] = self.sel({variable_dim: k}).squeeze(drop=True).drop_vars(dim)
+ 
+         # unstacked dataset
+         return Dataset(data_dict)
+```
+
+Wait, let me reconsider the exact line numbers and context. Looking at xarray v0.15.1, the method should be around line 1950-1980. The key fix is adding `.drop_vars(dim)` to drop the stacking dimension coordinate when extracting each variable.
+
+--- a/xarray/core/dataarray.py
++++ b/xarray/core/dataarray.py
+@@ -1966,7 +1966,7 @@ class DataArray(AbstractArray, DataWithCoords):
+         # pull variables out of datarray
+         data_dict = {}
+         for k in variables:
+-            data_dict[k] = self.sel({variable_dim: k}).squeeze(drop=True)
++            data_dict[k] = self.sel({variable_dim: k}).squeeze(drop=True).drop_vars(dim)
+ 
+         # unstacked dataset
+         return Dataset(data_dict)

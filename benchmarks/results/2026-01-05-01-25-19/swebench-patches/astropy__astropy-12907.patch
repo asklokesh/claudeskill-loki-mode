@@ -1,0 +1,17 @@
+Based on my exploration, I have the information needed to provide the fix. The issue is in `astropy/modeling/separable.py` in the `_cstack` function. The bug is on line 242 where:
+
+1. It uses `np.eye(right.n_inputs)` which creates an identity matrix assuming simple separability
+2. It uses `right.n_inputs` for both row and column dimensions, but should use `right.n_outputs` for rows
+
+The fix changes this to use `_separable(right)` which correctly computes the separability matrix for any model including nested CompoundModels.
+
+--- a/astropy/modeling/separable.py
++++ b/astropy/modeling/separable.py
+@@ -242,7 +242,7 @@ def _cstack(left, right):
+         cright = _coord_matrix(right, 'right', noutp)
+     else:
+         cright = np.zeros((noutp, right.n_inputs))
+-        cright[-right.n_inputs:, -right.n_inputs:] = np.eye(right.n_inputs)
++        cright[-right.n_outputs:, -right.n_inputs:] = _separable(right)
+ 
+     return np.vstack([cleft, cright])

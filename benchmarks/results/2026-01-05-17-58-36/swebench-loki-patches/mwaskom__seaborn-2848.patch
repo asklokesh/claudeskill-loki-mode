@@ -1,0 +1,28 @@
+# mwaskom__seaborn-2848
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the context, I understand this is a SWE-bench benchmark where I need to generate a patch for the seaborn issue mwaskom__seaborn-2848. The issue is about `pairplot` failing when `hue_order` doesn't contain all hue values.
+
+Looking at the existing patch that was generated, I can see the format. However, I need to generate a clean patch without any explanatory text, just the raw unified diff format.
+
+Based on the architect's analysis and the issue description:
+- The bug is in `PairGrid` class in `seaborn/axisgrid.py`
+- When `hue_order` is a subset of hue values, data should be filtered to only include rows where the hue column values are in `hue_order`
+- This filtering should happen before hue delegation to axes-level functions
+
+--- a/seaborn/axisgrid.py
++++ b/seaborn/axisgrid.py
+@@ -1287,6 +1287,11 @@ class PairGrid(Grid):
+         self._extract_legend_handles = True
+ 
+         self._hue_var = hue
++
++        # Filter data to only include rows with hue values in hue_order
++        if hue is not None and hue_order is not None:
++            data = data[data[hue].isin(hue_order)]
++            self.data = data
++
+         if hue is None:
+             self.hue_names = None
+             self.hue_vals = None

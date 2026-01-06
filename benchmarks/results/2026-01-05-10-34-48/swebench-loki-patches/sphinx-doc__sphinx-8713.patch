@@ -1,0 +1,31 @@
+# sphinx-doc__sphinx-8713
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+This is a task to generate a patch for the sphinx-doc/sphinx repository, but we're currently in a different directory. Based on the issue description, I need to create a patch for `sphinx/ext/napoleon/docstring.py`. Let me search for relevant information about how this method works from the issue description and generate the appropriate patch.
+
+Based on the issue and architect's analysis, I can see:
+
+1. The current `_parse_other_parameters_section` method always uses `_format_fields()` regardless of `napoleon_use_param` setting
+2. The `_parse_parameters_section` method correctly checks `self._config.napoleon_use_param` and uses `_format_docutils_params()` when True
+3. The fix is to make `_parse_other_parameters_section` follow the same logic as `_parse_parameters_section`
+
+Here is the patch:
+
+```
+--- a/sphinx/ext/napoleon/docstring.py
++++ b/sphinx/ext/napoleon/docstring.py
+@@ -617,7 +617,10 @@ class GoogleDocstring:
+ 
+     def _parse_other_parameters_section(self, section):
+         # type: (unicode) -> List[unicode]
+-        return self._format_fields(_('Other Parameters'), self._consume_fields())
++        fields = self._consume_fields()
++        if self._config.napoleon_use_param:
++            return self._format_docutils_params(fields)
++        else:
++            return self._format_fields(_('Other Parameters'), fields)
+ 
+     def _parse_parameters_section(self, section):
+         # type: (unicode) -> List[unicode]
+```

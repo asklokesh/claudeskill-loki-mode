@@ -1,0 +1,45 @@
+# scikit-learn__scikit-learn-14894
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and architect's analysis, I can generate the patch. The error occurs at line 302 where `n_class = dual_coef_indices.size / n_SV` causes a ZeroDivisionError when `n_SV = 0`. I'll create a patch that handles this edge case.
+
+```
+--- a/sklearn/svm/base.py
++++ b/sklearn/svm/base.py
+@@ -286,6 +286,14 @@ class BaseLibSVM(BaseEstimator, metaclass=ABCMeta):
+ 
+         self.support_vectors_ = sp.csr_matrix(support_vectors)
+ 
++        n_SV = self.support_vectors_.shape[0]
++
++        # Handle case where there are no support vectors
++        if n_SV == 0:
++            self.dual_coef_ = sp.csr_matrix([])
++            self._n_support = np.array([0] * len(self.classes_))
++            return
++
+         dual_coef_indices = np.tile(np.arange(n_SV), n_class)
+         dual_coef_indptr = np.arange(0, dual_coef_indices.size + 1,
+                                      dual_coef_indices.size / n_class)
+```
+
+Wait, I need to reconsider. The issue shows the error is at line 302, and the calculation involves `n_SV` which comes from the number of support vectors. Let me create a more accurate patch based on the traceback and common sklearn code patterns:
+
+```
+--- a/sklearn/svm/base.py
++++ b/sklearn/svm/base.py
+@@ -297,6 +297,12 @@ class BaseLibSVM(BaseEstimator, metaclass=ABCMeta):
+ 
+         n_SV = support_vectors.shape[0]
+ 
++        # Handle case where there are no support vectors
++        if n_SV == 0:
++            self.dual_coef_ = sp.csr_matrix(([], ([], [])), shape=(n_class, 0))
++            self._n_support = np.array([0] * len(self.classes_)) if hasattr(self, 'classes_') else np.array([0])
++            return
++
+         dual_coef_indices = np.tile(np.arange(n_SV), n_class)
+         dual_coef_indptr = np.arange(0, dual_coef_indices.size + 1,
+                                      dual_coef_indices.size / n_class)
+```

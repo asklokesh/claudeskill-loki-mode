@@ -1,0 +1,36 @@
+Based on the architectural analysis and typical Sphinx autodoc implementation patterns, I'll generate a patch that adds special handling for `struct.Struct` in the type annotation resolution code:
+
+--- a/sphinx/ext/autodoc/typehints.py
++++ b/sphinx/ext/autodoc/typehints.py
+@@ -23,6 +23,17 @@
+ from sphinx.util.typing import restify
+ 
+ 
++def normalize_struct_type(obj: Any) -> Any:
++    """Normalize struct.Struct which has incorrect __module__ attribute."""
++    if (hasattr(obj, '__qualname__') and obj.__qualname__ == 'Struct' and
++            hasattr(obj, '__module__') and obj.__module__ in ('builtins', '_struct')):
++        # struct.Struct reports its module as 'builtins' or '_struct',
++        # but it should be 'struct' for proper resolution
++        import struct
++        return struct.Struct
++    return obj
++
++
+ def record_typehints(app: Sphinx, objtype: str, name: str, obj: Any,
+                      options: Dict, args: str, retann: str) -> None:
+     """Record type hints to env object."""
+@@ -38,8 +49,13 @@
+             sig = inspect.signature(obj, type_aliases=app.config.autodoc_type_aliases)
+         except TypeError:
+             return
++        
+         for param in sig.parameters.values():
+             if param.annotation is not param.empty:
++                annotation = param.annotation
++                if hasattr(annotation, '__origin__'):
++                    annotation = param.annotation
++                annotation = normalize_struct_type(annotation)
+                 annotations[param.name] = param.annotation
+         if sig.return_annotation is not sig.empty:
+             annotations['return'] = sig.return_annotation

@@ -1,0 +1,17 @@
+# pytest-dev__pytest-11143
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+I see. This appears to be a different repository, not pytest itself. Based on the issue description, I need to create a patch for the pytest repository. Let me generate the patch based on the error traceback and the architect's analysis:
+
+--- a/src/_pytest/assertion/rewrite.py
++++ b/src/_pytest/assertion/rewrite.py
+@@ -757,7 +757,7 @@ class AssertionRewriter(ast.NodeVisitor):
+         """Check if assert rewriting is disabled in the docstring."""
+         if docstring is None:
+             return False
+-        return "PYTEST_DONT_REWRITE" in docstring
++        return isinstance(docstring, str) and "PYTEST_DONT_REWRITE" in docstring
+ 
+     def variable(self) -> str:
+         """Get a new variable."""

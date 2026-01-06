@@ -1,0 +1,9 @@
+{
+  "instance_id": "psf__requests-2317",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Now I have all the information I need. Based on the architect's analysis and the code structure:\n\n1. In v2.4.3, `builtin_str` was imported from `.compat` \n2. `to_native_string` would have been in utils (as seen in the modern version's backwards compatibility import)\n3. The bug is that `builtin_str(method)` converts `b'GET'` to `\"b'GET'\"` instead of decoding it to `'GET'`\n4. The fix is to replace `builtin_str(method)` with proper bytes handling using `to_native_string`\n\nBased on typical requests v2.4.3 structure and the architect's guidance, here's the patch:\n\n--- a/requests/sessions.py\n+++ b/requests/sessions.py\n@@ -14,7 +14,7 @@ from .hooks import default_hooks, dispatch_hook\n from .utils import to_key_val_list, default_headers\n from .exceptions import TooManyRedirects, InvalidSchema\n from .structures import CaseInsensitiveDict\n-\n+from ._internal_utils import to_native_string\n from .adapters import HTTPAdapter\n \n from .status_codes import codes\n@@ -308,7 +308,7 @@ class Session(SessionRedirectMixin):\n         cookies = cookiejar_from_dict(cookies)\n \n         # Merge with session cookies\n-        merged_cookies = merge_cookies(\n+        merged_cookies = merge_cookies(\n             merge_cookies(RequestsCookieJar(), self.cookies), cookies)\n \n         # Set environment's basic authentication if not explicitly set.\n@@ -381,7 +381,7 @@ class Session(SessionRedirectMixin):\n         :param cert: (optional) if String, path to ssl client cert file (.pem).\n             If Tuple, ('cert', 'key') pair.\n         \"\"\"\n-        method = builtin_str(method)\n+        method = to_native_string(method)\n \n         # Create the Request.\n         req = Request(",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T19:57:40.728817"
+}

@@ -1,0 +1,61 @@
+# matplotlib__matplotlib-22711
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue details and the architect's analysis, I need to generate a patch for the matplotlib repository. This is a bug where `RangeSlider` creates a polygon with 4 vertices when initial values are equal (via `axhspan`/`axvspan`), but `set_val` expects 5 vertices.
+
+Let me generate the patch based on the issue information provided:
+
+```
+--- a/lib/matplotlib/widgets.py
++++ b/lib/matplotlib/widgets.py
+@@ -719,10 +719,14 @@ class RangeSlider(SliderBase):
+         self.val = valinit
+         if orientation == "vertical":
+             self.poly = ax.axhspan(valinit[0], valinit[1], 0.25, 0.75, **kwargs)
++            self.poly.xy = [[0.25, valinit[0]],
++                            [0.25, valinit[1]],
++                            [0.75, valinit[1]],
++                            [0.75, valinit[0]]]
+         else:
+             self.poly = ax.axvspan(valinit[0], valinit[1], 0.25, 0.75, **kwargs)
+-
+-        self.set_val(valinit)
++            self.poly.xy = [[valinit[0], 0.25],
++                            [valinit[0], 0.75],
++                            [valinit[1], 0.75],
++                            [valinit[1], 0.25]]
+ 
+         if orientation == "vertical":
+             self.label = ax.text(
+```
+
+Wait, based on the architect's analysis and the error details, the problem is that `axhspan`/`axvspan` returns a polygon with inconsistent vertex count. The fix should ensure the polygon always has a consistent shape. Let me provide a more complete patch:
+
+--- a/lib/matplotlib/widgets.py
++++ b/lib/matplotlib/widgets.py
+@@ -717,12 +717,21 @@ class RangeSlider(SliderBase):
+         ax.set_axis_off()
+         ax.set_navigate(False)
+ 
+-        self.val = valinit
++        self.val = valinit
+         if orientation == "vertical":
+             self.poly = ax.axhspan(valinit[0], valinit[1], 0.25, 0.75, **kwargs)
++            self.poly.xy = [[0.25, valinit[0]],
++                            [0.25, valinit[1]],
++                            [0.75, valinit[1]],
++                            [0.75, valinit[0]],
++                            [0.25, valinit[0]]]
+         else:
+             self.poly = ax.axvspan(valinit[0], valinit[1], 0.25, 0.75, **kwargs)
+-
+-        self.set_val(valinit)
++            self.poly.xy = [[valinit[0], 0.25],
++                            [valinit[0], 0.75],
++                            [valinit[1], 0.75],
++                            [valinit[1], 0.25],
++                            [valinit[0], 0.25]]
+ 
+         if orientation == "vertical":
+             self.label = ax.text(

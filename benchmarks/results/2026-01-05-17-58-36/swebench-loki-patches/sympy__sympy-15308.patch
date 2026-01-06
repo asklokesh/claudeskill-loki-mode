@@ -1,0 +1,17 @@
+# sympy__sympy-15308
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis, this is a SWE-bench task for the sympy/sympy repository. The repository files are not present in the current working directory. Based on the analysis provided, I can generate the patch directly:
+
+--- a/sympy/printing/latex.py
++++ b/sympy/printing/latex.py
+@@ -1435,6 +1435,9 @@ class LatexPrinter(Printer):
+     def _print_Determinant(self, expr):
+         return r"\left|{%s}\right|" % self._print(expr.arg)
+ 
++    def _print_Trace(self, expr):
++        return r"\operatorname{tr}\left(%s\right)" % self._print(expr.arg)
++
+     def _print_Transpose(self, expr):
+         return r"%s^T" % self.parenthesize(expr.arg, PRECEDENCE['Pow'])

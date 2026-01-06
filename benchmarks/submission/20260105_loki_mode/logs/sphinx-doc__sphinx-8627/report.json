@@ -1,0 +1,9 @@
+{
+  "instance_id": "sphinx-doc__sphinx-8627",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the architectural analysis and typical Sphinx autodoc implementation patterns, I'll generate a patch that adds special handling for `struct.Struct` in the type annotation resolution code:\n\n--- a/sphinx/ext/autodoc/typehints.py\n+++ b/sphinx/ext/autodoc/typehints.py\n@@ -23,6 +23,17 @@\n from sphinx.util.typing import restify\n \n \n+def normalize_struct_type(obj: Any) -> Any:\n+    \"\"\"Normalize struct.Struct which has incorrect __module__ attribute.\"\"\"\n+    if (hasattr(obj, '__qualname__') and obj.__qualname__ == 'Struct' and\n+            hasattr(obj, '__module__') and obj.__module__ in ('builtins', '_struct')):\n+        # struct.Struct reports its module as 'builtins' or '_struct',\n+        # but it should be 'struct' for proper resolution\n+        import struct\n+        return struct.Struct\n+    return obj\n+\n+\n def record_typehints(app: Sphinx, objtype: str, name: str, obj: Any,\n                      options: Dict, args: str, retann: str) -> None:\n     \"\"\"Record type hints to env object.\"\"\"\n@@ -38,8 +49,13 @@\n             sig = inspect.signature(obj, type_aliases=app.config.autodoc_type_aliases)\n         except TypeError:\n             return\n+        \n         for param in sig.parameters.values():\n             if param.annotation is not param.empty:\n+                annotation = param.annotation\n+                if hasattr(annotation, '__origin__'):\n+                    annotation = param.annotation\n+                annotation = normalize_struct_type(annotation)\n                 annotations[param.name] = param.annotation\n         if sig.return_annotation is not sig.empty:\n             annotations['return'] = sig.return_annotation",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T20:59:44.824940"
+}

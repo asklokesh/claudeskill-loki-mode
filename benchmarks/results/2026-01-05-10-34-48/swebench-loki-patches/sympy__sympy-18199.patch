@@ -1,0 +1,23 @@
+# sympy__sympy-18199
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and my knowledge of SymPy's codebase structure, I'll generate the patch for the `nthroot_mod` function in `sympy/ntheory/residue_ntheory.py`:
+
+--- a/sympy/ntheory/residue_ntheory.py
++++ b/sympy/ntheory/residue_ntheory.py
+@@ -746,6 +746,14 @@ def nthroot_mod(a, n, p, all_roots=False):
+     a, n, p = as_int(a), as_int(n), as_int(p)
+     if n < 1:
+         raise ValueError("n should be positive")
++
++    # If a % p == 0, then x = 0 is a root
++    if a % p == 0:
++        if all_roots:
++            return [0]
++        else:
++            return 0
++
+     if a % p == 1:
+         if all_roots:
+             return [1]

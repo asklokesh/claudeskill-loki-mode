@@ -1,0 +1,16 @@
+# sympy__sympy-14817
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+I can see this is not a sympy repository. Based on the context, I need to generate a patch for the sympy repository's pretty.py file. Let me create the patch based on the issue description and the architect's analysis.
+
+--- a/sympy/printing/pretty/pretty.py
++++ b/sympy/printing/pretty/pretty.py
+@@ -825,7 +825,7 @@ class PrettyPrinter(Printer):
+         pforms = []
+         for item in expr.args:
+             pforms.append(self._print(item))
+-            if S(item.args[0]).is_negative:
++            if item.could_extract_minus_sign():
+                 pforms[-1] = prettyForm(binding=prettyForm.NEG, *pforms[-1])
+         return prettyForm.__add__(*pforms)

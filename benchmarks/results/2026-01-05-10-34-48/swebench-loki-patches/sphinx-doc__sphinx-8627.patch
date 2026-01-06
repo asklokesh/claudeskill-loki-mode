@@ -1,0 +1,74 @@
+# sphinx-doc__sphinx-8627
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on my knowledge of the Sphinx codebase and the bug description, I can create the patch. The issue is in `sphinx/util/typing.py` where the `stringify` function (and potentially `restify`) builds qualified names for type annotations using `__module__`. For types like `struct.Struct`, the `__module__` returns incorrect values (`_struct` or `builtins` depending on Python version) instead of `struct`.
+
+Here's the patch:
+
+```
+--- a/sphinx/util/typing.py
++++ b/sphinx/util/typing.py
+@@ -22,6 +22,22 @@ from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, TypeVa
+ from sphinx.util import logging
+ 
+ logger = logging.getLogger(__name__)
++
++# Mapping of (incorrect_module, name) -> correct_module for C extension types
++# whose __module__ attribute reports the wrong module.
++# This is needed because some stdlib C extension types report internal module
++# names (like '_struct') or 'builtins' instead of their public module name.
++_TYPE_MODULE_CORRECTIONS: Dict[Tuple[str, str], str] = {
++    ('_struct', 'Struct'): 'struct',
++    ('builtins', 'Struct'): 'struct',  # Python 3.8 behavior
++    ('_io', 'BytesIO'): 'io',
++    ('_io', 'StringIO'): 'io',
++    ('_io', 'BufferedReader'): 'io',
++    ('_io', 'BufferedWriter'): 'io',
++    ('_io', 'TextIOWrapper'): 'io',
++    ('_io', 'FileIO'): 'io',
++}
+ 
+ if sys.version_info > (3, 7):
+     from typing import ForwardRef
+@@ -108,6 +124,20 @@ def _stringify_py36(annotation: Any) -> str:
+     return qualname
+ 
+ 
++def _get_corrected_module(obj: Any) -> str:
++    """Get the corrected module name for an object.
++
++    Some C extension types have __module__ set to internal module names
++    (like '_struct' for struct.Struct) instead of the public module name.
++    This function returns the corrected public module name.
++    """
++    module = getattr(obj, '__module__', '')
++    qualname = getattr(obj, '__qualname__', getattr(obj, '__name__', ''))
++    # Check if we have a known correction for this module/name pair
++    corrected = _TYPE_MODULE_CORRECTIONS.get((module, qualname))
++    return corrected if corrected is not None else module
++
++
+ def _stringify_py37(annotation: Any) -> str:
+     """stringify() for py37+."""
+     module = getattr(annotation, '__module__', None)
+@@ -127,7 +157,8 @@ def _stringify_py37(annotation: Any) -> str:
+     elif hasattr(annotation, '__qualname__'):
+         if annotation.__module__ == 'typing':
+             return annotation.__qualname__
+-        return '%s.%s' % (annotation.__module__, annotation.__qualname__)
++        corrected_module = _get_corrected_module(annotation)
++        return '%s.%s' % (corrected_module, annotation.__qualname__)
+     elif hasattr(annotation, '__origin__'):
+         # instantiated generic provided by typing module
+         return repr(annotation)
+@@ -178,7 +209,8 @@ def restify(cls: Optional["Type"]) -> str:
+         return ':obj:`%s.%s`' % (cls.__module__, cls.__name__)
+     elif hasattr(cls, '__qualname__'):
+         # some objects that don't have __class__ (like type aliases)
+-        return ':obj:`%s.%s`' % (cls.__module__, cls.__qualname__)
++        corrected_module = _get_corrected_module(cls)
++        return ':obj:`%s.%s`' % (corrected_module, cls.__qualname__)
+     else:
+         return ':obj:`%s`' % repr(cls)
+```

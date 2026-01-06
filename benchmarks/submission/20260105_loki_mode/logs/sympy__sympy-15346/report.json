@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-15346",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the architect's analysis, I need to generate a patch that swaps the order of TRmorrie and TR10i in the transformation pipeline. Since I cannot find the actual sympy repository in the current working directory, I'll generate the patch based on the standard sympy repository structure and the architect's analysis.\n\n--- a/sympy/simplify/trigsimp.py\n+++ b/sympy/simplify/trigsimp.py\n@@ -1148,8 +1148,8 @@\n                     TR2i,\n                     lambda x: _eapply(factor, x, trigs),\n                     TR14,  # factored powers of identities\n-                    TRmorrie,\n                     TR10i,  # sin-cos products > sin-cos of sums\n+                    TRmorrie,\n                     TR11, TR6, # reduce double angles and rewrite cos parity\n                     lambda x: _eapply(factor, x, trigs),\n                     TR14,  # factored powers of identities",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T21:31:11.742418"
+}

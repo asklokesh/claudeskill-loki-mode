@@ -1,0 +1,28 @@
+# django__django-16408
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/django/db/models/sql/compiler.py
++++ b/django/db/models/sql/compiler.py
+@@ -1270,6 +1270,9 @@ class SQLCompiler:
+                     yield from self.get_related_selections(
+                         klass_info, select, alias, root_alias, cur_depth + 1, used, selector
+                     )
++
++        def no_local_setter(obj, from_obj):
++            pass
+ 
+         for alias, join_info in self.query.filtered_relation_definitions.items():
+             model = join_info["model"]
+@@ -1286,7 +1289,10 @@ class SQLCompiler:
+                     ),
+                 )
+             )
+-            local_setter = getattr(joins[-2], "__set__", lambda obj, from_obj: None)
++            if len(joins) <= 2:
++                local_setter = getattr(joins[-2], "__set__", no_local_setter)
++            else:
++                local_setter = no_local_setter
+             remote_setter = target.__set__
+             klass_info = {
+                 "model": model,

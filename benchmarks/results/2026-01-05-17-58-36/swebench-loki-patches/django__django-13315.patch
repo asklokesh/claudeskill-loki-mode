@@ -1,0 +1,29 @@
+# django__django-13315
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis, I'll generate the patch using the annotate() approach which is cleaner and more database-agnostic:
+
+--- a/django/db/models/fields/related.py
++++ b/django/db/models/fields/related.py
+@@ -1098,10 +1098,18 @@ class ForeignKey(ForeignObject):
+             db = kwargs.pop('using', None)
+         if kwargs.get('widget') is None:
+             kwargs['widget'] = self.formfield_for_choice_field(**kwargs)
++        
++        # Get the base queryset
++        queryset = self.remote_field.model._default_manager.using(using)
++        
++        # Apply limit_choices_to if present, and use annotate() to deduplicate
++        # when JOINs would cause duplicate rows. Empty annotate() groups by PK,
++        # which is always comparable and unique.
++        if self.remote_field.limit_choices_to:
++            queryset = queryset.annotate()
++        
+         return super().formfield(**{
+             'form_class': forms.ModelChoiceField,
+-            'queryset': self.remote_field.model._default_manager.using(using),
++            'queryset': queryset,
+             'to_field_name': self.remote_field.field_name,
+             **kwargs,
+         })

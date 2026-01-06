@@ -1,0 +1,13 @@
+Based on the architect's analysis and standard SymPy mathematica printer structure, I'll generate the patch:
+
+--- a/sympy/printing/mathematica.py
++++ b/sympy/printing/mathematica.py
+@@ -44,6 +44,8 @@
+         'acos': [(lambda x: True, 'ArcCos')],
+         'acot': [(lambda x: True, 'ArcCot')],
+         'conjugate': [(lambda x: True, 'Conjugate')],
++        'Max': [(lambda *x: True, 'Max')],
++        'Min': [(lambda *x: True, 'Min')],
+     }
+ 
+     def _print_Function(self, expr):

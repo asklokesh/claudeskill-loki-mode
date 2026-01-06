@@ -1,0 +1,19 @@
+# sphinx-doc__sphinx-8595
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+This appears to be a task to generate a patch for the sphinx-doc/sphinx repository, but the repository doesn't exist in the current working directory. Based on the architect's analysis, I need to generate a patch for the `sphinx/ext/autodoc/__init__.py` file around line 1023-1026.
+
+Based on the analysis provided, the fix is to change `if not self.__all__:` to `if self.__all__ is None:` in the `get_object_members` method. Here is the patch:
+
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -1020,7 +1020,7 @@ class ModuleDocumenter(Documenter):
+     def get_object_members(self, want_all: bool) -> Tuple[bool, ObjectMembers]:
+         members = self.get_module_members()
+         if want_all:
+-            if not self.__all__:
++            if self.__all__ is None:
+                 # for implicit module members, check __module__ to avoid
+                 # temporary objects, e.g. via "from X import *"
+                 return True, list(members.values())

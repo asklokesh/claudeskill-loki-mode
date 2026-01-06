@@ -1,0 +1,19 @@
+# matplotlib__matplotlib-23964
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+This appears to be the claudeskill-loki-mode repository, not the matplotlib repository. The task is asking me to generate a patch for matplotlib/matplotlib. Since this is a different repository, I need to generate the patch based on the architect's analysis without having the actual file present.
+
+Based on the architect's analysis, the fix is to add a null check before line 669 in `lib/matplotlib/backends/backend_ps.py`. The issue is that `curr_stream` (or `stream`) can be `None` for empty lines, but the code tries to unpack it without checking.
+
+--- a/lib/matplotlib/backends/backend_ps.py
++++ b/lib/matplotlib/backends/backend_ps.py
+@@ -666,6 +666,8 @@
+             stream = _text_layout.layout(
+                 clean_line, self._pswriter._font, kern_mode=KERNING_UNFITTED
+             )
++            if stream is None:
++                continue
+             for ps_name, xs_names in stream:
+                 ps_used.add(ps_name)
+                 xs_names_encoding = [

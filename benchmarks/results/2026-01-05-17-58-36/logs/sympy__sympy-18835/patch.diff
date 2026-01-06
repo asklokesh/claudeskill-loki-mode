@@ -1,0 +1,25 @@
+I see this is a SWE-bench environment. Based on the context provided, I'm asked to generate a patch for a sympy issue where the `uniq` function needs to detect when the input list is modified during iteration. Since I don't have access to the actual sympy repository files here, I'll generate the patch based on the standard location and typical implementation of the `uniq` function in sympy.
+
+Let me create the patch based on the issue description and architect's analysis:
+
+--- a/sympy/utilities/iterables.py
++++ b/sympy/utilities/iterables.py
+@@ -2109,6 +2109,8 @@ def uniq(seq, result=None):
+     """
+     try:
+         seen = set()
++        sequence_length = len(seq) if hasattr(seq, '__len__') else None
++        
+         uniq_list = []
+         if result is None:
+             if hasattr(seq, '__getitem__'):
+@@ -2116,6 +2118,9 @@ def uniq(seq, result=None):
+                     if item not in seen:
+                         seen.add(item)
+                         uniq_list.append(item)
++                        if sequence_length is not None and len(seq) != sequence_length:
++                            raise RuntimeError("list changed size during iteration")
++                        sequence_length = len(seq) if hasattr(seq, '__len__') else sequence_length
+                         yield item
+             else:
+                 for item in seq:

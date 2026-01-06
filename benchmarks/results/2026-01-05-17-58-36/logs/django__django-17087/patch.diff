@@ -1,0 +1,41 @@
+I see this is the Loki Mode skill repository, not the Django repository itself. Based on the issue description, I need to generate a patch for the Django repository. Let me create the patch based on the architect's analysis:
+
+--- a/django/db/migrations/serializer.py
++++ b/django/db/migrations/serializer.py
+@@ -168,7 +168,7 @@ class FunctionTypeSerializer(BaseSerializer):
+             if getattr(klass, self.value.__name__, None) == self.value:
+                 module = klass.__module__
+                 return (
+-                    "%s.%s.%s" % (module, klass.__name__, self.value.__name__),
++                    "%s.%s.%s" % (module, klass.__qualname__, self.value.__name__),
+                     {"import %s" % module},
+                 )
+         # Further error checking
+--- a/tests/migrations/test_writer.py
++++ b/tests/migrations/test_writer.py
+@@ -800,6 +800,24 @@ class WriterTests(SimpleTestCase):
+             ),
+         )
+ 
++    def test_serialize_nested_class_method(self):
++        """
++        Class methods from nested classes should use __qualname__ to include
++        the full path (e.g., OuterClass.InnerClass.method).
++        """
++        class OuterClass:
++            class InnerClass:
++                @classmethod
++                def my_method(cls):
++                    return []
++        
++        self.assertSerializedEqual(
++            OuterClass.InnerClass.my_method,
++            (
++                "%s.OuterClass.InnerClass.my_method" % self.__module__,
++                {"import %s" % self.__module__},
++            ),
++        )
++
+     def test_serialize_numbers(self):
+         self.assertSerializedEqual(1, ("1", set()))
+         self.assertSerializedEqual(1.2, ("1.2", set()))

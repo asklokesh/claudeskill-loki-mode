@@ -1,0 +1,40 @@
+Based on the issue description and architect's analysis, I can generate the patch directly. The issue is clear: the `sqlmigrate` command needs to check both `migration.atomic` and `connection.features.can_rollback_ddl` when setting `self.output_transaction`, just like the migration executor does.
+
+--- a/django/core/management/commands/sqlmigrate.py
++++ b/django/core/management/commands/sqlmigrate.py
+@@ -59,7 +59,7 @@ class Command(BaseCommand):
+         plan = [(executor.loader.graph.nodes[targets[0]], options['backwards'])]
+         sql_statements = executor.collect_sql(plan)
+         if not sql_statements and options['verbosity'] >= 1:
+             self.stderr.write('No operations found.')
+         return '\n'.join(sql_statements)
+ 
+-        self.output_transaction = migration.atomic
++        self.output_transaction = migration.atomic and connection.features.can_rollback_ddl
+--- a/tests/migrations/test_commands.py
++++ b/tests/migrations/test_commands.py
+@@ -1234,6 +1234,23 @@ class MigrateTests(MigrationTestBase):
+         out = io.StringIO()
+         call_command("sqlmigrate", "migrations", "0001", stdout=out)
+         self.assertNotIn("BEGIN;", out.getvalue())
+         self.assertNotIn("COMMIT;", out.getvalue())
+ 
++    def test_sqlmigrate_no_transaction_for_non_transactional_ddl(self):
++        """
++        sqlmigrate shouldn't wrap output in BEGIN/COMMIT if the database
++        doesn't support transactional DDL.
++        """
++        out = io.StringIO()
++        with mock.patch.object(
++            connection.features, 'can_rollback_ddl', False
++        ):
++            call_command(
++                "sqlmigrate", "migrations", "0001", stdout=out
++            )
++        output = out.getvalue()
++        self.assertNotIn("BEGIN;", output)
++        self.assertNotIn("COMMIT;", output)
++
+     @override_settings(MIGRATION_MODULES={'migrations': 'migrations.test_migrations'})
+     def test_regression_22823_unmigrated_fk_to_migrated_model(self):
+         """

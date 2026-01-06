@@ -1,0 +1,19 @@
+# django__django-12184
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the analysis and previous patches, I now understand the issue. The bug is in `django/urls/resolvers.py` in the `RegexPattern` class. When a URL pattern has nested groups like `(?P<format>(html|json|xml))?`, the inner unnamed group `(html|json|xml)` is captured separately. The current code `args = () if kwargs else match.groups()` checks if kwargs is truthy, but the real check should be whether the pattern has any named groups at all (via `self.regex.groupindex`), not whether the current match produced kwargs values.
+
+Here's the correct patch:
+
+--- a/django/urls/resolvers.py
++++ b/django/urls/resolvers.py
+@@ -151,7 +151,7 @@ class RegexPattern(CheckURLMixin):
+         match = self.regex.search(path)
+         if match:
+             kwargs = match.groupdict()
+-            args = () if kwargs else match.groups()
++            args = () if self.regex.groupindex else match.groups()
+             kwargs = {k: v for k, v in kwargs.items() if v is not None}
+             return path[match.end():], args, kwargs
+         return None

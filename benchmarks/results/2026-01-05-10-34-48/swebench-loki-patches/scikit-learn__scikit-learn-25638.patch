@@ -1,0 +1,31 @@
+# scikit-learn__scikit-learn-25638
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on my knowledge of scikit-learn's codebase and the issue description, I'll generate the patch for the `type_of_target` function in `sklearn/utils/multiclass.py`:
+
+```
+--- a/sklearn/utils/multiclass.py
++++ b/sklearn/utils/multiclass.py
+@@ -256,6 +256,19 @@ def type_of_target(y, input_name=""):
+         raise ValueError(
+             f"y cannot be class 'SparseSeries' or 'SparseArray'."
+         )
++
++    # Handle pandas nullable dtypes (Int64, Float64, boolean, etc.)
++    # These convert to object dtype when calling np.asarray, so we need
++    # to convert them to the corresponding numpy dtype first.
++    if hasattr(y, "dtype"):
++        dtype_name = str(getattr(y.dtype, "name", ""))
++        if dtype_name in {"Int8", "Int16", "Int32", "Int64"}:
++            y = np.asarray(y, dtype=np.int64)
++        elif dtype_name in {"UInt8", "UInt16", "UInt32", "UInt64"}:
++            y = np.asarray(y, dtype=np.uint64)
++        elif dtype_name in {"Float32", "Float64"}:
++            y = np.asarray(y, dtype=np.float64)
++        elif dtype_name == "boolean":
++            y = np.asarray(y, dtype=bool)
+ 
+     if is_multilabel(y):
+         return "multilabel-indicator"
+```

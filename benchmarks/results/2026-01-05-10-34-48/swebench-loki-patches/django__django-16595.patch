@@ -1,0 +1,31 @@
+# django__django-16595
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Since this is a patch for the Django repository (not the current codebase), I need to generate the patch based on Django's known source code structure. Based on the issue description and the architect's analysis, I can generate the appropriate patch:
+
+--- a/django/db/migrations/operations/fields.py
++++ b/django/db/migrations/operations/fields.py
+@@ -247,6 +247,11 @@ class AlterField(FieldOperation):
+                 ),
+             ]
+         return super().reduce(operation, app_label)
++        if isinstance(operation, AlterField) and self.is_same_field_operation(
++            operation
++        ):
++            return [operation]
++        return super().reduce(operation, app_label)
+
+Wait, let me reconsider the structure. Looking at Django's typical reduce method pattern, I need to see where this fits. The issue says `AlterField.reduce` doesn't consider when operation is also an `AlterField`. Let me generate the correct patch:
+
+--- a/django/db/migrations/operations/fields.py
++++ b/django/db/migrations/operations/fields.py
+@@ -244,6 +244,10 @@ class AlterField(FieldOperation):
+                     preserve_default=True,
+                 ),
+             ]
++        if isinstance(operation, AlterField) and self.is_same_field_operation(
++            operation
++        ):
++            return [operation]
+         return super().reduce(operation, app_label)

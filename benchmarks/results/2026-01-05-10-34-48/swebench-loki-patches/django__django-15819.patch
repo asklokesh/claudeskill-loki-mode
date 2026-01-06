@@ -1,0 +1,40 @@
+# django__django-15819
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/django/core/management/commands/inspectdb.py
++++ b/django/core/management/commands/inspectdb.py
+@@ -1,3 +1,4 @@
++from collections import Counter
+ from django.core.management.base import BaseCommand, CommandError
+ from django.db import DEFAULT_DB_ALIAS, connections
+ 
+@@ -62,6 +63,15 @@ class Command(BaseCommand):
+                 yield "from %s import models" % self.db_module
+             known_models = []
+             table_info = connection.introspection.get_table_description(cursor, table_name)
++
++            # Count how many times each related table is referenced
++            # to determine if we need to add related_name
++            used_relations = Counter()
++            for row in table_info:
++                if row.name in relations:
++                    ref_db_table = relations[row.name][1]
++                    used_relations[ref_db_table] += 1
++
+             unique_columns = [
+                 c["columns"][0]
+                 for c in constraints.values()
+@@ -126,6 +136,12 @@ class Command(BaseCommand):
+                         extra_params["db_column"] = column_name
+                     else:
+                         extra_params["db_column"] = column_name
++
++                    # If multiple FKs point to the same table, add related_name
++                    # to avoid reverse accessor clashes
++                    if used_relations[ref_db_table] > 1:
++                        extra_params["related_name"] = "%s_set" % att_name
++
+                 else:
+                     # Calling `get_field_type` to get the field type string and any
+                     # additional parameters and notes.

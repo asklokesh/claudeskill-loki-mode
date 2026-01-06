@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-16988",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/sympy/sets/sets.py\n+++ b/sympy/sets/sets.py\n@@ -1258,6 +1258,9 @@ class Intersection(Set):\n         if not args:\n             return S.UniversalSet\n \n+        # Remove duplicates and order canonically\n+        args = list(ordered(set(args), Set._infimum_key))\n+\n         # Reduce sets using known rules\n         if evaluate:\n             return Intersection.reduce(args)",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T21:37:23.614673"
+}

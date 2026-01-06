@@ -1,0 +1,21 @@
+# sympy__sympy-20639
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/sympy/printing/pretty/pretty.py
++++ b/sympy/printing/pretty/pretty.py
+@@ -1811,7 +1811,12 @@ class PrettyPrinter(Printer):
+                 if e.is_Rational and e.q == n:
+                     return True
+                 return False
+-            n = int(n.args[0].args[1])
++            # Check if n is a Pow with numeric exponent (e.g., E**-1)
++            # vs an exp() call (e.g., exp(-1)) which has different structure
++            if n.func.__name__ == 'exp' or not (hasattr(n.args[0], 'args') and len(n.args[0].args) > 1):
++                # Fall back to standard power notation for exp() and other non-Pow cases
++                n = None
++            else:
++                n = int(n.args[0].args[1])
+         if n is not None:
+             return _check(n)
+         return False

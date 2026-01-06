@@ -1,0 +1,30 @@
+# django__django-14752
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the context, I understand this is a SWE-bench task where I need to generate a patch for a Django repository issue. The issue is about refactoring `AutocompleteJsonView` to support extra fields. However, the Django source code is not in the current repository - this appears to be a Loki Mode skill repository for running benchmarks.
+
+For SWE-bench tasks, I need to generate the patch based on the issue description and architect's analysis. Let me create the patch for the Django `AutocompleteJsonView`:
+
+--- a/django/contrib/admin/views/autocomplete.py
++++ b/django/contrib/admin/views/autocomplete.py
+@@ -25,11 +25,16 @@
+             raise PermissionDenied
+ 
+         self.object_list = self.get_queryset()
+         context = self.get_context_data()
+         return JsonResponse({
+-            'results': [
+-                {'id': str(getattr(obj, to_field_name)), 'text': str(obj)}
+-                for obj in context['object_list']
+-            ],
++            'results': [
++                self.serialize_result(obj, to_field_name)
++                for obj in context['object_list']
++            ],
+             'pagination': {'more': context['page_obj'].has_next()},
+         })
++
++    def serialize_result(self, obj, to_field_name):
++        """Convert an object to a dictionary for the autocomplete response."""
++        return {'id': str(getattr(obj, to_field_name)), 'text': str(obj)}

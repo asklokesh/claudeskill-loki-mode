@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-14382",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the issue description, this is a SWE-bench task where I need to generate a patch for Django's repository. The repository code isn't checked out in this working directory - I'm being asked to generate the patch based on the issue description and architect's analysis.\n\nFrom the issue description and architect's analysis, I have all the information needed to generate the patch:\n\n- **File**: `django/core/management/templates.py`\n- **Line**: 77\n- **Current code**: `self.validate_name(os.path.basename(target), 'directory')`\n- **Fixed code**: `self.validate_name(os.path.basename(target.rstrip(os.sep)), 'directory')`\n\nThe fix should strip trailing path separators before calling `os.path.basename()`.\n\n--- a/django/core/management/templates.py\n+++ b/django/core/management/templates.py\n@@ -74,7 +74,7 @@\n                     \"file named '%s' already exists. Overlaying %s \"\n                     \"into an existing directory won't replace conflicting files.\"\n                     % (top_dir, camel_case_value)\n                 )\n-            self.validate_name(os.path.basename(target), 'directory')\n+            self.validate_name(os.path.basename(target.rstrip(os.sep)), 'directory')\n         else:\n             if os.path.exists(top_dir):\n                 raise CommandError(",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:53:25.015541"
+}

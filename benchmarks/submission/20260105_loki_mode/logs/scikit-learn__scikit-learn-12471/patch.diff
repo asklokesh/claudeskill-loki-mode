@@ -1,0 +1,20 @@
+This appears to be the Loki Mode repository itself, not a scikit-learn repo. Based on the task description, I need to generate a patch for the scikit-learn OneHotEncoder issue. Let me create the patch based on the bug description and standard scikit-learn structure:
+
+--- a/sklearn/preprocessing/_encoders.py
++++ b/sklearn/preprocessing/_encoders.py
+@@ -400,6 +400,15 @@ class OneHotEncoder(_BaseEncoder):
+                     else:
+                         # unknown categories are encoded as all zeros
+                         Xi = Xi.copy()
++                        
++                        # Handle string dtypes: convert to object dtype to avoid
++                        # truncation when replacing unknown values with first category
++                        if Xi.dtype.kind in ('U', 'S'):
++                            # Check if first category is longer than current dtype
++                            first_cat = self.categories_[i][0]
++                            if hasattr(first_cat, '__len__') and len(str(first_cat)) > Xi.dtype.itemsize // 4:
++                                Xi = Xi.astype(object)
++                        
+                         Xi[~valid_mask] = self.categories_[i][0]
+                 # We use check_unknown=False, since _transform() is only
+                 # called to transform the training data, and we already

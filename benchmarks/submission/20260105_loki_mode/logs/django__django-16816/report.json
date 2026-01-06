@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-16816",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Now I understand the format. Based on the architect's analysis, I need to create a patch that modifies `django/contrib/admin/checks.py` to catch reverse many-to-one relationships (like `ManyToOneRel`) and raise `FieldDoesNotExist` so that the E108 check properly catches them. Let me generate the patch:\n\n--- a/django/contrib/admin/checks.py\n+++ b/django/contrib/admin/checks.py\n@@ -897,7 +897,12 @@ class BaseModelAdminChecks:\n         try:\n             field = obj.model._meta.get_field(item)\n         except FieldDoesNotExist:\n-            # If we can't find a field on the model that matches, the item must be a method\n+            # If we can't find a field on the model that matches, the item must be a method or invalid\n+            pass\n+        else:\n+            # Reject reverse many-to-one relationships (e.g., 'choice' when Choice has FK to Question)\n+            from django.db.models.fields.reverse_related import ManyToOneRel\n+            if isinstance(field, ManyToOneRel):\n+                raise FieldDoesNotExist\n+        # Check if this is a callable or method\n+        try:\n             if not callable(getattr(obj, item, None)):\n                 return [\n                     checks.Error(",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T19:25:01.291055"
+}

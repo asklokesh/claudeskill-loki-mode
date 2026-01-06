@@ -1,0 +1,42 @@
+# django__django-15790
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis, I can generate the patch for the Django templates check issue. The fix is to change from `defaultdict(list)` to `defaultdict(set)` to prevent duplicate entries.
+
+--- a/django/core/checks/templates.py
++++ b/django/core/checks/templates.py
+@@ -51,7 +51,7 @@ def check_for_template_tags_with_the_same_name(app_configs, **kwargs):
+     """
+     Check that template tags with the same name are not present in multiple libraries.
+     """
+-    libraries = defaultdict(list)
++    libraries = defaultdict(set)
+     for conf in settings.TEMPLATES:
+         custom_libraries = conf.get("OPTIONS", {}).get("libraries", {})
+         for module_name in custom_libraries.values():
+@@ -59,14 +59,14 @@ def check_for_template_tags_with_the_same_name(app_configs, **kwargs):
+                 module = import_module(module_name)
+             except ImportError:
+                 continue
+-            libraries[module.register.tags].append(module_name)
++            libraries[module.register.tags].add(module_name)
+     for module_name in get_template_tag_modules():
+         try:
+             module = import_module(module_name)
+         except ImportError:
+             continue
+-        libraries[module.register.tags].append(module_name)
++        libraries[module.register.tags].add(module_name)
+     errors = []
+     for library_name, items in libraries.items():
+         if len(items) > 1:
+@@ -74,7 +74,7 @@ def check_for_template_tags_with_the_same_name(app_configs, **kwargs):
+                 Error(
+                     E003.msg.format(
+                         repr(library_name),
+-                        ", ".join(repr(item) for item in items),
++                        ", ".join(repr(item) for item in sorted(items)),
+                     ),
+                     id=E003.id,
+                 )

@@ -1,0 +1,21 @@
+# scikit-learn__scikit-learn-13439
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Since I don't have access to the actual scikit-learn repository in this workspace, I'll generate the patch based on my knowledge of the scikit-learn codebase structure. The `Pipeline` class is defined in `sklearn/pipeline.py` and has methods like `__getitem__` for indexing support.
+
+```
+--- a/sklearn/pipeline.py
++++ b/sklearn/pipeline.py
+@@ -175,6 +175,10 @@ class Pipeline(_BaseComposition):
+             return self.steps[ind]
+         raise KeyError(ind)
+ 
++    def __len__(self):
++        """Return the length of the Pipeline."""
++        return len(self.steps)
++
+     @property
+     def _estimator_type(self):
+         return self.steps[-1][1]._estimator_type
+```

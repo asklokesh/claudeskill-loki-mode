@@ -1,0 +1,15 @@
+{
+  "benchmark": "SWE-bench Lite",
+  "version": "1.0",
+  "timestamp": "2026-01-05T01:23:38.022274",
+  "model": "opus",
+  "timeout_per_problem": 600,
+  "total_problems": 0,
+  "status": "PATCHES_GENERATED",
+  "predictions": [],
+  "generated": 0,
+  "errors": 0,
+  "elapsed_seconds": 0.0,
+  "predictions_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-01-23-32/swebench-predictions.json",
+  "next_step": "Run: python -m swebench.harness.run_evaluation --predictions /Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-01-23-32/swebench-predictions.json"
+}

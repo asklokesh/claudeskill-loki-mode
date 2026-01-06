@@ -1,0 +1,9 @@
+{
+  "instance_id": "matplotlib__matplotlib-25442",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "This appears to be a claudeskill-loki-mode repository, not the matplotlib repository. For this SWE-bench task, I need to create a patch for matplotlib's offsetbox.py file based on the architect's analysis. Since the actual matplotlib source isn't present, I'll generate the patch based on the error description and fix strategy provided.\n\nBased on the architect's analysis, the issue is in the `DraggableBase.disconnect()` method where it tries to access `self.canvas` (which resolves to `self.ref_artist.figure.canvas`) when `self.ref_artist.figure` is `None`.\n\n--- a/lib/matplotlib/offsetbox.py\n+++ b/lib/matplotlib/offsetbox.py\n@@ -1565,7 +1565,8 @@ class DraggableBase:\n         \"\"\"Disconnect the callbacks.\"\"\"\n         for cid in self.cids:\n-            self.canvas.mpl_disconnect(cid)\n+            if self.ref_artist.figure is not None:\n+                self.canvas.mpl_disconnect(cid)\n         self.cids.clear()\n \n     def _update_offset(self, dx, dy):",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T19:44:25.343921"
+}

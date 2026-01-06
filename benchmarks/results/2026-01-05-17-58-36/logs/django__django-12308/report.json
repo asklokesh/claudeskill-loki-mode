@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-12308",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/django/contrib/admin/utils.py\n+++ b/django/contrib/admin/utils.py\n@@ -1,4 +1,5 @@\n import datetime\n+import json\n import decimal\n from collections import defaultdict\n \n@@ -6,6 +7,7 @@ from django.core.exceptions import FieldDoesNotExist\n from django.db import models, router\n from django.db.models.constants import LOOKUP_SEP\n from django.db.models.deletion import Collector\n+from django.db.models.fields.json import JSONField\n from django.forms.utils import pretty_name\n from django.urls import NoReverseMatch, reverse\n from django.utils import formats, timezone\n@@ -396,6 +398,11 @@ def display_for_field(value, field, empty_value_display):\n         return formats.number_format(value)\n     elif isinstance(field, models.FileField) and value:\n         return format_html('<a href=\"{}\">{}</a>', value.url, value)\n+    elif isinstance(field, JSONField):\n+        if value is None:\n+            return empty_value_display\n+        # Use prepare_value to handle InvalidJSONInput edge case\n+        return field.prepare_value(value)\n     else:\n         return display_for_value(value, empty_value_display)",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:25:41.229275"
+}

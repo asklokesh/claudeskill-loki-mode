@@ -1,0 +1,64 @@
+Based on the context, this appears to be a request to generate a patch for a SymPy issue, but the actual SymPy repository files are not present in this directory. This is a Loki Mode skill repository, not the SymPy repository.
+
+However, I can generate the patch based on the architect's analysis provided in the prompt:
+
+--- a/sympy/core/basic.py
++++ b/sympy/core/basic.py
+@@ -410,14 +410,14 @@ class Basic(metaclass=ManagedProperties):
+ 
+     def atoms(self, *types):
+         """Returns the atoms that form the current object.
+ 
+         By default, only objects that are truly atomic and can't
+-        be divided into smaller pieces are returned: symbols, numbers,
+-        and number symbols like I and pi. It is possible to request
+-        atoms of any type, however, as demonstrated below.
++        be divided into smaller pieces are returned: objects with no
++        `.args`. It is possible to request atoms of any type, however,
++        as demonstrated below.
+ 
+         Examples
+         ========
+ 
+         >>> from sympy import I, N, pi
+         >>> from sympy.abc import x, y
+         >>> (1 + x + 2*sin(y + I*pi)).atoms()
+@@ -460,9 +460,9 @@ class Basic(metaclass=ManagedProperties):
+         elif types:
+             types = tuple([t if isinstance(t, type) else type(t) for t in types])
+         else:
+             types = (Atom,)
+         result = set()
+-        _preorder_traversal(self, lambda x: x.is_Atom, result, types)
++        _preorder_traversal(self, lambda x: not x.args, result, types)
+         return result
+ 
+     @property
+--- a/sympy/core/tests/test_basic.py
++++ b/sympy/core/tests/test_basic.py
+@@ -1,8 +1,8 @@
+-from sympy.core.basic import Basic, Atom
++from sympy.core.basic import Basic, Atom, preorder_traversal
+ from sympy.core.singleton import S
+ from sympy.core.symbol import symbols, Symbol
+ from sympy.core.numbers import Integer, Rational, Float, Number
+ from sympy.core.relational import Equality
+ from sympy.functions.elementary.trigonometric import sin, cos
+@@ -45,11 +45,18 @@ def test_atoms():
+     assert b21.atoms(Symbol) == {x, y}
+     assert b21.atoms(Number) == {Integer(1), Rational(1, 2), Integer(3)}
+     assert b21.atoms(Number, Symbol) == b21.atoms()
+ 
++    # Test that atoms() returns objects with no args
++    assert b21.atoms() == b21.atoms(Atom)
++    
++    # Test that Basic() with no args is considered atomic
++    basic_no_args = Basic()
++    assert basic_no_args.atoms() == {basic_no_args}
++    
+     # issue 3033
+     f = Function('f')
+     e = (f(x) + sin(x) + 2)
+     assert e.atoms(AppliedUndef) == {f(x)}
+     assert e.atoms(AppliedUndef, Function) == {f(x), sin(x)}
+     assert e.atoms(Function) == {f(x), sin(x)}

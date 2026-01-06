@@ -1,0 +1,25 @@
+# sympy__sympy-13043
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and the standard structure of sympy, I can generate the patch. The issue is in the `decompose()` function which returns `list(poly_dict.values())` when `separate=True`. The fix requires importing `default_sort_key` and using it to sort the returned list.
+
+```
+--- a/sympy/integrals/intpoly.py
++++ b/sympy/integrals/intpoly.py
+@@ -1,6 +1,7 @@
+ """
+ Module to implement integration over polytopes using the divergence theorem.
+ """
++from sympy.core.compatibility import default_sort_key
+ from sympy.core import S, diff, Expr, Symbol
+ from sympy.geometry import Segment2D, Polygon, Point
+ from sympy.polys.polytools import LC, gcd_list, degree_list
+@@ -594,7 +595,7 @@ def decompose(expr, separate=False):
+         poly_dict[monom] = coeff
+ 
+     if separate:
+-        return list(poly_dict.values())
++        return sorted(poly_dict.values(), key=default_sort_key)
+     return poly_dict
+```

@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-14238",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/django/db/models/fields/__init__.py\n+++ b/django/db/models/fields/__init__.py\n@@ -2553,4 +2553,4 @@ class AutoFieldMeta(type):\n     def __subclasscheck__(cls, subclass):\n-        return subclass in cls._subclasses or super().__subclasscheck__(subclass)\n+        return issubclass(subclass, cls._subclasses) or super().__subclasscheck__(subclass)",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:52:47.728621"
+}

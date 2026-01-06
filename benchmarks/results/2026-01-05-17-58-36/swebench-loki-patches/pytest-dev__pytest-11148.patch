@@ -1,0 +1,38 @@
+# pytest-dev__pytest-11148
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+I understand now. I'm being asked to generate a patch for a pytest issue based on the issue description alone, as part of an SWE-bench evaluation. Let me analyze the issue and create an appropriate patch.
+
+Based on the issue description:
+
+**Problem**: When `import-mode=importlib` is used with `doctest-modules`, pytest imports the same module twice, creating duplicate module instances. This causes class variables set on one instance to be invisible to code using the other.
+
+**Root Cause**: The doctest collector likely imports modules using a different mechanism than the standard importlib importer, causing duplicate module instances instead of reusing `sys.modules`.
+
+**Fix**: Ensure that when doctest collects modules, it reuses existing entries from `sys.modules` rather than importing anew.
+
+Let me generate the patch:
+
+--- a/src/_pytest/doctest.py
++++ b/src/_pytest/doctest.py
+@@ -508,7 +508,18 @@ class DoctestModule(Module):
+         )
+ 
+     def _importtestmodule(self) -> ModuleType:
+-        return import_path(self.path, mode=importmode.ImportMode.IMPORTLIB)
++        # When using importlib mode, check if module is already in sys.modules
++        # to avoid duplicate module instances (issue #10341)
++        import sys
++        
++        # Try to determine the module name that would be imported
++        # Use the same logic as the regular import system
++        if importmode.ImportMode.IMPORTLIB in (self.config.getini("importmode"), "importlib"):
++            module_name = self.module_name if hasattr(self, 'module_name') else None
++            if module_name and module_name in sys.modules:
++                return sys.modules[module_name]
++        
++        return import_path(self.path, mode=self.config.getoption("importmode", "prepend"))
+ 
+     def collect(self) -> Iterable[DoctestItem]:
+         import doctest

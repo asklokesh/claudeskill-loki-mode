@@ -1,0 +1,93 @@
+# sympy__sympy-17630
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and architect's analysis, I can generate the patch. The issue is in the `_blockmul` method of `BlockMatrix` where matrix multiplication of blocks can produce scalar `Zero` instead of `ZeroMatrix`. The fix needs to ensure that zero results from block multiplications are properly converted to `ZeroMatrix` with correct dimensions.
+
+Here's the patch:
+
+```
+--- a/sympy/matrices/expressions/blockmatrix.py
++++ b/sympy/matrices/expressions/blockmatrix.py
+@@ -1,6 +1,7 @@
+ from __future__ import print_function, division
+ 
+ from sympy import ask, Q
++from sympy.core.numbers import Zero
+ from sympy.core import Basic, Add
+ from sympy.core.compatibility import range
+ from sympy.strategies import typed, exhaust, condition, do_one, unpack
+@@ -164,6 +165,9 @@ class BlockMatrix(MatrixExpr):
+                 for k in range(self.blockshape[1])])
+                     for i in range(self.blockshape[0])])
+                         for j in range(other.blockshape[1])])
++        # Ensure any scalar Zero results become ZeroMatrix with proper dimensions
++        numrows = self.rowblocksizes
++        numcols = other.colblocksizes
++        data = [[ZeroMatrix(numrows[i], numcols[j]) if isinstance(data[i][j], Zero) else data[i][j]
++                 for j in range(len(data[i]))] for i in range(len(data))]
+         return BlockMatrix(Matrix(data))
+```
+
+Wait, I need to look at the actual structure more carefully. Let me provide a proper patch based on the issue. The `_blockmul` method computes block matrix products, and when the result is zero, it becomes a scalar `Zero` rather than a `ZeroMatrix`. The fix should convert these back to `ZeroMatrix`:
+
+--- a/sympy/matrices/expressions/blockmatrix.py
++++ b/sympy/matrices/expressions/blockmatrix.py
+@@ -83,6 +83,19 @@ class BlockMatrix(MatrixExpr):
+     def colblocksizes(self):
+         return [self.blocks[0, i].cols for i in range(self.blockshape[1])]
+ 
++    def _ensure_zero_matrices(self):
++        """Convert scalar Zero entries to ZeroMatrix with proper dimensions."""
++        from sympy.core.numbers import Zero
++        rowsizes = self.rowblocksizes
++        colsizes = self.colblocksizes
++        data = self.blocks.tolist()
++        for i in range(self.blockshape[0]):
++            for j in range(self.blockshape[1]):
++                if isinstance(data[i][j], Zero) or data[i][j] == 0:
++                    data[i][j] = ZeroMatrix(rowsizes[i], colsizes[j])
++        return BlockMatrix(Matrix(data))
++
+     def _blockmul(self, other):
+         if (self.colblocksizes == other.rowblocksizes):
+             return BlockMatrix(self.blocks*other.blocks)
+@@ -90,7 +103,16 @@ class BlockMatrix(MatrixExpr):
+ 
+     def _blockadd(self, other):
+         if (self.structurally_equal(other)):
+-            return BlockMatrix(self.blocks + other.blocks)
++            result = BlockMatrix(self.blocks + other.blocks)
++            # Convert any scalar Zero to ZeroMatrix
++            from sympy.core.numbers import Zero
++            blocks = result.blocks.tolist()
++            for i in range(result.blockshape[0]):
++                for j in range(result.blockshape[1]):
++                    if isinstance(blocks[i][j], Zero) or blocks[i][j] == 0:
++                        blocks[i][j] = ZeroMatrix(self.rowblocksizes[i], self.colblocksizes[j])
++            return BlockMatrix(Matrix(blocks))
++        return self + other
+
+Actually, looking at this more carefully, the issue is specifically that `_blockmul` returns blocks that contain scalar `Zero` instead of `ZeroMatrix`. The simplest fix is to process the result of `_blockmul` to convert any scalar zeros back to `ZeroMatrix` with the appropriate dimensions.
+
+--- a/sympy/matrices/expressions/blockmatrix.py
++++ b/sympy/matrices/expressions/blockmatrix.py
+@@ -87,7 +87,18 @@ class BlockMatrix(MatrixExpr):
+ 
+     def _blockmul(self, other):
+         if (self.colblocksizes == other.rowblocksizes):
+-            return BlockMatrix(self.blocks*other.blocks)
++            from sympy.core.numbers import Zero
++            result_blocks = self.blocks*other.blocks
++            result = BlockMatrix(result_blocks)
++            # Convert scalar Zero entries to ZeroMatrix with proper dimensions
++            blocks_list = result_blocks.tolist()
++            rowsizes = self.rowblocksizes
++            colsizes = other.colblocksizes
++            for i in range(len(blocks_list)):
++                for j in range(len(blocks_list[0])):
++                    if isinstance(blocks_list[i][j], Zero):
++                        blocks_list[i][j] = ZeroMatrix(rowsizes[i], colsizes[j])
++            return BlockMatrix(Matrix(blocks_list))
+ 
+         return self * other

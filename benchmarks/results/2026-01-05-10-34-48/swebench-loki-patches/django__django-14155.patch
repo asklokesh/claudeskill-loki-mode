@@ -1,0 +1,66 @@
+# django__django-14155
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on my knowledge of Django's codebase and the issue description, I'll generate the patch for fixing `ResolverMatch.__repr__()` to handle `functools.partial` objects properly.
+
+```
+--- a/django/urls/resolvers.py
++++ b/django/urls/resolvers.py
+@@ -1,3 +1,4 @@
++import functools
+ import re
+ from importlib import import_module
+ from urllib.parse import quote
+@@ -32,6 +33,14 @@ class ResolverMatch:
+         self.args = args
+         self.kwargs = kwargs
+         self.route = route
++        self.captured_kwargs = kwargs
++        # Unwrap functools.partial objects to get the underlying function
++        # and capture any arguments provided to the partial.
++        while isinstance(func, functools.partial):
++            self.args = func.args + self.args
++            self.kwargs = {**func.keywords, **self.kwargs}
++            func = func.func
++
+         self.url_name = url_name
+         self._func_path = None
+         if app_names is not None:
+@@ -64,7 +73,7 @@ class ResolverMatch:
+         return "%s '%s' %s%s" % (
+             self._route or self.func,
+             self.url_name,
+-            self.args,
+-            self.kwargs,
++            self.captured_kwargs,
++            dict(self.kwargs),
+         )
+
+     def __repr__(self):
+```
+
+Wait, I need to reconsider the patch more carefully. Let me provide a cleaner version based on the typical Django ResolverMatch implementation:
+
+```
+--- a/django/urls/resolvers.py
++++ b/django/urls/resolvers.py
+@@ -1,3 +1,4 @@
++import functools
+ import re
+ from importlib import import_module
+ from urllib.parse import quote
+@@ -32,6 +33,12 @@ class ResolverMatch:
+     def __init__(
+         self, func, args, kwargs, url_name=None, app_names=None, namespaces=None, route=None,
+     ):
++        # Unwrap functools.partial objects to get the underlying function.
++        while isinstance(func, functools.partial):
++            args = func.args + args
++            kwargs = {**func.keywords, **kwargs}
++            func = func.func
++
+         self.func = func
+         self.args = args
+         self.kwargs = kwargs
+```

@@ -1,0 +1,13 @@
+# django__django-11999
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/django/db/models/fields/__init__.py
++++ b/django/db/models/fields/__init__.py
+@@ -764,7 +764,8 @@ class Field(RegisterLookupMixin):
+         if self.choices is not None:
+             setattr(cls, 'get_%s_display' % self.name,
+                     partialmethod(cls._get_FIELD_display, field=self))
++            if not hasattr(cls, 'get_%s_display' % self.name):
++                setattr(cls, 'get_%s_display' % self.name,
++                        partialmethod(cls._get_FIELD_display, field=self))

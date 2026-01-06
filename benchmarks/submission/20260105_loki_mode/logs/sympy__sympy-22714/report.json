@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-22714",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/sympy/geometry/point.py\n+++ b/sympy/geometry/point.py\n@@ -150,7 +150,7 @@\n             if is_zero is False:\n                 raise ValueError('Imaginary coordinates are not permitted.')\n         else:\n-            if im(a).is_zero is False:\n+            if im(a).is_nonzero:\n                 raise ValueError('Imaginary coordinates are not permitted.')\n         coords.append(a)",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T22:04:02.326630"
+}

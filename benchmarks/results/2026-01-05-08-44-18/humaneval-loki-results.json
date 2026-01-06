@@ -1,0 +1,47 @@
+{
+  "benchmark": "HumanEval-LokiMode",
+  "mode": "multi-agent",
+  "version": "1.0",
+  "timestamp": "2026-01-05T08:44:22.269462",
+  "model": "opus",
+  "max_retries": 3,
+  "total_problems": 5,
+  "problems": [
+    {
+      "task_id": "HumanEval/0",
+      "passed": true,
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "task_id": "HumanEval/1",
+      "passed": true,
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "task_id": "HumanEval/2",
+      "passed": true,
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "task_id": "HumanEval/3",
+      "passed": true,
+      "attempts": 1,
+      "error": null
+    },
+    {
+      "task_id": "HumanEval/4",
+      "passed": true,
+      "attempts": 1,
+      "error": null
+    }
+  ],
+  "passed": 5,
+  "failed": 0,
+  "errors": 0,
+  "pass_rate": 100.0,
+  "avg_attempts": 1.0,
+  "elapsed_time": 73.07357001304626
+}

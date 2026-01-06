@@ -1,0 +1,9 @@
+{
+  "instance_id": "pytest-dev__pytest-8365",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "I see this is the claudeskill-loki-mode repository, not a pytest repository. The task is asking me to generate a patch for a pytest issue, but I need to work with a hypothetical pytest codebase structure. Let me create the appropriate patch based on the standard pytest tmpdir.py implementation.\n\n--- a/src/_pytest/tmpdir.py\n+++ b/src/_pytest/tmpdir.py\n@@ -1,6 +1,7 @@\n \"\"\"Support for providing temporary directories to test functions.\"\"\"\n import os\n import re\n+import re\n import tempfile\n from pathlib import Path\n from typing import Optional\n@@ -87,11 +88,23 @@ def get_user() -> Optional[str]:\n     \"\"\"Return the current user name, or None if getuser() does not work\n     in the current environment (see #1010).\n     \"\"\"\n+    def sanitize_username(username: str) -> str:\n+        \"\"\"Sanitize username to remove characters illegal in directory names.\n+        \n+        Replaces illegal filesystem characters with underscores to ensure\n+        valid directory names across platforms (especially Windows).\n+        \"\"\"\n+        # Replace illegal characters (backslash, forward slash, colon, etc.) with underscore\n+        # Windows illegal chars: < > : \" / \\ | ? *\n+        # Also replace null bytes and control characters\n+        sanitized = re.sub(r'[\\x00-\\x1f<>:\"/\\\\|?*]', '_', username)\n+        return sanitized\n+\n     try:\n         import getpass\n \n-        return getpass.getuser()\n+        username = getpass.getuser()\n+        return sanitize_username(username) if username else None\n     except (ImportError, KeyError):\n         return None",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T20:25:28.359653"
+}

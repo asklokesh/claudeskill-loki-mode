@@ -1,0 +1,56 @@
+# sympy__sympy-12481
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/sympy/combinatorics/permutations.py
++++ b/sympy/combinatorics/permutations.py
+@@ -895,12 +895,19 @@ def __new__(cls, *args, **kwargs):
+                     for i in range(len(c) - 1):
+                         aform[c[i]] = c[i + 1]
+             else:
+-                # it's not necessarily true that the cycles are disjoint,
+-                # so it's important to check that (using size) and to then
+-                # apply them in the order given (left to right)
+-                for i, c in enumerate(args):
+-                    if len(c) != len(set(c)):
+-                        raise ValueError('there were repeated elements in cycle %i' % i)
++                # Apply non-disjoint cycles in left-to-right order
++                # Start with identity permutation
++                temp = list(range(size))
++                for c in args:
++                    if len(c) < 2:
++                        continue
++                    # Check for repeated elements within a single cycle
++                    if len(c) != len(set(c)):
++                        raise ValueError('there were repeated elements in cycle')
++                    # Apply this cycle to temp
++                    first = temp[c[0]]
++                    for i in range(len(c) - 1):
++                        temp[c[i]] = temp[c[i + 1]]
++                    temp[c[-1]] = first
++                aform = temp
+ 
+     if aform is None:
+         aform = list(range(size or 0))
+@@ -918,21 +925,6 @@ def __new__(cls, *args, **kwargs):
+             raise ValueError(
+                 'there were repeated elements; to resolve cycles '
+                 'use Cycle%s.' % ''.join([str(tuple(c)) for c in args]))
+-        else:
+-            for i, c in enumerate(args):
+-                # remaining arg is a list of lists or tuples of cycles
+-                for j in c:
+-                    if seen.has_key(j):
+-                        raise ValueError(
+-                            'there were repeated elements in cycle %i' % i)
+-                    seen[j] = True
+-            # make aform by applying the cycles in order
+-            aform = list(range(size))
+-            for c in args:
+-                for i in range(len(c) - 1):
+-                    aform[c[i]] = c[i + 1]
+-                if len(c):
+-                    aform[c[-1]] = c[0]
+ 
+     obj = Basic.__new__(cls, aform)
+     obj._array_form = aform

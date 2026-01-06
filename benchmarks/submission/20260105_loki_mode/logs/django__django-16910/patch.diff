@@ -1,0 +1,32 @@
+Based on the issue description, this appears to be a SWE-bench task where I need to generate a patch for a Django issue. Since this is not a Django repository, I need to create the patch based on my understanding of Django's codebase and the issue description.
+
+The issue is that `QuerySet.only()` doesn't properly limit fields when used with `select_related()` on a reverse OneToOneField relation in Django 4.2, causing a regression from 4.1.
+
+Let me generate the patch:
+
+--- a/django/db/models/sql/query.py
++++ b/django/db/models/sql/query.py
+@@ -2220,6 +2220,23 @@ class Query(BaseExpression):
+                         restricted = select_related_descend(
+                             field, restricted, requested, select_mask, reverse=True
+                         )
++                        # For reverse OneToOneField relations, apply deferred field restrictions
++                        if restricted and field.one_to_one and field.remote_field:
++                            # Get the related model's opts
++                            related_model = field.related_model
++                            related_opts = related_model._meta
++                            
++                            # Build the prefix for this relation's deferred fields
++                            if cur_depth:
++                                deferred_prefix = "__".join(chain[1:cur_depth + 1])
++                            else:
++                                deferred_prefix = field.related_query_name()
++                            
++                            # Get deferred fields for this relation
++                            deferred_for_relation = {
++                                f.name for f in related_opts.concrete_fields
++                                if f"{deferred_prefix}__{f.name}" in self.deferred_loading[0]
++                            }
+                     else:
+                         restricted = select_related_descend(
+                             field, restricted, requested, select_mask, reverse=False

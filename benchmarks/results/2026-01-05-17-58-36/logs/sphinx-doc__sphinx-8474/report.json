@@ -1,0 +1,9 @@
+{
+  "instance_id": "sphinx-doc__sphinx-8474",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/sphinx/environment/collectors/toctree.py\n+++ b/sphinx/environment/collectors/toctree.py\n@@ -211,8 +211,6 @@ class TocTreeCollector(EnvironmentCollector):\n                             for child in node:\n                                 if isinstance(child, nodes.caption):\n                                     break\n-                            else:\n-                                continue\n \n                             if fig_nodeclass == nodes.section:\n                                 sequential_ids = self.memo_seq_ids.setdefault(figtype, {})",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T20:57:13.909245"
+}

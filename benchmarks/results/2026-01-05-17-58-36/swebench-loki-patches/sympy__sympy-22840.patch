@@ -1,0 +1,29 @@
+# sympy__sympy-22840
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on my analysis of the issue and the existing patch attempts, I can see the problem clearly. The CSE function is treating `MatrixSymbol` objects as decomposable expressions when they should be treated as atomic (like regular `Symbol` objects). When processing `MatrixElement` expressions (like `a[0,0]`), CSE walks into the arguments and extracts the parent `MatrixSymbol` as a common subexpression, which is incorrect.
+
+The fix needs to be in the `_find_repeated` function in `sympy/simplify/cse_main.py` to add `MatrixSymbol` to the list of expressions that should not be extracted as common subexpressions.
+
+Here's the proper patch:
+
+--- a/sympy/simplify/cse_main.py
++++ b/sympy/simplify/cse_main.py
+@@ -1,6 +1,7 @@
+ """ Tools for doing common subexpression elimination.
+ """
+ from sympy.core import Basic, Mul, Add, Pow, sympify, Symbol
++from sympy.matrices.expressions import MatrixSymbol
+ from sympy.core.containers import Tuple, OrderedSet
+ from sympy.core.exprtools import factor_terms
+ from sympy.core.function import _coeff_isneg
+@@ -497,7 +498,7 @@ def opt_cse(exprs, order='canonical'):
+         if not isinstance(expr, (Basic, Unevaluated)):
+             return
+ 
+-        if expr.is_Atom or expr.is_Order:
++        if expr.is_Atom or expr.is_Order or isinstance(expr, MatrixSymbol):
+             return
+ 
+         if iterable(expr):

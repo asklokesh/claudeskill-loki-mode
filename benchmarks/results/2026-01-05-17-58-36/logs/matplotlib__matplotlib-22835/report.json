@@ -1,0 +1,9 @@
+{
+  "instance_id": "matplotlib__matplotlib-22835",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the context, I need to generate a patch for the matplotlib repository addressing the BoundaryNorm bug. Since the actual matplotlib source files aren't in this repository, I'll generate the patch based on the architect's analysis and standard matplotlib code structure.\n\n--- a/lib/matplotlib/artist.py\n+++ b/lib/matplotlib/artist.py\n@@ -1279,7 +1279,15 @@ class ScalarMappable:\n             # Should not happen, but just in case.\n             return super().format_cursor_data(data)\n         try:\n-            neighbors = self.norm.inverse(\n+            # BoundaryNorm is not invertible, use boundaries directly\n+            from matplotlib.colors import BoundaryNorm\n+            if isinstance(self.norm, BoundaryNorm):\n+                # Find the boundaries surrounding the normalized value\n+                normed = self.norm(data)\n+                idx = int(normed * (len(self.norm.boundaries) - 1) / self.norm.N)\n+                idx = max(0, min(idx, len(self.norm.boundaries) - 2))\n+                neighbors = self.norm.boundaries[idx:idx + 2]\n+            else:\n+                neighbors = self.norm.inverse(\n                 (int(self.norm(data) * self.cmap.N) +\n                  np.array([0, 1])) / self.cmap.N)\n         except ValueError:",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T19:30:23.419929"
+}

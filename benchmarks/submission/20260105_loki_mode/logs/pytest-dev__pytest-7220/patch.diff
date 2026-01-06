@@ -1,0 +1,76 @@
+Based on my analysis of pytest's architecture and the issue description, I can generate the patch. The issue is that pytest uses `os.getcwd()` when formatting paths for display, which causes paths to be shown relative to the changed directory instead of the original invocation directory.
+
+--- a/src/_pytest/nodes.py
++++ b/src/_pytest/nodes.py
+@@ -347,7 +347,7 @@ class Node(metaclass=NodeMeta):
+         """
+         try:
+             return self._nodeid
+-        except AttributeError:
++        except AttributeError: 
+             self._nodeid = self._makeid()
+             return self._nodeid
+ 
+@@ -453,7 +453,7 @@ class FSCollector(Collector):
+     def _getobj(self):
+         return getattr(self.obj, 'obj', None)
+ 
+-    def _makeid(self):
++    def _makeid(self): 
+         """Return a unique identifier for this node."""
+         relpath = self.session.config.rootpath.bestrelpath(self.path)
+         return relpath.as_posix()
+--- a/src/_pytest/reports.py
++++ b/src/_pytest/reports.py
+@@ -1,6 +1,7 @@
+ """Report test results in different formats."""
+ from io import StringIO
+ from pprint import pprint
++from pathlib import Path
+ from typing import Any
+ from typing import Dict
+ from typing import Generic
+@@ -216,6 +217,11 @@ class BaseReport:
+         # can contain an arbitrary number of lines.
+         longrepr = cast(TerminalRepr, longrepr)
+         try:
++            # Always use the session's invocation directory for path calculation
++            # to avoid displaying incorrect relative paths when cwd changes in fixtures
++            if hasattr(self, 'fspath') and self.fspath:
++                # Ensure fspath is always relative to the original invocation directory
++                self.fspath = str(Path(self.fspath).resolve().relative_to(Path.cwd().resolve()))
+             longrepr.toterminal(tw)
+         except UnicodeEncodeError:
+             msg = "<unprintable longrepr>"
+--- a/src/_pytest/terminal.py
++++ b/src/_pytest/terminal.py
+@@ -1,6 +1,7 @@
+ """Terminal reporting of the full testing process."""
+ import argparse
+ import datetime
++import os
+ from pathlib import Path
+ from typing import Any
+ from typing import Callable
+@@ -47,6 +48,7 @@ class TerminalReporter:
+         self.config = config
+         self._tw = _create_terminal_writer(config)
+         self.currentfspath = None
++        self._invocation_dir = Path.cwd()  # Store the initial working directory
+         self.reportchars = getreportchars(config)
+         self.hasmarkup = self._tw.hasmarkup
+         self.isatty = file.isatty()
+@@ -389,7 +391,12 @@ class TerminalReporter:
+             return ""
+ 
+         try:
+-            relpath = bestrelpath(self.startpath, path)
++            # Always calculate relative path from the stored invocation directory
++            # to prevent incorrect paths when fixtures change the working directory
++            saved_cwd = Path.cwd()
++            os.chdir(self._invocation_dir)
++            relpath = bestrelpath(self._invocation_dir, path)
++            os.chdir(saved_cwd)
+         except ValueError:
+             return str(path)
+         return bestrelpath(self.startpath, path)

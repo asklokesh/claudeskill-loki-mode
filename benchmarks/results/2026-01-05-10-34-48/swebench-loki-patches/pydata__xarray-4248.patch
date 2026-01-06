@@ -1,0 +1,108 @@
+# pydata__xarray-4248
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on my knowledge of the xarray codebase (pydata/xarray), I will generate the patch. The xarray repository has a `xarray/core/formatting.py` file that handles the text repr, and `xarray/core/formatting_html.py` for HTML repr.
+
+Here is the patch:
+
+```
+--- a/xarray/core/formatting.py
++++ b/xarray/core/formatting.py
+@@ -261,6 +261,29 @@ def inline_variable_array_repr(var, max_width):
+     return "..."
+ 
+ 
++def _get_unit_repr(var, max_length=None):
++    """Extract unit representation from variable.
++    
++    Checks for units in the following order:
++    1. Duck array's _repr_short_() method (e.g., pint arrays)
++    2. Variable's attrs['units']
++    
++    Returns empty string if no units found.
++    """
++    unit_str = ""
++    
++    # Try duck array interface first
++    if hasattr(var.data, "_repr_short_"):
++        unit_str = var.data._repr_short_(max_length) if max_length else var.data._repr_short_()
++    # Fall back to attrs['units']
++    elif "units" in var.attrs:
++        unit_str = str(var.attrs["units"])
++    
++    if unit_str and max_length and len(unit_str) > max_length:
++        unit_str = unit_str[: max_length - 3] + "..."
++    
++    return unit_str
++
++
+ def summarize_variable(
+     name: Hashable, var, col_width: int, marker: str = " ", max_width: int = None
+ ):
+@@ -268,6 +291,10 @@ def summarize_variable(
+         max_width = OPTIONS["display_width"]
+     first_col = pretty_print(f"  {marker} {name} ", col_width)
+     dims_str = "({}) ".format(", ".join(map(str, var.dims)))
++    
++    unit_str = _get_unit_repr(var, max_length=15)
++    unit_col = f"[{unit_str}] " if unit_str else ""
++    
+     front_str = f"{first_col}{dims_str}{var.dtype} "
+ 
+     if OPTIONS["display_expand_data"]:
+@@ -277,7 +304,7 @@ def summarize_variable(
+         values_str = inline_variable_array_repr(var, max_width - len(googl_front_str))
+ 
+     return front_str + values_str
++    return front_str + unit_col + values_str
+ 
+ 
+ def summarize_attr(key, value, col_width=None):
+@@ -352,6 +379,19 @@ def _calculate_col_width(mapping):
+     return col_width
+ 
+ 
++def _calculate_unit_col_width(mapping, max_width=15):
++    """Calculate the width needed for the units column."""
++    unit_width = 0
++    for k, v in mapping.items():
++        unit_str = _get_unit_repr(v, max_length=max_width)
++        if unit_str:
++            # Account for brackets and space: "[unit] "
++            width = len(unit_str) + 3
++            if width > unit_width:
++                unit_width = width
++    return unit_width
++
++
+ def _mapping_repr(
+     mapping,
+     title: str,
+--- a/xarray/core/formatting_html.py
++++ b/xarray/core/formatting_html.py
+@@ -110,6 +110,15 @@ def summarize_variable(name, var, is_index=False, dtype=None, preview=None):
+     dims_str = f"({', '.join(escape(dim) for dim in var.dims)})"
+     name = escape(str(name))
+     dtype_str = escape(str(dtype))
++    
++    # Get unit representation
++    from .formatting import _get_unit_repr
++    unit_str = _get_unit_repr(var, max_length=15)
++    unit_html = ""
++    if unit_str:
++        unit_html = (
++            f"<span class='xr-var-unit' title='Units: {escape(unit_str)}'>[{escape(unit_str)}]</span>"
++        )
+ 
+     # "unique" ids required to expand/collapse subsections
+     attrs_id = "attrs-" + str(uuid.uuid4())
+@@ -132,6 +141,7 @@ def summarize_variable(name, var, is_index=False, dtype=None, preview=None):
+         f"<div class='xr-var-dims'>{dims_str}</div>"
+         f"<div class='xr-var-dtype'>{dtype_str}</div>"
+         f"<div class='xr-var-preview xr-preview'>{preview}</div>"
++        f"<div class='xr-var-unit'>{unit_html}</div>"
+         f"<input id='{attrs_id}' class='xr-var-attrs-in' type='checkbox'{disabled}>"
+         f"<label for='{attrs_id}' title='Show/Hide attributes'>{attrs_icon}</label>"
+         f"<input id='{data_id}' class='xr-var-data-in' type='checkbox'>"
+```

@@ -1,0 +1,157 @@
+Based on the architect's analysis and the issue requirements, I'll generate a clean patch that adds a `join` parameter to handle datasets with different variables:
+
+--- a/xarray/core/concat.py
++++ b/xarray/core/concat.py
+@@ -1,6 +1,7 @@
+ from __future__ import absolute_import, division, print_function
+ 
+ import pandas as pd
++import numpy as np
+ 
+ from . import utils
+ from .alignment import align
+@@ -10,7 +11,7 @@
+ 
+ 
+ def concat(objs, dim=None, data_vars='all', coords='different',
+-           compat='equals', positions=None, indexers=None, mode=None):
++           compat='equals', positions=None, indexers=None, mode=None, join='outer'):
+     """Concatenate xarray objects along a new or existing dimension.
+ 
+     Parameters
+@@ -59,6 +60,13 @@ def concat(objs, dim=None, data_vars='all', coords='different',
+         this argument is passed on to :py:func:`~xarray.align`. See the
+         documentation of :py:func:`~xarray.align` for more information. Only
+         used if ``coords`` is not ``'minimal'``.
++    join : {'outer', 'inner', 'left', 'right', 'exact'}, optional
++        String indicating how to combine differing variables across datasets:
++        - 'outer': union of variables (default)
++        - 'inner': intersection of variables
++        - 'left': use variables from the first dataset
++        - 'right': use variables from the last dataset
++        - 'exact': raise an error if variables don't match exactly
+ 
+     Returns
+     -------
+@@ -102,10 +110,10 @@ def concat(objs, dim=None, data_vars='all', coords='different',
+ 
+     if isinstance(first_obj, DataArray):
+         return _dataarray_concat(objs, dim=dim, data_vars=data_vars,
+-                                 coords=coords, compat=compat, positions=positions)
++                                 coords=coords, compat=compat, positions=positions, join=join)
+     elif isinstance(first_obj, Dataset):
+         return _dataset_concat(objs, dim=dim, data_vars=data_vars,
+-                               coords=coords, compat=compat, positions=positions)
++                               coords=coords, compat=compat, positions=positions, join=join)
+     else:
+         raise TypeError('can only concatenate xarray Dataset and DataArray '
+                         'objects, got %s' % type(first_obj))
+@@ -113,7 +121,7 @@ def concat(objs, dim=None, data_vars='all', coords='different',
+ 
+ 
+ def _dataarray_concat(arrays, dim, data_vars, coords, compat,
+-                      positions):
++                      positions, join='outer'):
+     arrays = list(arrays)
+ 
+     if data_vars != 'all':
+@@ -135,7 +143,7 @@ def _dataarray_concat(arrays, dim, data_vars, coords, compat,
+         datasets.append(arr._to_temp_dataset())
+ 
+     ds = _dataset_concat(datasets, dim, data_vars=data_vars, coords=coords,
+-                         compat=compat, positions=positions)
++                         compat=compat, positions=positions, join=join)
+     return _restore_dataarray_from_temp_dataset(ds)
+ 
+ 
+@@ -197,7 +205,7 @@ def _calc_concat_over(datasets, dim, data_vars, coords):
+ 
+ 
+ def _dataset_concat(datasets, dim, data_vars, coords, compat, positions,
+-                    indexers=None, mode=None):
++                    indexers=None, mode=None, join='outer'):
+     """
+     Concatenate a sequence of datasets along a new or existing dimension
+     """
+@@ -222,6 +230,41 @@ def _dataset_concat(datasets, dim, data_vars, coords, compat, positions,
+ 
+     concat_over, equals = _calc_concat_over(datasets, dim, data_vars, coords)
+ 
++    # Determine which variables to include based on join type
++    if join != 'outer':
++        all_vars = set()
++        for ds in datasets:
++            all_vars.update(set(ds.data_vars))
++        
++        if join == 'inner':
++            # Only include variables present in all datasets
++            common_vars = set(datasets[0].data_vars)
++            for ds in datasets[1:]:
++                common_vars &= set(ds.data_vars)
++            datasets = [ds[sorted(common_vars)] for ds in datasets]
++        elif join == 'left':
++            # Only include variables from the first dataset
++            first_vars = list(datasets[0].data_vars)
++            datasets = [ds[[v for v in first_vars if v in ds.data_vars]] if i > 0 else ds 
++                       for i, ds in enumerate(datasets)]
++        elif join == 'right':
++            # Only include variables from the last dataset
++            last_vars = list(datasets[-1].data_vars)
++            datasets = [ds[[v for v in last_vars if v in ds.data_vars]] if i < len(datasets) - 1 else ds
++                       for i, ds in enumerate(datasets)]
++        elif join == 'exact':
++            # Verify all datasets have the same variables
++            first_vars = set(datasets[0].data_vars)
++            for i, ds in enumerate(datasets[1:], 1):
++                if set(ds.data_vars) != first_vars:
++                    raise ValueError(
++                        'datasets have different data variables, '
++                        '%s vs %s' % (sorted(first_vars), sorted(ds.data_vars)))
++        
++        # Recalculate concat_over after filtering variables
++        concat_over, equals = _calc_concat_over(datasets, dim, data_vars, coords)
++
+     # determine which variables to merge, and then merge them according to compat
+     variables_to_merge = (coord_names | data_names) - concat_over - dim_names
+ 
+@@ -229,9 +272,13 @@ def _dataset_concat(datasets, dim, data_vars, coords, compat, positions,
+         to_merge = {var: [] for var in variables_to_merge}
+ 
+         for ds in datasets:
+-            absent_merge_vars = variables_to_merge - set(ds.variables)
+-            if absent_merge_vars:
++            present_merge_vars = set(ds.variables) & variables_to_merge
++            absent_merge_vars = variables_to_merge - present_merge_vars
++            
++            if absent_merge_vars and join == 'exact':
+                 raise ValueError(
+                     'variables %r are present in some datasets but not others. '
++                    % absent_merge_vars)
++            elif absent_merge_vars and join == 'outer':
++                raise ValueError(
++                    'unexpected missing variables in dataset: %r '
+                     % absent_merge_vars)
+ 
+             for var in variables_to_merge:
+@@ -256,7 +303,21 @@ def _dataset_concat(datasets, dim, data_vars, coords, compat, positions,
+ 
+     # stack up each variable to fill-out the dataset
+     for k in concat_over:
+-        vars = [ds.variables[k] for ds in datasets]
++        vars = []
++        for ds in datasets:
++            if k in ds.variables:
++                vars.append(ds.variables[k])
++            elif join == 'outer':
++                # Find template variable from another dataset
++                template_var = None
++                for other_ds in datasets:
++                    if k in other_ds.variables:
++                        template_var = other_ds.variables[k]
++                        break
++                # Create variable filled with NaN
++                shape = tuple(ds.dims.get(d, template_var.sizes[d]) for d in template_var.dims)
++                data = np.full(shape, np.nan, dtype=template_var.dtype)
++                vars.append(Variable(template_var.dims, data, template_var.attrs))
+         combined = concat_vars(vars, dim, positions)
+         result_vars[k] = combined

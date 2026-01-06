@@ -1,0 +1,20 @@
+# mwaskom__seaborn-3190
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and the standard seaborn repository structure, I can generate the patch. The issue is that boolean data is being treated as continuous when it should be categorical. The fix needs to detect boolean dtype and handle it appropriately in the scale setup logic.
+
+--- a/seaborn/_core/scales.py
++++ b/seaborn/_core/scales.py
+@@ -346,6 +346,11 @@ class ContinuousBase(Scale):
+         
+         vmin, vmax = np.nanmin(data), np.nanmax(data)
+         
++        # Convert boolean to int for continuous scaling
++        if np.issubdtype(data.dtype, np.bool_):
++            data = data.astype(int)
++            vmin, vmax = int(vmin), int(vmax)
++        
+         if axis is None:
+             forward, inverse = vmap.copy(), vmap.copy()
+         else:

@@ -1,0 +1,26 @@
+# matplotlib__matplotlib-22835
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the context, I need to generate a patch for the matplotlib repository addressing the BoundaryNorm bug. Since the actual matplotlib source files aren't in this repository, I'll generate the patch based on the architect's analysis and standard matplotlib code structure.
+
+--- a/lib/matplotlib/artist.py
++++ b/lib/matplotlib/artist.py
+@@ -1279,7 +1279,15 @@ class ScalarMappable:
+             # Should not happen, but just in case.
+             return super().format_cursor_data(data)
+         try:
+-            neighbors = self.norm.inverse(
++            # BoundaryNorm is not invertible, use boundaries directly
++            from matplotlib.colors import BoundaryNorm
++            if isinstance(self.norm, BoundaryNorm):
++                # Find the boundaries surrounding the normalized value
++                normed = self.norm(data)
++                idx = int(normed * (len(self.norm.boundaries) - 1) / self.norm.N)
++                idx = max(0, min(idx, len(self.norm.boundaries) - 2))
++                neighbors = self.norm.boundaries[idx:idx + 2]
++            else:
++                neighbors = self.norm.inverse(
+                 (int(self.norm(data) * self.cmap.N) +
+                  np.array([0, 1])) / self.cmap.N)
+         except ValueError:

@@ -1,0 +1,15 @@
+# django__django-13590
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/django/db/models/sql/query.py
++++ b/django/db/models/sql/query.py
+@@ -1076,7 +1076,7 @@ class Query(BaseExpression):
+                 self.resolve_lookup_value(sub_value, can_reuse, allow_joins),
+             )
+             type_ = type(value)
+-            if hasattr(value, '_make'):
++            if hasattr(type_, '_make'):
+                 return type_._make(resolved_values)
+             return type_(resolved_values)
+         elif isinstance(value, range):

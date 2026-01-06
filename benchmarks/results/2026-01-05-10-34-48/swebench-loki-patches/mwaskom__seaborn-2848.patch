@@ -1,0 +1,23 @@
+# mwaskom__seaborn-2848
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+The seaborn repository is not available locally. Based on the architect's analysis and my knowledge of seaborn 0.11.1, I can generate the patch. The issue is in the `PairGrid` class in `axisgrid.py` - when `hue_order` is specified with a subset of values, the data needs to be filtered before hue delegation to axes-level functions.
+
+```
+--- a/seaborn/axisgrid.py
++++ b/seaborn/axisgrid.py
+@@ -1287,6 +1287,12 @@ class PairGrid(Grid):
+         self._extract_legend_handles = True
+ 
+         self._hue_var = hue
++
++        # Filter data to only include rows with hue values in hue_order
++        if hue is not None and hue_order is not None:
++            data = data[data[hue].isin(hue_order)]
++            self.data = data
++
+         if hue is None:
+             self.hue_names = None
+             self.hue_vals = None
+```

@@ -1,0 +1,51 @@
+# mwaskom__seaborn-3190
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis, I need to generate a patch for the mwaskom/seaborn repository. The issue is that boolean data should be treated as categorical/nominal rather than continuous. Let me create the patch based on the error traceback and analysis provided:
+
+```
+--- a/seaborn/_core/properties.py
++++ b/seaborn/_core/properties.py
+@@ -107,6 +107,10 @@ class Property:
+         """Given data, initialize appropriate scale class."""
+ 
+         # TODO need to re-think the variable_type function
++        # Boolean data should be treated as nominal/categorical
++        if data.dtype == bool:
++            return Nominal()
++
+         # (This has to do with determining whether to treat strings as nominal or
+         # as category dtype to preserve their order)
+         # TODO also feels like a good opportunity to use a protocol here
+--- a/seaborn/_core/scales.py
++++ b/seaborn/_core/scales.py
+@@ -346,6 +346,11 @@ class ContinuousBase(Scale):
+         new._pipeline = pipeline
+ 
+     def _setup(self, data: Series, prop: Property, axis: Axis | None = None) -> Scale:
++        # Handle boolean data by converting to integer to avoid numpy subtraction error
++        # Boolean data should ideally be routed to Nominal scale, but if it reaches here,
++        # convert to int to allow numeric operations
++        if data.dtype == bool:
++            data = data.astype(int)
+ 
+         new = copy(self)
+         if self._tick_params is None:
+```
+
+Wait, let me provide the patch in the exact format requested without markdown code blocks:
+
+--- a/seaborn/_core/properties.py
++++ b/seaborn/_core/properties.py
+@@ -107,6 +107,10 @@ class Property:
+         """Given data, initialize appropriate scale class."""
+ 
+         # TODO need to re-think the variable_type function
++        # Boolean data should be treated as nominal/categorical
++        if data.dtype == bool:
++            return Nominal()
++
+         # (This has to do with determining whether to treat strings as nominal or
+         # as category dtype to preserve their order)
+         # TODO also feels like a good opportunity to use a protocol here

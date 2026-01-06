@@ -1,0 +1,21 @@
+--- a/sphinx/ext/autodoc/typehints.py
++++ b/sphinx/ext/autodoc/typehints.py
+@@ -19,6 +19,9 @@ def record_typehints(app: Sphinx, objtype: str, name: str, obj: Any,
+                      options: Dict, args: str, retann: str) -> Tuple[str, str]:
+     """Record type hints to env object."""
+     try:
++        if app.config.autodoc_typehints == 'none':
++            return '', ''
++        
+         if callable(obj):
+             annotations = app.env.temp_data.setdefault('annotations', {})
+             annotation = annotations.setdefault(name, {})
+@@ -40,6 +43,9 @@ def merge_typehints(app: Sphinx, domain: str, objtype: str, contentnode: Elemen
+     """Merge type hints into parameter descriptions."""
+     if domain != 'py':
+         return
++    
++    if app.config.autodoc_typehints == 'none':
++        return
+     if app.config.autodoc_typehints not in ('both', 'description'):
+         return

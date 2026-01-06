@@ -1,0 +1,9 @@
+{
+  "instance_id": "scikit-learn__scikit-learn-12471",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "This appears to be the Loki Mode repository itself, not a scikit-learn repo. Based on the task description, I need to generate a patch for the scikit-learn OneHotEncoder issue. Let me create the patch based on the bug description and standard scikit-learn structure:\n\n--- a/sklearn/preprocessing/_encoders.py\n+++ b/sklearn/preprocessing/_encoders.py\n@@ -400,6 +400,15 @@ class OneHotEncoder(_BaseEncoder):\n                     else:\n                         # unknown categories are encoded as all zeros\n                         Xi = Xi.copy()\n+                        \n+                        # Handle string dtypes: convert to object dtype to avoid\n+                        # truncation when replacing unknown values with first category\n+                        if Xi.dtype.kind in ('U', 'S'):\n+                            # Check if first category is longer than current dtype\n+                            first_cat = self.categories_[i][0]\n+                            if hasattr(first_cat, '__len__') and len(str(first_cat)) > Xi.dtype.itemsize // 4:\n+                                Xi = Xi.astype(object)\n+                        \n                         Xi[~valid_mask] = self.categories_[i][0]\n                 # We use check_unknown=False, since _transform() is only\n                 # called to transform the training data, and we already",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T20:30:48.731921"
+}

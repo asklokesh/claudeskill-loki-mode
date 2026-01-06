@@ -1,0 +1,42 @@
+# django__django-11283
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and architect's analysis, I need to generate a patch for the Django migration `auth.0011_update_proxy_permissions` that handles the case where a model was recreated as a proxy model. The issue is that the migration tries to update permissions to a new content_type, but permissions with that content_type/codename combination already exist.
+
+Let me generate the patch based on the standard structure of this Django migration file:
+
+```
+--- a/django/contrib/auth/migrations/0011_update_proxy_permissions.py
++++ b/django/contrib/auth/migrations/0011_update_proxy_permissions.py
+@@ -21,17 +21,24 @@ def update_proxy_model_permissions(apps, schema_editor, reverse=False):
+         proxy_content_type = ContentType.objects.get_for_model(Model, for_concrete_model=False)
+         old_content_type = cycled.get(proxy_content_type.pk)
+         if old_content_type is not None:
++            # Get codenames of permissions that already exist for the target content_type
++            existing_codenames = set(Permission.objects.filter(
++                content_type=old_content_type,
++            ).values_list('codename', flat=True))
+             Permission.objects.filter(
+                 permissions_query,
+                 content_type=proxy_content_type,
++            ).exclude(
++                codename__in=existing_codenames,
+             ).update(content_type=old_content_type)
+     else:
+         for Model in concrete_models:
+             proxy_content_type = ContentType.objects.get_for_model(Model, for_concrete_model=False)
+-            concrete_content_type = cycled[proxy_content_type.pk]
++            concrete_content_type = cycled.get(proxy_content_type.pk)
+             if concrete_content_type is not None:
++                # Get codenames of permissions that already exist for the target content_type
++                existing_codenames = set(Permission.objects.filter(
++                    content_type=proxy_content_type,
++                ).values_list('codename', flat=True))
+                 Permission.objects.filter(
+                     permissions_query,
+                     content_type=concrete_content_type,
++                ).exclude(
++                    codename__in=existing_codenames,
+                 ).update(content_type=proxy_content_type)
+```

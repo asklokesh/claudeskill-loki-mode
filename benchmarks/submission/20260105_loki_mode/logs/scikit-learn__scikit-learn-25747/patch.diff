@@ -1,0 +1,24 @@
+I understand now. This is a task to generate a patch for a scikit-learn issue, but I'm in the loki-mode repository. I need to create the patch based on the issue description and the architect's analysis. Let me create the appropriate patch for the scikit-learn repository.
+
+Based on the architect's analysis, the fix needs to be in `sklearn/utils/_set_output.py` in the `_wrap_in_pandas_container` function. The issue is that it unconditionally sets the index from the original input, which fails when the transformer changes the number of rows (aggregation).
+
+Here's the patch:
+
+--- a/sklearn/utils/_set_output.py
++++ b/sklearn/utils/_set_output.py
+@@ -56,8 +56,13 @@
+     if isinstance(data_to_wrap, pd.DataFrame):
+         if columns is not None:
+             data_to_wrap.columns = columns
+-        if index is not None:
+-            data_to_wrap.index = index
++        if index is not None:
++            # Only set the index if lengths match to support transformers
++            # that aggregate/filter data (change number of rows)
++            if len(index) == len(data_to_wrap):
++                data_to_wrap.index = index
++            # Otherwise, preserve the transformer's output index
++        
+         return data_to_wrap
+ 
+     return pd.DataFrame(data_to_wrap, index=index, columns=columns)

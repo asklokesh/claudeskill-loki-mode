@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-15851",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "This appears to be the Loki Mode skill repository, not a Django repository. The task asks me to generate a patch for a Django issue, but I need to create the patch based on the architect's analysis without having the actual Django codebase present.\n\nBased on the architect's analysis, I need to generate a patch that reorders the command arguments in the PostgreSQL client file so that additional parameters come before the database name.\n\n--- a/django/db/backends/postgresql/client.py\n+++ b/django/db/backends/postgresql/client.py\n@@ -42,13 +42,13 @@\n             args.extend([\"-p\", str(port)])\n         if dbname:\n             args.extend([\"-d\", dbname])\n+        args.extend(parameters)\n \n         env = {}\n         if passwd:\n             env[\"PGPASSWORD\"] = str(passwd)\n         if service:\n             env[\"PGSERVICE\"] = str(service)\n-        args.extend(parameters)\n \n         return args, env",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T19:16:02.896058"
+}

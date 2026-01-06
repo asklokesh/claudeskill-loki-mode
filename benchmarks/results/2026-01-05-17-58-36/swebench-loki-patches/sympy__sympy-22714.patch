@@ -1,0 +1,14 @@
+# sympy__sympy-22714
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/sympy/geometry/point.py
++++ b/sympy/geometry/point.py
+@@ -150,7 +150,7 @@
+             if is_zero is False:
+                 raise ValueError('Imaginary coordinates are not permitted.')
+         else:
+-            if im(a).is_zero is False:
++            if im(a).is_nonzero:
+                 raise ValueError('Imaginary coordinates are not permitted.')
+         coords.append(a)

@@ -1,0 +1,12 @@
+--- a/sympy/matrices/expressions/blockmatrix.py
++++ b/sympy/matrices/expressions/blockmatrix.py
+@@ -301,7 +301,7 @@ class BlockDiagMatrix(BlockMatrix):
+     @property
+     def blocks(self):
+         from sympy.matrices.immutable import ImmutableDenseMatrix
+         mats = self.args
+         data = [[mats[i] if i == j else ZeroMatrix(mats[i].rows, mats[j].cols)
+                 for j in range(len(mats))]
+                 for i in range(len(mats))]
+-        return ImmutableDenseMatrix(data)
++        return ImmutableDenseMatrix(data, evaluate=False)

@@ -1,0 +1,22 @@
+# django__django-12286
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/django/core/checks/translation.py
++++ b/django/core/checks/translation.py
+@@ -55,7 +55,14 @@ def check_language_settings_consistent(app_configs, **kwargs):
+     available_tags = {i for i, _ in settings.LANGUAGES} | {'en-us'}
+     messages = []
+     if settings.LANGUAGE_CODE not in available_tags:
+-        messages.append(E004)
++        # Check if a base language is available for sublanguages.
++        # Django's translation system falls back to the base language
++        # (e.g., 'de' for 'de-at') if the sublanguage is not available.
++        language_code = settings.LANGUAGE_CODE
++        if '-' in language_code:
++            base_language = language_code.split('-')[0]
++            if base_language not in available_tags:
++                messages.append(E004)
++        else:
++            messages.append(E004)
+     return messages

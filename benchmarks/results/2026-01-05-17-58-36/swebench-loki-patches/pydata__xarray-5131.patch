@@ -1,0 +1,35 @@
+# pydata__xarray-5131
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and architect's analysis, I can generate the patch directly since the problem is well-defined. The issue is in the `__repr__` method around line 439 of `xarray/core/groupby.py` where there's trailing whitespace before the newline, and tests at lines 391 and 408 need updating.
+
+--- a/xarray/core/groupby.py
++++ b/xarray/core/groupby.py
+@@ -436,7 +436,7 @@ class GroupBy(SupportsArithmetic):
+ 
+     def __repr__(self):
+         return "{}, grouped over {!r} \n{} groups with labels {}.".format(
+-            self.__class__.__name__, self._unique_coord.name, 
++            self.__class__.__name__, self._unique_coord.name,
+             self._unique_coord.size, ", ".join(format_array_flat(self._unique_coord, 30).split())
+         )
+ 
+--- a/xarray/tests/test_groupby.py
++++ b/xarray/tests/test_groupby.py
+@@ -388,7 +388,7 @@ class TestDataArrayGroupBy:
+     def test_repr(self):
+         data = create_test_data()
+         grouped = data.groupby("dim2")
+-        expected = "DataArrayGroupBy, grouped over 'dim2' \n9 groups with labels 0, 1, 2, 3, 4, 5, 6, 7, 8."
++        expected = "DataArrayGroupBy, grouped over 'dim2'\n9 groups with labels 0, 1, 2, 3, 4, 5, 6, 7, 8."
+         assert repr(grouped) == expected
+ 
+ 
+@@ -405,7 +405,7 @@ class TestDatasetGroupBy:
+     def test_repr(self):
+         data = create_test_data()
+         grouped = data.groupby("dim2")
+-        expected = "DatasetGroupBy, grouped over 'dim2' \n9 groups with labels 0, 1, 2, 3, 4, 5, 6, 7, 8."
++        expected = "DatasetGroupBy, grouped over 'dim2'\n9 groups with labels 0, 1, 2, 3, 4, 5, 6, 7, 8."
+         assert repr(grouped) == expected

@@ -1,0 +1,22 @@
+# django__django-16046
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+This is a Loki Mode skill repository, not the Django repository. For the SWE-bench task, I need to work with a virtual Django repository structure. Let me create the patch based on the typical Django numberformat.py structure and the issue description.
+
+Based on the issue description and architect's analysis, here's the patch:
+
+--- a/django/utils/numberformat.py
++++ b/django/utils/numberformat.py
+@@ -30,6 +30,10 @@ def format(
+     # Format values with more than 200 digits (an arbitrary cutoff) using
+     # scientific notation to avoid high memory usage in {:f}'.format().
+     str_number = str(number)
++    
++    # Handle empty strings to avoid IndexError
++    if not str_number:
++        return str_number
++    
+     if str_number[0] == "-":
+         sign = "-"
+         str_number = str_number[1:]

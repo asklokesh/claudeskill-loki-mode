@@ -1,0 +1,64 @@
+# sympy__sympy-11897
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+I understand now. You're asking me to generate a patch for a SWE-bench issue as if I'm working on the sympy repository. Based on the issue description about LaTeX printer inconsistency, I need to create a patch that fixes the `_print_Mul` method in the LaTeX printer. Let me create a proper patch in unified diff format:
+
+--- a/sympy/printing/latex.py
++++ b/sympy/printing/latex.py
+@@ -400,6 +400,55 @@
+         return r"\left(%s\right)" % self._print(expr.args[0])
+ 
+     def _print_Mul(self, expr):
++        from sympy.core.mul import _keep_coeff
++        from sympy.core.numbers import Rational
++        
++        include_parens = False
++        if expr.could_extract_minus_sign():
++            expr = -expr
++            tex = "-"
++            if expr.is_Add:
++                tex += "("
++                include_parens = True
++        else:
++            tex = ""
++
++        numer, denom = [], []
++
++        for item in Mul.make_args(expr):
++            if item.is_commutative and item.is_Pow and item.exp.is_Rational and item.exp.is_negative:
++                if item.exp != -1:
++                    denom.append(Pow(item.base, -item.exp, evaluate=False))
++                else:
++                    denom.append(item.base)
++            elif item.is_Rational and item is not S.Infinity:
++                if item.p != 1:
++                    numer.append(Integer(item.p))
++                if item.q != 1:
++                    denom.append(Integer(item.q))
++            else:
++                numer.append(item)
++
++        if not numer:
++            numer = [S.One]
++
++        numer_tex = " ".join([self.parenthesize(x, prec, strict=False) 
++                             for x in numer])
++
++        if denom:
++            denom_tex = " ".join([self.parenthesize(x, prec, strict=False)
++                                 for x in denom])
++            tex += r"\frac{%s}{%s}" % (numer_tex, denom_tex)
++        else:
++            tex += numer_tex
++
++        if include_parens:
++            tex += ")"
++
++        return tex
++
++    def _print_Mul_old(self, expr):
++        # Old implementation kept for reference
+         prec = precedence(expr)
+ 
+         c, nc = expr.args_cnc()

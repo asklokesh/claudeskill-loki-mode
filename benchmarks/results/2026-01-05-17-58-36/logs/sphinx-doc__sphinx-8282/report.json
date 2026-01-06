@@ -1,0 +1,9 @@
+{
+  "instance_id": "sphinx-doc__sphinx-8282",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/sphinx/ext/autodoc/typehints.py\n+++ b/sphinx/ext/autodoc/typehints.py\n@@ -19,6 +19,9 @@ def record_typehints(app: Sphinx, objtype: str, name: str, obj: Any,\n                      options: Dict, args: str, retann: str) -> Tuple[str, str]:\n     \"\"\"Record type hints to env object.\"\"\"\n     try:\n+        if app.config.autodoc_typehints == 'none':\n+            return '', ''\n+        \n         if callable(obj):\n             annotations = app.env.temp_data.setdefault('annotations', {})\n             annotation = annotations.setdefault(name, {})\n@@ -40,6 +43,9 @@ def merge_typehints(app: Sphinx, domain: str, objtype: str, contentnode: Elemen\n     \"\"\"Merge type hints into parameter descriptions.\"\"\"\n     if domain != 'py':\n         return\n+    \n+    if app.config.autodoc_typehints == 'none':\n+        return\n     if app.config.autodoc_typehints not in ('both', 'description'):\n         return",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T20:53:54.367194"
+}

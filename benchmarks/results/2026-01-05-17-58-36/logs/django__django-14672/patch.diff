@@ -1,0 +1,24 @@
+I need to understand the context better. This is the Loki Mode skill repository, and I'm being asked to generate a patch for a Django issue. Based on the architect's analysis, I need to create a patch that adds `make_hashable()` to the `through_fields` in the `ManyToManyRel.identity` property.
+
+Let me generate the patch based on the Django source code structure and the issue description:
+
+--- a/django/db/models/fields/reverse_related.py
++++ b/django/db/models/fields/reverse_related.py
+@@ -7,7 +7,7 @@ from django.db.models import Q
+ from django.utils.functional import cached_property
+ from django.utils.hashable import make_hashable
+ 
+-from . import Field
++from . import Field
+ 
+ 
+ class ForeignObjectRel:
+@@ -313,7 +313,7 @@ class ManyToManyRel(ForeignObjectRel):
+             self.related_model,
+             self.related_query_name(),
+             make_hashable(self.limit_choices_to),
+-            self.through_fields,
++            make_hashable(self.through_fields),
+             self.symmetrical,
+             self.db_constraint,
+         )

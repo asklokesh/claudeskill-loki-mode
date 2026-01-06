@@ -1,0 +1,9 @@
+{
+  "instance_id": "matplotlib__matplotlib-24149",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the architect's analysis and the issue description, I can generate the patch for the matplotlib bug. The fix involves wrapping the `cbook._safe_first_finite()` calls with `StopIteration` exception handlers in the `_convert_dx` method.\n\n--- a/lib/matplotlib/axes/_axes.py\n+++ b/lib/matplotlib/axes/_axes.py\n@@ -2179,7 +2179,11 @@\n             # removes the units from unit packages like `pint` that\n             # wrap numpy arrays.\n             try:\n-                x0 = cbook._safe_first_finite(x0)\n+                try:\n+                    x0 = cbook._safe_first_finite(x0)\n+                except StopIteration:\n+                    # All data is non-finite, fall back to first element\n+                    x0 = cbook.safe_first_element(x0)\n             except (TypeError, IndexError, KeyError):\n                 pass\n \n@@ -2192,7 +2196,11 @@\n                 # remove any units and convert to a float\n                 pass\n             try:\n-                x1 = cbook._safe_first_finite(xconv)\n+                try:\n+                    x1 = cbook._safe_first_finite(xconv)\n+                except StopIteration:\n+                    # All data is non-finite, fall back to first element\n+                    x1 = cbook.safe_first_element(xconv)\n             except (TypeError, IndexError, KeyError):\n                 pass\n             dx = convert(dx)",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T19:36:35.106605"
+}

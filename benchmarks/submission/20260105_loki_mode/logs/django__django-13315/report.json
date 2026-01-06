@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-13315",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the architect's analysis, I'll generate the patch using the annotate() approach which is cleaner and more database-agnostic:\n\n--- a/django/db/models/fields/related.py\n+++ b/django/db/models/fields/related.py\n@@ -1098,10 +1098,18 @@ class ForeignKey(ForeignObject):\n             db = kwargs.pop('using', None)\n         if kwargs.get('widget') is None:\n             kwargs['widget'] = self.formfield_for_choice_field(**kwargs)\n+        \n+        # Get the base queryset\n+        queryset = self.remote_field.model._default_manager.using(using)\n+        \n+        # Apply limit_choices_to if present, and use annotate() to deduplicate\n+        # when JOINs would cause duplicate rows. Empty annotate() groups by PK,\n+        # which is always comparable and unique.\n+        if self.remote_field.limit_choices_to:\n+            queryset = queryset.annotate()\n+        \n         return super().formfield(**{\n             'form_class': forms.ModelChoiceField,\n-            'queryset': self.remote_field.model._default_manager.using(using),\n+            'queryset': queryset,\n             'to_field_name': self.remote_field.field_name,\n             **kwargs,\n         })",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:39:11.293536"
+}

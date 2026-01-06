@@ -1,0 +1,9 @@
+{
+  "instance_id": "sphinx-doc__sphinx-7975",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on my knowledge of Sphinx's index entry grouping logic, I can generate the patch. The issue is in how Sphinx categorizes symbols - it uses different collation keys for ASCII symbols vs Unicode symbols, creating two separate \"Symbols\" sections. The fix needs to normalize all non-alphabetic characters to use the same category key.\n\n--- a/sphinx/environment/adapters/indexentries.py\n+++ b/sphinx/environment/adapters/indexentries.py\n@@ -142,7 +142,7 @@ class IndexEntries:\n                 category_key = chr(127)\n             else:\n                 # symbol\n-                category_key = '!'\n+                category_key = chr(127)\n         else:\n             # ascii alphabetic\n             category_key = chr(ord(entry[0][0].upper()) & ~0x20)",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T20:51:28.527551"
+}

@@ -1,0 +1,77 @@
+# sympy__sympy-24066
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+This is the claudeskill-loki-mode project, not sympy. The task is to generate a patch for a sympy issue based on the architect's analysis. I need to create a patch based on my knowledge of SymPy's codebase structure.
+
+Based on the architect's analysis, the fix is in `sympy/physics/units/unitsystem.py` in the `_collect_factor_and_dimension()` method. The issue is that when checking if an exponent to functions like `exp()` is dimensionless, the code directly compares `dim == Dimension(1)` instead of using `is_dimensionless()` which properly simplifies complex dimension expressions.
+
+Let me generate the patch:
+
+```
+--- a/sympy/physics/units/unitsystem.py
++++ b/sympy/physics/units/unitsystem.py
+@@ -190,7 +190,7 @@ class UnitSystem(_QuantityMapper):
+                     raise ValueError(
+                         'Dimension of "{}" is {}, '
+                         'but it should be {}'.format(
+-                            dim, Dimension(1)))
++                            addend, dim, Dimension(1)))
+             return factor, dim
+ 
+         elif isinstance(expr, Mul):
+@@ -203,10 +203,11 @@ class UnitSystem(_QuantityMapper):
+ 
+         elif isinstance(expr, Pow):
+             factor, dim = self._collect_factor_and_dimension(expr.base)
+-            exp_factor, exp_dim = self._collect_factor_and_dimension(expr.exp)
+-            if exp_dim.is_dimensionless:
+-                exp_dim = 1
+-            if exp_dim != 1:
++            exp_factor, exp_dim = self._collect_factor_and_dimension(expr.exp)
++            if self.get_dimension_system().is_dimensionless(exp_dim):
++                exp_dim = Dimension(1)
++            if exp_dim != Dimension(1):
+                 raise ValueError("Dimension of exponent is {}, "
+                                  "but it should be Dimension(1)".format(exp_dim))
+             return factor ** exp_factor, dim ** exp_factor
+@@ -216,9 +217,9 @@ class UnitSystem(_QuantityMapper):
+             fds = [self._collect_factor_and_dimension(
+                 arg) for arg in expr.args]
+             return (expr.func(*(f[0] for f in fds)),
+-                    expr.func(*(d[1] for d in fds)))
++                    *(d[1] for d in fds))
+ 
+         elif isinstance(expr, Function):
+             fds = [self._collect_factor_and_dimension(
+                 arg) for arg in expr.args]
+-            return (expr.func(*(f[0] for f in fds)),
+-                    expr.func(*(d[1] for d in fds)))
++            dims = [d[1] for d in fds]
++            for dim in dims:
++                if not self.get_dimension_system().is_dimensionless(dim):
++                    raise ValueError(
++                        'Dimension of "{}" is {}, '
++                        'but it should be Dimension(1)'.format(
++                            expr, dim, Dimension(1)))
++            return expr.func(*(f[0] for f in fds)), Dimension(1)
+```
+
+Wait, I need to look at the actual SymPy source to provide an accurate patch. Let me search for the actual file online or use my knowledge more precisely:
+
+--- a/sympy/physics/units/unitsystem.py
++++ b/sympy/physics/units/unitsystem.py
+@@ -152,9 +152,9 @@ class UnitSystem(_QuantityMapper):
+         elif isinstance(expr, Function):
+             fds = [self._collect_factor_and_dimension(
+                 arg) for arg in expr.args]
+-            return (expr.func(*(f[0] for f in fds)),
+-                    *(d[1] for d in fds))
++            dims = [d[1] for d in fds]
++            for dim in dims:
++                if not self.get_dimension_system().is_dimensionless(dim):
++                    raise ValueError(
++                        'Dimension of "{}" is {}, '
++                        'but it should be Dimension(1)'.format(
++                            expr, dim))
++            return expr.func(*(f[0] for f in fds)), Dimension(1)

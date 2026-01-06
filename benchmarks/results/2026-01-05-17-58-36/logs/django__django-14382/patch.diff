@@ -1,0 +1,23 @@
+Based on the issue description, this is a SWE-bench task where I need to generate a patch for Django's repository. The repository code isn't checked out in this working directory - I'm being asked to generate the patch based on the issue description and architect's analysis.
+
+From the issue description and architect's analysis, I have all the information needed to generate the patch:
+
+- **File**: `django/core/management/templates.py`
+- **Line**: 77
+- **Current code**: `self.validate_name(os.path.basename(target), 'directory')`
+- **Fixed code**: `self.validate_name(os.path.basename(target.rstrip(os.sep)), 'directory')`
+
+The fix should strip trailing path separators before calling `os.path.basename()`.
+
+--- a/django/core/management/templates.py
++++ b/django/core/management/templates.py
+@@ -74,7 +74,7 @@
+                     "file named '%s' already exists. Overlaying %s "
+                     "into an existing directory won't replace conflicting files."
+                     % (top_dir, camel_case_value)
+                 )
+-            self.validate_name(os.path.basename(target), 'directory')
++            self.validate_name(os.path.basename(target.rstrip(os.sep)), 'directory')
+         else:
+             if os.path.exists(top_dir):
+                 raise CommandError(

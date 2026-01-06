@@ -1,0 +1,18 @@
+# matplotlib__matplotlib-23987
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and my knowledge of matplotlib's codebase structure around version 3.6.0, I'll generate the patch. The issue is in `lib/matplotlib/figure.py` where the `subplots_adjust` method checks for layout engine compatibility.
+
+--- a/lib/matplotlib/figure.py
++++ b/lib/matplotlib/figure.py
+@@ -2425,7 +2425,8 @@ class FigureBase(Artist):
+ 
+     def subplots_adjust(self, left=None, bottom=None, right=None, top=None,
+                         wspace=None, hspace=None):
+-        if self.get_layout_engine() is not None:
++        if (self.get_layout_engine() is not None
++                and not self.get_layout_engine().adjust_compatible):
+             _api.warn_external(
+                 "This figure was using a layout engine that is incompatible "
+                 "with subplots_adjust and/or tight_layout; not calling "

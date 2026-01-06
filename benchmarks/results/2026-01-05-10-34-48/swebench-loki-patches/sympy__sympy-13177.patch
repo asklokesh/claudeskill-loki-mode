@@ -1,0 +1,15 @@
+# sympy__sympy-13177
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/sympy/core/mod.py
++++ b/sympy/core/mod.py
+@@ -120,7 +120,8 @@ def doit(p, q):
+             return p
+ 
+         if (p == q or p == -q or
+-                p.is_Pow and p.exp.is_Integer and p.base == q or
++                p.is_Pow and p.exp.is_integer and p.exp.is_positive and
++                p.base == q and q.is_integer or
+                 p.is_integer and q == 1):
+             return S.Zero

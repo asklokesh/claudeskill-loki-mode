@@ -1,0 +1,75 @@
+# django__django-14017
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and architect's analysis, I can generate the patch. The issue is in `django/db/models/query_utils.py` where the `Q` class's `_combine` method raises a `TypeError` for non-Q objects. The fix is to add `__rand__` and `__ror__` methods to handle the reversed operand case when the left operand is a `Combinable` subclass like `Exists`.
+
+```
+--- a/django/db/models/query_utils.py
++++ b/django/db/models/query_utils.py
+@@ -40,6 +40,7 @@ class Q(tree.Node):
+     """
+     AND = 'AND'
+     OR = 'OR'
++    conditional = True
+     default = AND
+ 
+     def __init__(self, *args, _connector=None, _negated=False, **kwargs):
+@@ -90,6 +91,12 @@ class Q(tree.Node):
+     def __and__(self, other):
+         return self._combine(other, self.AND)
+ 
++    def __rand__(self, other):
++        return self._combine(other, self.AND)
++
++    def __ror__(self, other):
++        return self._combine(other, self.OR)
++
+     def __invert__(self):
+         obj = type(self)()
+         obj.add(self, self.AND)
+@@ -69,7 +69,7 @@ class Q(tree.Node):
+ 
+     def _combine(self, other, conn):
+-        if not isinstance(other, Q):
++        if not(isinstance(other, Q) or getattr(other, 'conditional', False)):
+             raise TypeError(other)
+ 
+         # If the other Q() is empty, ignore it and just use `self`.
+```
+
+Wait, let me provide a cleaner, properly formatted patch:
+
+```
+--- a/django/db/models/query_utils.py
++++ b/django/db/models/query_utils.py
+@@ -40,6 +40,7 @@ class Q(tree.Node):
+     """
+     AND = 'AND'
+     OR = 'OR'
++    conditional = True
+     default = AND
+ 
+     def __init__(self, *args, _connector=None, _negated=False, **kwargs):
+@@ -69,7 +70,7 @@ class Q(tree.Node):
+ 
+     def _combine(self, other, conn):
+-        if not isinstance(other, Q):
++        if not(isinstance(other, Q) or getattr(other, 'conditional', False)):
+             raise TypeError(other)
+ 
+         # If the other Q() is empty, ignore it and just use `self`.
+@@ -90,6 +91,12 @@ class Q(tree.Node):
+     def __and__(self, other):
+         return self._combine(other, self.AND)
+ 
++    def __rand__(self, other):
++        return self._combine(other, self.AND)
++
++    def __ror__(self, other):
++        return self._combine(other, self.OR)
++
+     def __invert__(self):
+         obj = type(self)()
+         obj.add(self, self.AND)
+```

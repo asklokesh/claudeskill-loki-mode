@@ -1,0 +1,35 @@
+# django__django-10924
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/django/db/models/fields/__init__.py
++++ b/django/db/models/fields/__init__.py
+@@ -1749,6 +1749,8 @@ class FilePathField(Field):
+         self.match = match
+         self.recursive = recursive
+         self.allow_files = allow_files
+         self.allow_folders = allow_folders
++        if callable(path):
++            path = path()
+         self.path = path
+         kwargs.setdefault("max_length", 100)
+         super().__init__(*args, **kwargs)
+@@ -1759,7 +1761,7 @@ class FilePathField(Field):
+ 
+     def deconstruct(self):
+         name, path, args, kwargs = super().deconstruct()
+-        if self.path != "":
++        if self.path != "" or "path" in kwargs:
+             kwargs["path"] = self.path
+         if self.match is not None:
+             kwargs["match"] = self.match
+--- a/django/forms/fields.py
++++ b/django/forms/fields.py
+@@ -1091,6 +1091,8 @@ class FilePathField(ChoiceField):
+         self.recursive = recursive
+         self.allow_files = allow_files
+         self.allow_folders = allow_folders
++        if callable(path):
++            path = path()
+         self.choices = []
+         self.choices.extend(self.widget.choices)

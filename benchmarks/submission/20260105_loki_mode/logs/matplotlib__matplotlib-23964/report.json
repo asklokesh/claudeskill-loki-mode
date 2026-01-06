@@ -1,0 +1,9 @@
+{
+  "instance_id": "matplotlib__matplotlib-23964",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "This appears to be the claudeskill-loki-mode repository, not the matplotlib repository. The task is asking me to generate a patch for matplotlib/matplotlib. Since this is a different repository, I need to generate the patch based on the architect's analysis without having the actual file present.\n\nBased on the architect's analysis, the fix is to add a null check before line 669 in `lib/matplotlib/backends/backend_ps.py`. The issue is that `curr_stream` (or `stream`) can be `None` for empty lines, but the code tries to unpack it without checking.\n\n--- a/lib/matplotlib/backends/backend_ps.py\n+++ b/lib/matplotlib/backends/backend_ps.py\n@@ -666,6 +666,8 @@\n             stream = _text_layout.layout(\n                 clean_line, self._pswriter._font, kern_mode=KERNING_UNFITTED\n             )\n+            if stream is None:\n+                continue\n             for ps_name, xs_names in stream:\n                 ps_used.add(ps_name)\n                 xs_names_encoding = [",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T19:35:19.980877"
+}

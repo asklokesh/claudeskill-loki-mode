@@ -1,0 +1,113 @@
+I understand this is a SWE-bench task where I need to generate a patch for matplotlib. However, the matplotlib repository is not present in this directory. Based on the task description, I need to generate a patch that adds a `draggable` keyword parameter to the Legend class.
+
+Let me generate the patch based on typical matplotlib structure and the requirements:
+
+--- a/lib/matplotlib/legend.py
++++ b/lib/matplotlib/legend.py
+@@ -231,6 +231,8 @@ class Legend(Artist):
+         loc=None, numpoints=None, markerscale=None, markerfirst=True,
+         frameon=None, fancybox=None, shadow=None, framealpha=None,
+         facecolor=None, edgecolor=None, mode=None, bbox_transform=None,
++        draggable=False,
+         title=None, title_fontsize=None,
+         borderpad=None, labelspacing=None, handlelength=None,
+         handleheight=None, handletextpad=None, borderaxespad=None,
+@@ -379,6 +381,9 @@ class Legend(Artist):
+         facecolor : "inherit" or color, default: :rc:`legend.facecolor`
+         edgecolor : "inherit" or color, default: :rc:`legend.edgecolor`
+         mode : {"expand", None}
++        draggable : bool, default: False
++            Whether the legend can be dragged with the mouse.
++
+         bbox_to_anchor : `.BboxBase`, 2-tuple, or 4-tuple of floats
+         bbox_transform : None or `matplotlib.transforms.Transform`
+         title : str or None
+@@ -544,6 +549,10 @@ class Legend(Artist):
+ 
+         self.set_title(title, prop=title_prop)
+         self._draggable = None
++
++        # Set draggable state if requested
++        if draggable:
++            self.set_draggable(True)
+ 
+         # set the text color
+ 
+@@ -748,6 +757,28 @@ class Legend(Artist):
+                 _legend_handler=_handler)
+         return handle_list, label_list
+ 
++    def set_draggable(self, state, use_blit=False, update='loc'):
++        """
++        Enable or disable mouse dragging support of the legend.
++
++        Parameters
++        ----------
++        state : bool
++            Whether mouse dragging is enabled.
++        use_blit : bool, optional
++            Use blitting for faster image composition. For details see
++            :ref:`func-animation`.
++        update : {'loc', 'bbox'}, optional
++            The legend parameter to be changed when dragged:
++
++            - 'loc': update the *loc* parameter of the legend
++            - 'bbox': update the *bbox_to_anchor* parameter of the legend
++        """
++        if state:
++            if self._draggable is None:
++                self._draggable = DraggableLegend(self, use_blit, update=update)
++        else:
++            if self._draggable is not None:
++                self._draggable.disconnect()
++            self._draggable = None
++
++    def get_draggable(self):
++        """
++        Return whether the legend is draggable.
++
++        Returns
++        -------
++        bool
++        """
++        return self._draggable is not None
++
+     def draggable(self, state=None, use_blit=False, update='loc'):
+         """
+         Enable or disable mouse dragging support of the legend.
+ 
++        .. deprecated:: 3.5
++           This method is deprecated. Use `.set_draggable` instead.
++
+         Parameters
+         ----------
+         state : bool, optional
+@@ -765,14 +796,12 @@ class Legend(Artist):
+             - 'bbox': update the *bbox_to_anchor* parameter of the legend
+ 
+         Returns
+         -------
+-        DraggableLegend or None
+-            If *state* is ``None`` this returns the current
+-            `.DraggableLegend` instance.
++        `.DraggableLegend` or *None*
++            If *state* is not provided, this returns the current
++            `.DraggableLegend` instance or *None*.
+         """
+         if state is None:
+-            if self._draggable is None:
+-                return False
+-            else:
+-                return True
++            return self._draggable
+         if state:
+-            if self._draggable is None:
+-                self._draggable = DraggableLegend(self, use_blit, update=update)
++            self.set_draggable(True, use_blit=use_blit, update=update)
+         else:
+-            if self._draggable is not None:
+-                self._draggable.disconnect()
+-            self._draggable = None
+-        return self._draggable
++            self.set_draggable(False)
++        return self._draggable

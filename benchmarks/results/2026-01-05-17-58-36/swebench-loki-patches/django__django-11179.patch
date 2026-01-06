@@ -1,0 +1,17 @@
+# django__django-11179
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis, I need to generate a patch for django/db/models/deletion.py. Since this is a SWE-bench task where I'm generating a patch for a Django repository issue, I'll create the patch based on the provided information about lines 276-281 and the need to mirror the behavior at lines 324-326.
+
+--- a/django/db/models/deletion.py
++++ b/django/db/models/deletion.py
+@@ -277,6 +277,8 @@
+                 query = sql.DeleteQuery(model)
+                 query.delete_batch(pk_list, self.using)
+                 deleted_counter[model._meta.label] += len(pk_list)
++                for instance in instances:
++                    setattr(instance, model._meta.pk.attname, None)
+ 
+         # update fields
+         for model, instances_for_fieldvalues in self.field_updates.items():

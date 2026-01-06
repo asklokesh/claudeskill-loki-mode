@@ -1,0 +1,17 @@
+# sphinx-doc__sphinx-8595
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and typical Sphinx autodoc implementation, I'll generate a patch that fixes the bug where an empty `__all__ = []` is ignored. The fix needs to distinguish between an undefined `__all__` and an empty `__all__` list.
+
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -1043,7 +1043,7 @@ class ModuleDocumenter(Documenter):
+             if self.options.ignore_module_all:
+                 # consider 'special-members' / 'exclude-members' only
+                 return False, list(members.values())
+-            elif __all__ is None:
++            elif not hasattr(self.object, '__all__'):
+                 # for implicit module members, check __module__ to avoid
+                 # documenting imported objects
+                 return True, list(members.values())

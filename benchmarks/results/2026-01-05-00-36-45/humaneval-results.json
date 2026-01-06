@@ -1,0 +1,587 @@
+{
+  "benchmark": "HumanEval",
+  "version": "1.0",
+  "timestamp": "2026-01-05T00:36:46.491969",
+  "model": "opus",
+  "timeout_per_problem": 600,
+  "total_problems": 164,
+  "status": "RUNNING",
+  "problems": [
+    {
+      "task_id": "HumanEval/0",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/0.py"
+    },
+    {
+      "task_id": "HumanEval/1",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/1.py"
+    },
+    {
+      "task_id": "HumanEval/2",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/2.py"
+    },
+    {
+      "task_id": "HumanEval/3",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/3.py"
+    },
+    {
+      "task_id": "HumanEval/4",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/4.py"
+    },
+    {
+      "task_id": "HumanEval/5",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/5.py"
+    },
+    {
+      "task_id": "HumanEval/6",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/6.py"
+    },
+    {
+      "task_id": "HumanEval/7",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/7.py"
+    },
+    {
+      "task_id": "HumanEval/8",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/8.py"
+    },
+    {
+      "task_id": "HumanEval/9",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/9.py"
+    },
+    {
+      "task_id": "HumanEval/10",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/10.py"
+    },
+    {
+      "task_id": "HumanEval/11",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/11.py"
+    },
+    {
+      "task_id": "HumanEval/12",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/12.py"
+    },
+    {
+      "task_id": "HumanEval/13",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/13.py"
+    },
+    {
+      "task_id": "HumanEval/14",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/14.py"
+    },
+    {
+      "task_id": "HumanEval/15",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/15.py"
+    },
+    {
+      "task_id": "HumanEval/16",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/16.py"
+    },
+    {
+      "task_id": "HumanEval/17",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/17.py"
+    },
+    {
+      "task_id": "HumanEval/18",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/18.py"
+    },
+    {
+      "task_id": "HumanEval/19",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/19.py"
+    },
+    {
+      "task_id": "HumanEval/20",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/20.py"
+    },
+    {
+      "task_id": "HumanEval/21",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/21.py"
+    },
+    {
+      "task_id": "HumanEval/22",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/22.py"
+    },
+    {
+      "task_id": "HumanEval/23",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/23.py"
+    },
+    {
+      "task_id": "HumanEval/24",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/24.py"
+    },
+    {
+      "task_id": "HumanEval/25",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/25.py"
+    },
+    {
+      "task_id": "HumanEval/26",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/26.py"
+    },
+    {
+      "task_id": "HumanEval/27",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/27.py"
+    },
+    {
+      "task_id": "HumanEval/28",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/28.py"
+    },
+    {
+      "task_id": "HumanEval/29",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/29.py"
+    },
+    {
+      "task_id": "HumanEval/30",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/30.py"
+    },
+    {
+      "task_id": "HumanEval/31",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/31.py"
+    },
+    {
+      "task_id": "HumanEval/32",
+      "passed": true,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/32.py"
+    },
+    {
+      "task_id": "HumanEval/33",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/33.py"
+    },
+    {
+      "task_id": "HumanEval/34",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/34.py"
+    },
+    {
+      "task_id": "HumanEval/35",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/35.py"
+    },
+    {
+      "task_id": "HumanEval/36",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/36.py"
+    },
+    {
+      "task_id": "HumanEval/37",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/37.py"
+    },
+    {
+      "task_id": "HumanEval/38",
+      "passed": true,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/38.py"
+    },
+    {
+      "task_id": "HumanEval/39",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/39.py"
+    },
+    {
+      "task_id": "HumanEval/40",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/40.py"
+    },
+    {
+      "task_id": "HumanEval/41",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/41.py"
+    },
+    {
+      "task_id": "HumanEval/42",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/42.py"
+    },
+    {
+      "task_id": "HumanEval/43",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/43.py"
+    },
+    {
+      "task_id": "HumanEval/44",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/44.py"
+    },
+    {
+      "task_id": "HumanEval/45",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/45.py"
+    },
+    {
+      "task_id": "HumanEval/46",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/46.py"
+    },
+    {
+      "task_id": "HumanEval/47",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/47.py"
+    },
+    {
+      "task_id": "HumanEval/48",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/48.py"
+    },
+    {
+      "task_id": "HumanEval/49",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/49.py"
+    },
+    {
+      "task_id": "HumanEval/50",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/50.py"
+    },
+    {
+      "task_id": "HumanEval/51",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/51.py"
+    },
+    {
+      "task_id": "HumanEval/52",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/52.py"
+    },
+    {
+      "task_id": "HumanEval/53",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/53.py"
+    },
+    {
+      "task_id": "HumanEval/54",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/54.py"
+    },
+    {
+      "task_id": "HumanEval/55",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/55.py"
+    },
+    {
+      "task_id": "HumanEval/56",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/56.py"
+    },
+    {
+      "task_id": "HumanEval/57",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/57.py"
+    },
+    {
+      "task_id": "HumanEval/58",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/58.py"
+    },
+    {
+      "task_id": "HumanEval/59",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/59.py"
+    },
+    {
+      "task_id": "HumanEval/60",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/60.py"
+    },
+    {
+      "task_id": "HumanEval/61",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/61.py"
+    },
+    {
+      "task_id": "HumanEval/62",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/62.py"
+    },
+    {
+      "task_id": "HumanEval/63",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/63.py"
+    },
+    {
+      "task_id": "HumanEval/64",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/64.py"
+    },
+    {
+      "task_id": "HumanEval/65",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/65.py"
+    },
+    {
+      "task_id": "HumanEval/66",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/66.py"
+    },
+    {
+      "task_id": "HumanEval/67",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/67.py"
+    },
+    {
+      "task_id": "HumanEval/68",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/68.py"
+    },
+    {
+      "task_id": "HumanEval/69",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/69.py"
+    },
+    {
+      "task_id": "HumanEval/70",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/70.py"
+    },
+    {
+      "task_id": "HumanEval/71",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/71.py"
+    },
+    {
+      "task_id": "HumanEval/72",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/72.py"
+    },
+    {
+      "task_id": "HumanEval/73",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/73.py"
+    },
+    {
+      "task_id": "HumanEval/74",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/74.py"
+    },
+    {
+      "task_id": "HumanEval/75",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/75.py"
+    },
+    {
+      "task_id": "HumanEval/76",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/76.py"
+    },
+    {
+      "task_id": "HumanEval/77",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/77.py"
+    },
+    {
+      "task_id": "HumanEval/78",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/78.py"
+    },
+    {
+      "task_id": "HumanEval/79",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/79.py"
+    },
+    {
+      "task_id": "HumanEval/80",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/80.py"
+    },
+    {
+      "task_id": "HumanEval/81",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/81.py"
+    },
+    {
+      "task_id": "HumanEval/82",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/82.py"
+    },
+    {
+      "task_id": "HumanEval/83",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/83.py"
+    },
+    {
+      "task_id": "HumanEval/84",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/84.py"
+    },
+    {
+      "task_id": "HumanEval/85",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/85.py"
+    },
+    {
+      "task_id": "HumanEval/86",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/86.py"
+    },
+    {
+      "task_id": "HumanEval/87",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/87.py"
+    },
+    {
+      "task_id": "HumanEval/88",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/88.py"
+    },
+    {
+      "task_id": "HumanEval/89",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/89.py"
+    },
+    {
+      "task_id": "HumanEval/90",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/90.py"
+    },
+    {
+      "task_id": "HumanEval/91",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/91.py"
+    },
+    {
+      "task_id": "HumanEval/92",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/92.py"
+    },
+    {
+      "task_id": "HumanEval/93",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/93.py"
+    },
+    {
+      "task_id": "HumanEval/94",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/94.py"
+    },
+    {
+      "task_id": "HumanEval/95",
+      "passed": false,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-36-45/humaneval-solutions/95.py"
+    }
+  ]
+}

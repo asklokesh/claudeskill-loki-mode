@@ -1,0 +1,31 @@
+I see this is the Loki Mode skill repository, not the Django repository. As the ENGINEER AGENT for a SWE-bench task, I need to generate a patch based on the described issue without having the actual Django codebase available. Let me generate the patch based on the standard Django dispatcher.py implementation:
+
+--- a/django/dispatch/dispatcher.py
++++ b/django/dispatch/dispatcher.py
+@@ -1,3 +1,4 @@
++import logging
+ import threading
+ import warnings
+ import weakref
+@@ -5,6 +6,9 @@ import weakref
+ from django.utils.inspect import func_accepts_kwargs
+ 
+ 
++logger = logging.getLogger('django.dispatch')
++
++
+ def _make_id(target):
+     if hasattr(target, '__func__'):
+         return (id(target.__self__), id(target.__func__))
+@@ -217,6 +221,11 @@ class Signal:
+                 response = receiver(signal=self, sender=sender, **named)
+             except Exception as err:
+                 responses.append((receiver, err))
++                logger.exception(
++                    'Error calling %s in Signal.send_robust() (%s)',
++                    receiver.__qualname__ if hasattr(receiver, '__qualname__') else receiver,
++                    err,
++                )
+             else:
+                 responses.append((receiver, response))
+         return responses

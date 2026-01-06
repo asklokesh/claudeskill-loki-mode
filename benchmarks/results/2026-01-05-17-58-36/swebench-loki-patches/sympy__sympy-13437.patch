@@ -1,0 +1,31 @@
+# sympy__sympy-13437
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and standard sympy structure, I'll generate the patch for the bell function to handle the infinity case:
+
+--- a/sympy/functions/combinatorial/numbers.py
++++ b/sympy/functions/combinatorial/numbers.py
+@@ -1,6 +1,6 @@
+ from sympy.core import S, Symbol, Rational, Integer, Add, Dummy
+ from sympy.core.function import Function, ArgumentIndexError
+-from sympy.core.numbers import Integer
++from sympy.core.numbers import Integer, Infinity
+ from sympy.core.cache import cacheit
+ from sympy.functions.combinatorial.factorials import binomial, factorial
+ from sympy.functions.elementary.exponentials import log, exp
+@@ -500,6 +500,13 @@ class bell(Function):
+     def _eval_rewrite_as_Sum(self, n, k_sym=None, symbols=None, **kwargs):
+         from sympy import Sum
+         return Sum(S.BellPolynomial(n, k, symbols), (k, 0, n))
++
++    def _eval_is_infinite(self):
++        from sympy import oo
++        arg = self.args[0]
++        if arg is S.Infinity:
++            return True
++        if arg is S.NegativeInfinity or arg.is_infinite:
++            return True
+ 
+     @classmethod
+     def _eval_evalf(cls, n):

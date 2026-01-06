@@ -1,0 +1,9 @@
+{
+  "instance_id": "pytest-dev__pytest-5495",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the context provided, I understand I'm an ENGINEER AGENT that needs to generate a patch for a pytest issue. Since I don't have direct access to the pytest repository in the current environment, I'll generate the patch based on my knowledge of pytest's codebase structure and the issue description.\n\nThe issue is that pytest shows confusing messages when comparing byte strings because it treats them as sequences of integers. I need to modify the assertion comparison logic to detect bytes objects and suppress the \"first extra item\" messaging.\n\n--- a/src/_pytest/assertion/util.py\n+++ b/src/_pytest/assertion/util.py\n@@ -255,6 +255,10 @@ def _compare_eq_sequence(left, right, verbose=0):\n     explanation = []\n     len_left = len(left)\n     len_right = len(right)\n+    \n+    # Skip item-by-item comparison for bytes/bytearray as showing ASCII ordinals is confusing\n+    if isinstance(left, (bytes, bytearray)) and isinstance(right, (bytes, bytearray)):\n+        return explanation\n \n     for i in range(min(len_left, len_right)):\n         if left[i] != right[i]:",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T20:19:12.563648"
+}

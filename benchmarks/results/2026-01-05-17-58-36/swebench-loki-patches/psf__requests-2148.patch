@@ -1,0 +1,31 @@
+# psf__requests-2148
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Now I have enough context. Based on the stack trace from the issue and the current code, I can see that:
+
+1. The `generate()` function inside `iter_content()` (lines 816-837) already catches several exceptions like `ProtocolError`, `DecodeError`, `ReadTimeoutError`, and `SSLError`
+2. However, it doesn't catch `socket.error` which can occur when reading from `self.raw.stream()` or `self.raw.read()`
+3. The issue shows a `socket.error` bubbling up from the standard library during chunked reading
+
+I need to add exception handling for `socket.error` in the `generate()` function. In Python 3, `socket.error` is an alias for `OSError`, but we should handle both for compatibility.
+
+--- a/requests/models.py
++++ b/requests/models.py
+@@ -6,6 +6,7 @@
+ """
+ 
+ import datetime
++import socket
+ 
+ # Import encoding now, to avoid implicit import later.
+ # Implicit import within threads may cause LookupError when standard library is in a ZIP,
+@@ -826,6 +827,8 @@ class Response:
+                     raise ConnectionError(e)
+                 except SSLError as e:
+                     raise RequestsSSLError(e)
++                except (socket.error, OSError) as e:
++                    raise ConnectionError(e)
+             else:
+                 # Standard file-like object.
+                 while True:

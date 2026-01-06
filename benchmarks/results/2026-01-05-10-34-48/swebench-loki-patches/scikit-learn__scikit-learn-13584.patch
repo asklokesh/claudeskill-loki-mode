@@ -1,0 +1,38 @@
+# scikit-learn__scikit-learn-13584
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on my knowledge of scikit-learn's codebase and the issue description, I can generate the patch. The `_changed_params` function in `sklearn/utils/_pprint.py` compares parameter values using `==`, which fails for numpy arrays.
+
+```
+--- a/sklearn/utils/_pprint.py
++++ b/sklearn/utils/_pprint.py
+@@ -89,6 +89,7 @@
+ 
+ import inspect
+ from collections import OrderedDict
++import numpy as np
+ 
+ from ..base import BaseEstimator
+ from .._config import get_config
+@@ -109,7 +110,17 @@ def _changed_params(estimator):
+     init_params = signature(init_func).parameters
+     init_params = {name: param.default for name, param in init_params.items()}
+     for k, v in params.items():
+-        if v != init_params[k]:
++        if init_params[k] is inspect.Parameter.empty:
++            changed_params[k] = v
++            continue
++        try:
++            # Use array_equal for numpy arrays, otherwise standard comparison
++            if isinstance(v, np.ndarray) or isinstance(init_params[k], np.ndarray):
++                is_equal = np.array_equal(v, init_params[k])
++            else:
++                is_equal = v == init_params[k]
++        except (ValueError, TypeError):
++            is_equal = False
++        if not is_equal:
+             changed_params[k] = v
+ 
+     return changed_params
+```

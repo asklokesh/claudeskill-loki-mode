@@ -1,0 +1,98 @@
+# sympy__sympy-18698
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis, I need to generate a patch for the sympy/sympy repository. The issue is in `sympy/polys/polytools.py` where the `sqf_list` function returns multiple factors with the same multiplicity instead of combining them.
+
+Let me generate the patch based on the architect's analysis. The fix involves modifying the `sqf_list` function to combine factors that share the same multiplicity:
+
+--- a/sympy/polys/polytools.py
++++ b/sympy/polys/polytools.py
+@@ -5765,6 +5765,19 @@ def _sorted_factors(factors, method):
+     return sorted(factors, key=key)
+ 
+ 
++def _group_factors_by_multiplicity(factors):
++    """Group factors with the same multiplicity together."""
++    from collections import defaultdict
++    grouped = defaultdict(lambda: S.One)
++    for factor, multiplicity in factors:
++        grouped[multiplicity] *= factor
++    result = []
++    for multiplicity in sorted(grouped.keys()):
++        factor = grouped[multiplicity]
++        result.append((factor, multiplicity))
++    return result
++
++
+ def _factors_product(factors):
+     """Multiply a list of ``bool, factors`` tuples. """
+     return prod([a**b for a, b in factors])
+@@ -5915,7 +5928,10 @@ def sqf_list(f, *gens, **args):
+     """
+     Compute a list of square-free factors of ``f``.
+ 
+-    Examples
++    Factors with the same multiplicity are combined into a single factor.
++    For example, ``(x-2)**3 * (x-3)**3`` becomes ``((x-2)*(x-3), 3)``.
++
++    Examples
+     ========
+ 
+     >>> from sympy import sqf_list
+@@ -5937,7 +5953,10 @@ def sqf_list(f, *gens, **args):
+     """
+     return _generic_factor_list(f, gens, args, method='sqf')
+ 
++def sqf_list(f, *gens, **args):
++    coeff, factors = _generic_factor_list(f, gens, args, method='sqf')
++    return coeff, _group_factors_by_multiplicity(factors)
+ 
+ def sqf(f, *gens, **args):
+     """
+
+Wait, that patch has an error - I'm redefining the function incorrectly. Let me create a proper patch:
+
+--- a/sympy/polys/polytools.py
++++ b/sympy/polys/polytools.py
+@@ -5765,6 +5765,19 @@ def _sorted_factors(factors, method):
+     return sorted(factors, key=key)
+ 
+ 
++def _group_factors_by_multiplicity(factors):
++    """Group factors with the same multiplicity together."""
++    from collections import defaultdict
++    grouped = defaultdict(lambda: S.One)
++    for factor, multiplicity in factors:
++        grouped[multiplicity] *= factor
++    result = []
++    for multiplicity in sorted(grouped.keys()):
++        factor = grouped[multiplicity]
++        result.append((factor, multiplicity))
++    return result
++
++
+ def _factors_product(factors):
+     """Multiply a list of ``bool, factors`` tuples. """
+     return prod([a**b for a, b in factors])
+@@ -5915,7 +5928,9 @@ def sqf_list(f, *gens, **args):
+     """
+     Compute a list of square-free factors of ``f``.
+ 
+-    Examples
++    Factors with the same multiplicity are combined into a single factor.
++
++    Examples
+     ========
+ 
+     >>> from sympy import sqf_list
+@@ -5934,7 +5949,8 @@ def sqf_list(f, *gens, **args):
+     (1, [(x - 2, 1), (x**2 - 1, 2)])
+ 
+     """
+-    return _generic_factor_list(f, gens, args, method='sqf')
++    coeff, factors = _generic_factor_list(f, gens, args, method='sqf')
++    return coeff, _group_factors_by_multiplicity(factors)
+ 
+ 
+ def sqf(f, *gens, **args):

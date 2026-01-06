@@ -1,0 +1,22 @@
+Based on the issue and previous analysis, I'll generate a clean patch. The issue is that the `members` variable needs to filter imported members when `autosummary_imported_members=False`. Here's the patch:
+
+--- a/sphinx/ext/autosummary/generate.py
++++ b/sphinx/ext/autosummary/generate.py
+@@ -246,6 +246,17 @@ def generate_autosummary_content(name: str, obj: Any, parent: Any,
+                 except AttributeError:
+                     pass
+ 
++    def is_skipped_member(membername: str) -> bool:
++        """Check if a member is imported and should be skipped."""
++        if imported_members:
++            return False
++        try:
++            member = safe_getattr(obj, membername, None)
++            return getattr(member, '__module__', None) != name
++        except Exception:
++            return False
++
++    members = [m for m in members if not is_skipped_member(m)]
+     public = [x for x in members if not x.startswith('_')]
+ 
+     if doc.objtype == 'module':

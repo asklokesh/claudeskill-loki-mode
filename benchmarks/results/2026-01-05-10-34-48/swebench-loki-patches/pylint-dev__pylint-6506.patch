@@ -1,0 +1,34 @@
+# pylint-dev__pylint-6506
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and architect's analysis, I can generate the patch directly from the information provided. The issue shows the traceback originating from `pylint/config/config_initialization.py` line 85, and the fix needs to be in `pylint/lint/run.py` to catch the `_UnrecognizedOptionError`.
+
+```
+--- a/pylint/lint/run.py
++++ b/pylint/lint/run.py
+@@ -17,6 +17,7 @@ from pylint.config.config_initialization import _config_initialization
+ from pylint.config.exceptions import ArgumentPreprocessingError
++from pylint.config.exceptions import _UnrecognizedOptionError
+ from pylint.constants import full_version
+ from pylint.lint.base_options import _make_linter_options
+ from pylint.lint.pylinter import PyLinter
+@@ -132,9 +133,14 @@ class Run:
+             verbose_mode=self.verbose,
+         )
+ 
+-        args = _config_initialization(
+-            linter, args, reporter, config_file=self._rcfile, verbose_mode=self.verbose
+-        )
++        try:
++            args = _config_initialization(
++                linter, args, reporter, config_file=self._rcfile, verbose_mode=self.verbose
++            )
++        except _UnrecognizedOptionError as exc:
++            msg = ", ".join(exc.options)
++            linter.add_message("unrecognized-option", line=0, args=msg)
++            raise SystemExit(32) from exc
+ 
+         if linter.config.jobs < 0:
+             print(
+```

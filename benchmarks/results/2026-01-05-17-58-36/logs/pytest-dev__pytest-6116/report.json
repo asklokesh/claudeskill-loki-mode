@@ -1,0 +1,9 @@
+{
+  "instance_id": "pytest-dev__pytest-6116",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Perfect! I found the existing patch. Let me output the clean version:\n\n--- a/src/_pytest/main.py\n+++ b/src/_pytest/main.py\n@@ -109,6 +109,7 @@ def pytest_addoption(parser: Parser) -> None:\n         dest=\"collectonly\",\n         help=\"only collect tests, don't execute them.\",\n     )\n     group.addoption(\n+        \"--co\",\n         \"--collect-only\",\n         \"--collectonly\",\n         action=\"store_true\",",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T20:20:24.397152"
+}

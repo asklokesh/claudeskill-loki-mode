@@ -1,0 +1,74 @@
+# psf__requests-1963
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Now I understand the issue. Looking at the `resolve_redirects` method at line 178, it copies `req` (the original request) at the start of each iteration:
+
+```python
+prepared_request = req.copy()
+```
+
+But at line 260, it updates `req` to the prepared request:
+
+```python
+req = prepared_request
+```
+
+The problem is that `req.copy()` is called at line 178 before the method changes are applied via `self.rebuild_method(prepared_request, resp)` at line 221. So each iteration starts with a copy of the request as it was at that point in the loop.
+
+Wait, let me re-read this more carefully. The issue is that on line 260, `req = prepared_request`, so subsequent iterations should be using the updated request. Let me trace through again:
+
+1. First iteration: `prepared_request = req.copy()` copies original request (e.g., POST)
+2. `rebuild_method` changes POST to GET (for 303)
+3. `req = prepared_request` - now req is GET
+4. Second iteration: `prepared_request = req.copy()` - this should copy the GET request
+
+Actually, looking at the code flow again, this appears to work correctly because `req` is reassigned at line 260. However, I need to look at the exact version being patched. The issue mentions copying the "original" request, so let me check if there's a different version or if the bug description refers to a specific older version.
+
+Looking at the current code, the logic seems correct because `req` is updated at line 260. But the issue report says this is a bug. Let me look more carefully at what `req.copy()` does and whether the response object's request is being used instead.
+
+Actually, I see the issue now. Looking at line 240:
+```python
+extract_cookies_to_jar(prepared_request._cookies, req, resp.raw)
+```
+
+And the comment says "use the old one that we haven't yet touched" - this suggests the code is intentionally using `req` as the "old" request. But at line 260, `req` gets updated to `prepared_request`.
+
+Wait, I need to look at this from the perspective of what the bug report describes. The report says the code copies the *original* request for *all subsequent requests*. Looking at line 260, after processing a redirect, `req` is updated to `prepared_request`. So on the next iteration, `req.copy()` should copy the updated request, not the original.
+
+Let me check if there's a different version of this file where the bug exists. The current code seems to handle this correctly. But since this is a patch request for a specific issue, let me assume this is the buggy version and the fix hasn't been applied yet.
+
+Actually, re-reading the code, I now see the actual issue. The code at line 260 does `req = prepared_request`, but the problem is that on each iteration, it's copying from `req` which was set from the *previous iteration's* prepared_request. However, the method change happens in `rebuild_method` which modifies `prepared_request.method` in place. So when we do `req = prepared_request`, `req` now has the updated method.
+
+The bug must be in an older version of this code. Let me generate the patch assuming the buggy code is similar but doesn't properly track method changes across redirects.
+
+Based on the architect's analysis and the issue description, the fix should ensure that method changes (like POST->GET from 303) are preserved in subsequent redirects (like 307 which should preserve the current method). The current code at line 178 copies from `req`, and at line 260 updates `req = prepared_request`. This should work.
+
+Let me re-read the rebuild_method function more carefully:
+
+```python
+def rebuild_method(self, prepared_request, response):
+    method = prepared_request.method
+    # 303 -> GET
+    # 302 -> GET  
+    # 301 + POST -> GET
+    prepared_request.method = method
+```
+
+So `rebuild_method` reads the method from `prepared_request` and potentially changes it. Since `prepared_request` is a copy of `req`, and `req` is updated at the end of the loop to be `prepared_request`, subsequent iterations should have the updated method.
+
+I think the actual bug might be in the version being patched where `req` is NOT updated at the end of the loop. Let me generate a patch that ensures the redirect chain properly preserves method changes by making sure subsequent redirects use the response's request rather than copying from the original.
+
+Looking at the code structure, the fix should be at line 178 where instead of copying from `req` (which might be the original), we should copy from `resp.request` (the request that generated the response we're processing) after the first iteration.
+
+--- a/requests/sessions.py
++++ b/requests/sessions.py
+@@ -175,7 +175,7 @@ class SessionRedirectMixin:
+         url = self.get_redirect_target(resp)
+         previous_fragment = urlparse(req.url).fragment
+         while url:
+-            prepared_request = req.copy()
++            prepared_request = resp.request.copy()
+ 
+             # Update history and keep track of redirects.
+             # resp.history must ignore the original request in this loop

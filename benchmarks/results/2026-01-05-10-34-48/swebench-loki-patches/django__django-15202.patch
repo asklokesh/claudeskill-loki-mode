@@ -1,0 +1,22 @@
+# django__django-15202
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description, I need to generate a patch for the Django URLValidator. The issue is that `urlsplit()` raises `ValueError` for invalid IPv6 URLs, and this should be caught and converted to a `ValidationError`. Let me generate the patch based on the standard Django codebase structure:
+
+```
+--- a/django/core/validators.py
++++ b/django/core/validators.py
+@@ -127,7 +127,10 @@ class URLValidator(RegexValidator):
+             raise ValidationError(self.message, code=self.code, params={'value': value})
+ 
+         # Then check full URL
+-        splitted_url = urlsplit(value)
++        try:
++            splitted_url = urlsplit(value)
++        except ValueError:
++            raise ValidationError(self.message, code=self.code, params={'value': value})
+         try:
+             super().__call__(value)
+         except ValidationError as e:
+```

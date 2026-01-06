@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-12747",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/django/db/models/deletion.py\n+++ b/django/db/models/deletion.py\n@@ -458,7 +458,10 @@\n             for model, instances in self.data.items():\n                 query.delete_batch(instances, self.using)\n \n-        return sum(deleted_counter.values()), dict(deleted_counter)\n+        # Filter out zero counts for consistency\n+        filtered_counter = {model: count for model, count in deleted_counter.items() if count > 0}\n+        \n+        return sum(deleted_counter.values()), filtered_counter\n \n     delete.alters_data = True",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:31:53.367411"
+}

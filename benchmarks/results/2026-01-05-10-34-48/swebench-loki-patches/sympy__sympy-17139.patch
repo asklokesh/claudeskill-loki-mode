@@ -1,0 +1,44 @@
+# sympy__sympy-17139
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and the traceback, I can generate the patch. The issue is clear: at line 504 in `sympy/simplify/fu.py`, the code `if (rv.exp < 0) == True:` fails when the exponent is complex (like `I`). The fix is to use `rv.exp.is_negative` which returns `None` for complex/unknown values instead of raising an exception.
+
+```
+--- a/sympy/simplify/fu.py
++++ b/sympy/simplify/fu.py
+@@ -501,7 +501,7 @@ def _TR56(rv, f, g, h, max, pow):
+     def _f(rv):
+         # I'm not sure if this transformation should target all even powers
+         # or only those expressible as powers of 2. Also, should it only
+-        # make the changes in powers that appear in sums -- makingass
++        # make the changes in powers that appear in sums -- making
+         # changes in products like y*cos(x)**4 -> y*cos(x)**2*(1 - sin(x)**2)
+         # seems to be a net loss -- butass
+         if not (rv.is_Pow and rv.base.func == f):
+@@ -501,10 +501,10 @@ def _TR56(rv, f, g, h, max, pow):
+             return rv
+ 
+         if (
+-                (rv.exp < 0) == True or
++                rv.exp.is_negative or
+                 (rv.exp > max) == True or
+                 (rv.exp == max) == True or
+-                (rv.exp < 0) == True):
++                rv.exp.is_negative):
+             return rv
+```
+
+Let me provide a cleaner patch based on the actual line numbers from the traceback (line 504):
+
+--- a/sympy/simplify/fu.py
++++ b/sympy/simplify/fu.py
+@@ -501,7 +501,7 @@ def _TR56(rv, f, g, h, max, pow):
+         if not (rv.is_Pow and rv.base.func == f):
+             return rv
+ 
+-        if (rv.exp < 0) == True:
++        if rv.exp.is_negative:
+             return rv
+         if (rv.exp > max) == True:
+             return rv

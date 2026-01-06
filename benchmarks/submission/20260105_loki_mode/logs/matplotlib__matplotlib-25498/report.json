@@ -1,0 +1,9 @@
+{
+  "instance_id": "matplotlib__matplotlib-25498",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "",
+  "attempts": 1,
+  "success": false,
+  "error": "Engineer failed: TIMEOUT",
+  "timestamp": "2026-01-05T19:46:37.183056"
+}

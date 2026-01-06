@@ -1,0 +1,28 @@
+# sympy__sympy-18087
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+The SymPy repository is not in this directory. Based on the architect's analysis, I'll generate the patch for the SymPy repository. The issue is in the `Factors` class in `sympy/core/exprtools.py` where exponent multiplication happens unconditionally.
+
+```
+--- a/sympy/core/exprtools.py
++++ b/sympy/core/exprtools.py
+@@ -452,7 +452,16 @@ def __init__(self, factors=None, doit=True):
+                     if b.is_Pow:
+                         p = b.as_base_exp()
+                         b = p[0]
+-                        e = e*p[1]
++                        # Only combine exponents if it's mathematically valid:
++                        # - base is positive (real and positive)
++                        # - or the combined exponent is an integer
++                        # Otherwise (a**b)**c != a**(b*c) for complex bases
++                        combined_exp = e*p[1]
++                        if b.is_positive or combined_exp.is_integer:
++                            e = combined_exp
++                        else:
++                            # Keep the power structure: treat b**p[1] as the base
++                            b = b**p[1]
+                     factors[b] = factors.get(b, S.Zero) + e
+             elif isinstance(factors, Factors):
+                 factors = factors.factors.copy()
+```

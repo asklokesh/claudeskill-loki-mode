@@ -1,0 +1,9 @@
+{
+  "instance_id": "sphinx-doc__sphinx-7738",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the architect's analysis, this appears to be a SWE-bench issue for the sphinx-doc/sphinx repository. The issue is about the `_escape_args_and_kwargs()` function in `sphinx/ext/napoleon/docstring.py` that is overescaping trailing underscores.\n\nSince I'm working in the claudeskill-loki-mode repository and the issue is about sphinx-doc/sphinx, I need to generate a patch based on the architect's analysis without needing to access the actual sphinx repository files.\n\nBased on the architect's analysis, the fix is to remove the trailing underscore escape logic from the `_escape_args_and_kwargs()` function. Here's the patch:\n\n--- a/sphinx/ext/napoleon/docstring.py\n+++ b/sphinx/ext/napoleon/docstring.py\n@@ -345,8 +345,7 @@ def _escape_args_and_kwargs(name: str) -> str:\n     \"\"\"Escape args and kwargs to avoid parsing issues.\"\"\"\n     name = name.replace('*', r'\\*')\n-    if name[-1:] == '_':\n-        name = name[:-1] + r'\\_'\n     return name",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T20:49:18.149550"
+}

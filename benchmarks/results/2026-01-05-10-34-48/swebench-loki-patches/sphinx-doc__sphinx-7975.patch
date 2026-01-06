@@ -1,0 +1,41 @@
+# sphinx-doc__sphinx-7975
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/sphinx/environment/adapters/indexentries.py
++++ b/sphinx/environment/adapters/indexentries.py
+@@ -109,6 +109,7 @@ class IndexEntries:
+                     entries.append((fn or '', link, entry.entry_type))
+ 
+         # sort the index entries
++        all_symbol_entries = []
+         newlist = []
+         if self.env.config.html_split_index:
+             group = ''
+@@ -117,13 +118,20 @@ class IndexEntries:
+                 # key has already been normalized by _split_into_pairs()
+                 key = string[0:1].upper()
+                 if key.isalpha() or key in '_':
+-                    key = unicodedata.normalize('NFD', key)[0]
+-                if group != key:
+-                    newlist.append((key, []))
+-                    group = key
++                    key_normalized = unicodedata.normalize('NFD', key)[0]
++                else:
++                    key_normalized = key
++                if not key_normalized.isalpha():
++                    all_symbol_entries.append((string, entry))
++                else:
++                    if group != key_normalized:
++                        newlist.append((key_normalized, []))
++                        group = key_normalized
++                    newlist[-1][1].append((string, entry))
++            if all_symbol_entries:
++                newlist.insert(0, (_('Symbols'), all_symbol_entries))
+ 
+-                newlist[-1][1].append((string, entry))
+-            newlist.sort(key=lambda t: (t[0] != _('Symbols'), _key_func(t[0])),
++            newlist.sort(key=lambda t: (t[0] != _('Symbols'), _key_func_0(t[0])),
+                          reverse=(self.env.config.intersphinx_disabled_reftypes == '*'))
+ 
+         return newlist

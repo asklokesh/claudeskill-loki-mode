@@ -1,0 +1,40 @@
+# scikit-learn__scikit-learn-10949
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the task description, I understand I need to create a patch for the scikit-learn repository to fix the `warn_on_dtype` issue with pandas DataFrames. Since this is a patch generation task for a different repository (scikit-learn), I'll generate the patch based on the architect's analysis and my knowledge of scikit-learn's validation module.
+
+The issue is that when a DataFrame is converted to an array, the original dtype is lost before the warning check. The fix needs to capture the original dtype before conversion.
+
+--- a/sklearn/utils/validation.py
++++ b/sklearn/utils/validation.py
+@@ -400,6 +400,7 @@ def check_array(array, accept_sparse=False, dtype="numeric", order=None,
+         raise ValueError("Found array with %d sample(s) (shape=%s) while a"
+                          " minimum of %d is required." % (n_samples, array.shape, ensure_min_samples))
+ 
++    dtype_orig = None
+     if warn_on_dtype and dtype is not None and array.dtype in dtype:
+         # Don't warn if array.dtype matches the requested dtype, or if
+         # array.dtype matches any of the requested dtypes (in case dtype is a tuple of dtypes).
+@@ -407,11 +408,19 @@ def check_array(array, accept_sparse=False, dtype="numeric", order=None,
+ 
+     # make sure we actually converted to numeric:
+     if dtype_numeric and array.dtype.kind == "O":
+-        array = array.astype(np.float64)
++        dtype_orig = array.dtype
++        try:
++            array = array.astype(np.float64)
++        except (ValueError, TypeError):
++            raise ValueError("Unable to convert array of type %s to float64" % array.dtype)
+     if not allow_nd and array.ndim >= 3:
+         raise ValueError("Found array with dim %d. %s expected <= 2."
+                          % (array.ndim, estimator_name))
+ 
++    if warn_on_dtype and dtype_orig is not None and dtype_orig != array.dtype:
++        warnings.warn("Data with input dtype %s was converted to %s."
++                      % (dtype_orig, array.dtype),
++                      DataConversionWarning)
++
+     if force_all_finite:
+         _assert_all_finite(array,
+                            allow_nan=force_all_finite == 'allow-nan')

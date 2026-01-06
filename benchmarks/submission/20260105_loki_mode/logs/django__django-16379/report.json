@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-16379",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/django/core/cache/backends/filebased.py\n+++ b/django/core/cache/backends/filebased.py\n@@ -91,9 +91,11 @@\n \n     def has_key(self, key, version=None):\n         fname = self._key_to_file(key, version)\n-        if os.path.exists(fname):\n+        try:\n             with open(fname, \"rb\") as f:\n                 return not self._is_expired(f)\n+        except FileNotFoundError:\n+            pass\n         return False\n \n     def _cull(self):",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T19:20:56.547186"
+}

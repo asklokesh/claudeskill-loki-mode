@@ -1,0 +1,17 @@
+# django__django-14534
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+This appears to be a task to generate a patch for the Django repository, but the repository is not present locally. Based on the issue description and the architect's analysis, I can generate the patch based on the code snippets provided in the issue. Let me create the patch:
+
+--- a/django/forms/boundfield.py
++++ b/django/forms/boundfield.py
+@@ -277,7 +277,7 @@ class BoundWidget:
+ 
+     @property
+     def id_for_label(self):
+-        return 'id_%s_%s' % (self.data['name'], self.data['index'])
++        return self.data['attrs'].get('id')
+ 
+     @property
+     def choice_label(self):

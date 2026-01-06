@@ -1,0 +1,14 @@
+--- a/django/db/migrations/serializer.py
++++ b/django/db/migrations/serializer.py
+@@ -120,9 +120,9 @@ class EnumSerializer(BaseSerializer):
+     def serialize(self):
+         enum_class = self.value.__class__
+         module = enum_class.__module__
+-        value, imports = EnumSerializer(self.value.value, self.value.value).serialize()
+-        imports.add("import %s" % module)
+-        return "%s.%s(%s)" % (module, enum_class.__name__, value), imports
++        imports = {"import %s" % module}
++        return "%s.%s[%r]" % (module, enum_class.__name__, self.value.name), imports
+ 
+ 
+ class FloatSerializer(BaseSimpleSerializer):

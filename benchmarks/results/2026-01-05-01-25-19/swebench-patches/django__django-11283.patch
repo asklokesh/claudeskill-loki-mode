@@ -1,0 +1,41 @@
+Based on my knowledge of the Django issue and the hints provided, I can construct the patch. The issue is in the migration `auth.0011_update_proxy_permissions` where it tries to update proxy model permissions but fails when a permission with the target content_type and codename already exists.
+
+Looking at the issue details:
+1. The problem occurs when a model was deleted and recreated as a proxy model
+2. The migration tries to update permissions but there are already existing permissions with the same content_type_id and codename
+3. The solution should use `update_or_create` or handle the case where the permission already exists
+
+Based on the commit mentioned (181fb60159e54d442d3610f4afba6f066a6dac05) and the discussion, the fix needs to modify the `update_proxy_model_permissions` function to handle existing permissions gracefully by reusing them instead of creating duplicates.
+
+Here's the patch:
+
+--- a/django/contrib/auth/migrations/0011_update_proxy_permissions.py
++++ b/django/contrib/auth/migrations/0011_update_proxy_permissions.py
+@@ -24,17 +24,24 @@ def update_proxy_model_permissions(apps, schema_editor, reverse=False):
+             proxy_content_type = ContentType.objects.get_for_model(Model, for_concrete_model=False)
+         except ContentType.DoesNotExist:
+             continue
+-        old_content_type = cycled[proxy_content_type] if reverse else concrete_content_type
+-        new_content_type = cycled[concrete_content_type] if reverse else proxy_content_type
++        old_content_type = cycled.get(proxy_content_type) if reverse else concrete_content_type
++        new_content_type = cycled.get(concrete_content_type) if reverse else proxy_content_type
++        if old_content_type is None or new_content_type is None:
++            continue
+         Permission.objects.filter(
+             permissions_query,
+             content_type=old_content_type,
++        ).exclude(
++            content_type=new_content_type,
++            codename__in=Permission.objects.filter(
++                permissions_query,
++                content_type=new_content_type,
++            ).values('codename'),
+         ).update(content_type=new_content_type)
+ 
+ 
+ def revert_proxy_model_permissions(apps, schema_editor):
+-    """
+-    Update the content_type of proxy model permissions to use the ContentType
+-    of the concrete model.
+-    """
+     update_proxy_model_permissions(apps, schema_editor, reverse=True)

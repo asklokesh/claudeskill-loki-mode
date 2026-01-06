@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-16139",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/django/contrib/auth/forms.py\n+++ b/django/contrib/auth/forms.py\n@@ -146,7 +146,7 @@ class UserChangeForm(forms.ModelForm):\n         super().__init__(*args, **kwargs)\n         password = self.fields.get(\"password\")\n         if password:\n-            password.help_text = password.help_text.format(\"../password/\")\n+            password.help_text = password.help_text.format(f\"../../{self.instance.pk}/password/\")\n         user_permissions = self.fields.get(\"user_permissions\")\n         if user_permissions:\n             user_permissions.queryset = user_permissions.queryset.select_related(",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T19:19:40.131359"
+}

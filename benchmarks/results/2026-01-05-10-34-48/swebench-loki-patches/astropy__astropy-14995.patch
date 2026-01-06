@@ -1,0 +1,15 @@
+# astropy__astropy-14995
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/astropy/nddata/mixins/ndarithmetic.py
++++ b/astropy/nddata/mixins/ndarithmetic.py
+@@ -515,7 +515,7 @@ class NDArithmeticMixin:
+         # Now lets calculate the resulting mask (operation enforces copy)
+         if self.mask is None and operand is not None:
+             return deepcopy(operand.mask)
+-        elif operand is None:
++        elif operand is None or operand.mask is None:
+             return deepcopy(self.mask)
+         else:
+             return handle_mask(self.mask, operand.mask, **kwds)

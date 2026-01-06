@@ -1,0 +1,14 @@
+# django__django-16229
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/django/forms/fields.py
++++ b/django/forms/fields.py
+@@ -130,7 +130,7 @@ class Field:
+         self.error_messages = messages
+ 
+         self.validators = [*self.default_validators, *validators]
+-        self.show_hidden_initial = show_hidden_initial
++        self.show_hidden_initial = show_hidden_initial and not callable(self.default)
+ 
+         super().__init__()

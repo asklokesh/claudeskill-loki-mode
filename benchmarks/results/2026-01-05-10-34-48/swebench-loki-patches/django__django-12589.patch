@@ -1,0 +1,64 @@
+# django__django-12589
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and the issue description, I can generate the patch. The issue is in the `set_group_by` method where `alias=True` is passed to `get_group_by_cols()`, causing ambiguous column references when the annotation alias matches a column name from joined tables.
+
+```
+--- a/django/db/models/sql/query.py
++++ b/django/db/models/sql/query.py
+@@ -1940,7 +1940,20 @@ class Query(BaseExpression):
+                 else:
+                     expressions = self.select[expr.index:expr.index + 1]
+             else:
+-                expressions = expr.get_group_by_cols(alias=alias)
++                expressions = expr.get_group_by_cols(alias=alias)
+             for expr in expressions:
+                 sql, params = compiler.compile(expr)
+                 params_hash = make_hashable(params)
+@@ -1943,7 +1956,19 @@ class Query(BaseExpression):
+         alias = None
+         for alias, annotation in self.annotation_select.items():
+-            cols = annotation.get_group_by_cols(alias=alias)
++            # Check if the annotation alias collides with any column name
++            # from tables in alias_map. If so, avoid using the alias to
++            # prevent ambiguous column reference errors in GROUP BY.
++            annotation_alias = alias
++            if alias:
++                for table_alias in self.alias_map:
++                    table = self.alias_map[table_alias].table_name
++                    if hasattr(self, 'tables_used_by_column_names'):
++                        if alias in self.tables_used_by_column_names.get(table, set()):
++                            annotation_alias = None
++                            break
++            cols = annotation.get_group_by_cols(alias=annotation_alias)
+             for col in cols:
+                 sql, params = compiler.compile(col)
+                 params_hash = make_hashable(params)
+```
+
+Wait, let me provide a cleaner, more accurate patch based on the standard Django codebase structure:
+
+--- a/django/db/models/sql/query.py
++++ b/django/db/models/sql/query.py
+@@ -1940,9 +1940,21 @@ class Query(BaseExpression):
+         """
+         group_by = list(self.select)
+         if self.annotation_select:
++            # Collect column names from all joined tables to detect collisions.
++            column_names = set()
++            for alias in self.alias_map:
++                table = self.alias_map[alias]
++                if hasattr(table, 'join_cols'):
++                    for col in table.join_cols:
++                        column_names.add(col[1] if isinstance(col, tuple) else col)
++                # Also get column names from the related model if available.
++                if hasattr(table, 'table_name'):
++                    column_names.add(table.table_name)
+             for alias, annotation in self.annotation_select.items():
+-                for col in annotation.get_group_by_cols(alias=alias):
++                # Avoid using alias if it collides with a column name from joined tables.
++                use_alias = alias if alias not in column_names else None
++                for col in annotation.get_group_by_cols(alias=use_alias):
+                     group_by.append(col)
+         self.group_by = tuple(group_by)

@@ -1,0 +1,26 @@
+# sympy__sympy-12454
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and architect's analysis, I can generate the patch directly. The bug is in the `is_upper()` and `is_lower()` methods in `sympy/matrices/matrices.py`. The fix is to bound the iteration to prevent accessing indices beyond the matrix dimensions.
+
+--- a/sympy/matrices/matrices.py
++++ b/sympy/matrices/matrices.py
+@@ -1110,7 +1110,7 @@
+         even if the matrix is not square."""
+         return all(self[i, j].is_zero
+                    for i in range(1, self.rows)
+-                   for j in range(i))
++                   for j in range(min(i, self.cols)))
+ 
+     @property
+     def is_lower(self):
+@@ -1118,7 +1118,7 @@
+         even if the matrix is not square."""
+         return all(self[i, j].is_zero
+                    for j in range(1, self.cols)
+-                   for i in range(j))
++                   for i in range(min(j, self.rows)))
+ 
+     @property
+     def is_square(self):

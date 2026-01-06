@@ -1,0 +1,9 @@
+{
+  "instance_id": "pylint-dev__pylint-7993",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "",
+  "attempts": 1,
+  "success": false,
+  "error": "Engineer failed: TIMEOUT",
+  "timestamp": "2026-01-05T20:14:13.843488"
+}

@@ -1,0 +1,19 @@
+# astropy__astropy-14995
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+This appears to be the claudeskill-loki-mode repository, not the astropy repository. I need to create a patch for the astropy/astropy repository based on the architect's analysis. Let me generate the patch based on the information provided.
+
+According to the architect's analysis, the bug is in `astropy/nddata/mixins/ndarithmetic.py` where a line was changed from `elif operand.mask is None:` to `elif operand is None:`. I need to generate a patch that fixes this.
+
+--- a/astropy/nddata/mixins/ndarithmetic.py
++++ b/astropy/nddata/mixins/ndarithmetic.py
+@@ -495,7 +495,7 @@
+             # Now let's see if the operand was a scalar, if so the mask is None
+             if self.mask is None:
+                 result_mask = deepcopy(operand.mask)
+-            elif operand is None:
++            elif operand.mask is None:
+                 result_mask = deepcopy(self.mask)
+             else:
+                 result_mask = handle_mask(deepcopy(self.mask), deepcopy(operand.mask))

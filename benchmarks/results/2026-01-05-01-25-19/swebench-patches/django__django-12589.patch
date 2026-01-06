@@ -1,0 +1,68 @@
+Based on the issue description and hints provided, I can generate the patch. The issue is in `django/db/models/sql/query.py` in the `set_group_by` method. The problem is that when using GROUP BY with aliases, if there's a column name collision with columns from joined tables, the alias should not be used.
+
+According to the hint, the fix should be in `set_group_by` to set `alias=None` if the alias collides with any column names from tables in `alias_map`.
+
+Here's the patch:
+
+--- a/django/db/models/sql/query.py
++++ b/django/db/models/sql/query.py
+@@ -1940,6 +1940,14 @@ class Query(BaseExpression):
+                     warnings.warn(msg, category=RemovedInDjango40Warning)
+                     alias = None
+             if alias:
++                # Check for collision with column names from joined tables.
++                # If a collision exists, we can't use the alias in GROUP BY.
++                column_names = set()
++                for table_alias in self.alias_map:
++                    table = self.alias_map[table_alias].table_name
++                    for field in self.model._meta.db_table == table and self.model._meta.get_fields() or []:
++                        if hasattr(field, 'column'):
++                            column_names.add(field.column)
+                 cols = (Ref(alias, annotation),)
+             else:
+                 cols = annotation.get_group_by_cols()
+
+Let me reconsider the fix based on the hint more carefully. The hint says to check if `alias` is in the set of all column names of tables in `alias_map`. Let me provide a corrected patch:
+
+--- a/django/db/models/sql/query.py
++++ b/django/db/models/sql/query.py
+@@ -1940,6 +1940,16 @@ class Query(BaseExpression):
+                     warnings.warn(msg, category=RemovedInDjango40Warning)
+                     alias = None
+             if alias:
++                # Check for collision with column names from joined tables.
++                # If a collision exists, we can't use the alias in GROUP BY
++                # as it would be ambiguous.
++                column_names = set()
++                for join_alias, join in self.alias_map.items():
++                    model = self._get_model_from_table(join.table_name)
++                    if model:
++                        for field in model._meta.get_fields():
++                            if hasattr(field, 'column'):
++                                column_names.add(field.column)
++                if alias in column_names:
++                    alias = None
++            if alias:
+                 cols = (Ref(alias, annotation),)
+             else:
+                 cols = annotation.get_group_by_cols()
+
+Actually, looking at the Django codebase more carefully, I need to provide a simpler and more direct fix. The `alias_map` contains table information, but we need to get column names from all related tables. A simpler approach is to use the compiler's column check:
+
+--- a/django/db/models/sql/query.py
++++ b/django/db/models/sql/query.py
+@@ -1940,6 +1940,13 @@ class Query(BaseExpression):
+                     warnings.warn(msg, category=RemovedInDjango40Warning)
+                     alias = None
+             if alias:
++                # Avoid using the annotation alias in GROUP BY if it collides
++                # with a column name from any joined table.
++                column_names = {
++                    field.column for field in (join.join_field.model._meta.local_concrete_fields if join.join_field else [])
++                    for join in self.alias_map.values()
++                } | {field.column for field in self.model._meta.local_concrete_fields}
++                alias = None if alias in column_names else alias
++            if alias:
+                 cols = (Ref(alias, annotation),)
+             else:
+                 cols = annotation.get_group_by_cols()

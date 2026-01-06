@@ -1,0 +1,27 @@
+# sympy__sympy-17655
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and architect's analysis, I have enough information to generate the patch. The issue is in `sympy/geometry/point.py` where the `Point` class has a `__mul__` method but lacks `__rmul__`, causing `scalar * Point` to fail. Let me generate the patch based on the standard sympy Point class structure.
+
+```
+--- a/sympy/geometry/point.py
++++ b/sympy/geometry/point.py
+@@ -265,6 +265,16 @@ class Point(GeometryEntity):
+             coords = [simplify(x*factor) for x in self.args]
+             return Point(coords, evaluate=False)
+ 
++    def __rmul__(self, factor):
++        """Multiply a factor by point's coordinates.
++
++        See Also
++        ========
++
++        sympy.geometry.point.Point.__mul__
++        """
++        return self.__mul__(factor)
++
+     def __neg__(self):
+         """Negate the point."""
+         coords = [-x for x in self.args]
+```

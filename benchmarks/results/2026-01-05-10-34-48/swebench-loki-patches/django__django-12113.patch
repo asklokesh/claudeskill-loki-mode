@@ -1,0 +1,87 @@
+# django__django-12113
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and architect's analysis, I need to generate a patch for the Django repository. The issue is that `test_db_signature()` in the SQLite creation module doesn't include `TEST["NAME"]` in its signature, causing database locking issues when multiple databases use different test database names.
+
+Let me generate the patch based on the Django source code structure:
+
+```
+--- a/django/db/backends/sqlite3/creation.py
++++ b/django/db/backends/sqlite3/creation.py
+@@ -51,7 +51,16 @@ class DatabaseCreation(BaseDatabaseCreation):
+             self._clone_db(source_database_name, target_database_name)
+ 
+     def test_db_signature(self):
+-        """
+-        Return a tuple that uniquely identifies a test database.
+-        """
+-        return (self.connection.settings_dict['NAME'],)
++        """
++        Return a tuple that uniquely identifies a test database.
++
++        This takes into account the special test settings such as TEST['NAME']
++        and TEST['MIGRATE'].
++        """
++        sig = [self.connection.settings_dict['NAME']]
++        test_name = self._get_test_db_name()
++        if test_name != sig[0]:
++            sig.append(test_name)
++        if self.connection.settings_dict['TEST'].get('MIGRATE') is False:
++            sig.append('nomigrate')
++        return tuple(sig)
+--- /dev/null
++++ b/tests/backends/sqlite/test_creation.py
+@@ -0,0 +1,49 @@
++import copy
++import unittest
++
++from django.db import connection
++from django.test import SimpleTestCase
++
++
++@unittest.skipUnless(connection.vendor == 'sqlite', 'SQLite tests')
++class TestDbSignatureTests(SimpleTestCase):
++    def get_connection_copy(self):
++        # Get a copy of the connection settings.
++        return copy.deepcopy(connection.settings_dict)
++
++    def test_signature_without_test_name(self):
++        # When TEST['NAME'] is not set, signature should just include NAME.
++        settings_dict = self.get_connection_copy()
++        settings_dict['TEST'] = {}
++        creation = connection.creation.__class__(connection)
++        creation.connection.settings_dict = settings_dict
++        sig = creation.test_db_signature()
++        self.assertEqual(sig, (settings_dict['NAME'],))
++
++    def test_signature_with_test_name(self):
++        # When TEST['NAME'] is set, it should be included in signature.
++        settings_dict = self.get_connection_copy()
++        settings_dict['NAME'] = ':memory:'
++        settings_dict['TEST'] = {'NAME': 'test_db.sqlite3'}
++        creation = connection.creation.__class__(connection)
++        creation.connection.settings_dict = settings_dict
++        sig = creation.test_db_signature()
++        self.assertEqual(sig, (':memory:', 'test_db.sqlite3'))
++
++    def test_signature_with_migrate_false(self):
++        # When TEST['MIGRATE'] is False, 'nomigrate' should be in signature.
++        settings_dict = self.get_connection_copy()
++        settings_dict['TEST'] = {'MIGRATE': False}
++        creation = connection.creation.__class__(connection)
++        creation.connection.settings_dict = settings_dict
++        sig = creation.test_db_signature()
++        self.assertIn('nomigrate', sig)
++
++    def test_signature_different_for_different_test_names(self):
++        # Two databases with different TEST['NAME'] should have different signatures.
++        settings_dict1 = {'NAME': ':memory:', 'TEST': {'NAME': 'test_default.sqlite3'}}
++        settings_dict2 = {'NAME': ':memory:', 'TEST': {'NAME': 'test_other.sqlite3'}}
++        creation = connection.creation.__class__(connection)
++        creation.connection.settings_dict = settings_dict1
++        sig1 = creation.test_db_signature()
++        creation.connection.settings_dict = settings_dict2
++        sig2 = creation.test_db_signature()
++        self.assertNotEqual(sig1, sig2)
+```

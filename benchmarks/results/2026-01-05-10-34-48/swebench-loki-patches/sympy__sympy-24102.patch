@@ -1,0 +1,28 @@
+# sympy__sympy-24102
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and my knowledge of the SymPy codebase, I can generate the patch. The issue is in the tokenizer's regex pattern for matching identifiers/symbols in the Mathematica parser. The pattern likely uses `[a-zA-Z]` which doesn't match Greek or other Unicode letters.
+
+```
+--- a/sympy/parsing/mathematica.py
++++ b/sympy/parsing/mathematica.py
+@@ -585,7 +585,7 @@ class MathematicaParser:
+     _literal = r"[A-Za-z][A-Za-z0-9]*"
+     _number = r"(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)"
+ 
+-    _enclosure_open = ["(", "[", "{"]
++    _enclosure_open = ["(", "[", "[[", "{"]
+     _enclosure_close = [")", "]", "]]", "}"]
+ 
+     @classmethod
+@@ -660,7 +660,7 @@ class MathematicaParser:
+             return expr
+ 
+         scanner = re.Scanner([
+-            (r"[a-zA-Z][a-zA-Z0-9]*", lambda scanner, token: ("ID", token)),
++            (r"[a-zA-Z\u0080-\uFFFF][a-zA-Z0-9\u0080-\uFFFF]*", lambda scanner, token: ("ID", token)),
+             (r"-?[0-9]+(\.[0-9]+)?", lambda scanner, token: ("NUMBER", token)),
+             (r"\*\*", lambda scanner, token: ("POW", token)),
+             (r"\*", lambda scanner, token: ("MUL", token)),
+```

@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-11422",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "This appears to be the Loki Mode skill repository, not a Django repository. For this task, I need to generate a patch for Django's autoreloader issue based on the architect's analysis. Let me create the patch based on the documented bug fix strategy.\n\n--- a/django/utils/autoreload.py\n+++ b/django/utils/autoreload.py\n@@ -115,6 +115,13 @@ def iter_modules_and_files(modules, extra_files):\n     # iteration is to be lazy to avoid examining modules that may not be\n     # needed.\n     for module in modules:\n+        # Special case for __main__ module which has __spec__ set to None\n+        # when executed as a script (e.g., manage.py). We need to watch\n+        # the __main__ file to detect changes to manage.py.\n+        if module.__name__ == '__main__' and getattr(module, '__spec__', None) is None:\n+            filename = getattr(module, '__file__', None)\n+            if filename:\n+                yield filename, module\n         if module.__name__ == '__main__':\n             # __main__ (usually manage.py) doesn't always have a __spec__ set.\n             # Handle this by falling back to using __file__, resolved below.",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:11:45.931864"
+}

@@ -1,0 +1,37 @@
+# sympy__sympy-18532
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis, I can generate the patch for the `atoms()` method in `sympy/core/basic.py`. The fix involves changing the condition from checking `isinstance(expr, Atom)` to checking `not expr.args`.
+
+```
+--- a/sympy/core/basic.py
++++ b/sympy/core/basic.py
+@@ -435,8 +435,8 @@ class Basic(with_metaclass(ManagedProperties)):
+         """
+         Returns the atoms that form the current object.
+ 
+-        By default, only objects that are truly atomic and can't
+-        be divided into smaller pieces are returned: symbols, numbers,
++        By default, only objects that have no subexpressions (those for
++        which ``args`` is empty) are returned: symbols, numbers,
+         and number symbols like I and pi. It is possible to request
+         atoms of any type, however, as demonstrated below.
+ 
+@@ -484,13 +484,11 @@ class Basic(with_metaclass(ManagedProperties)):
+         if types:
+             types = tuple(
+                 [t if isinstance(t, type) else type(t) for t in types])
++            result = {a for a in preorder_traversal(self) if isinstance(a, types)}
+         else:
+-            types = (Atom,)
+-        result = set()
+-        for expr in preorder_traversal(self):
+-            if isinstance(expr, types):
+-                result.add(expr)
++            result = {a for a in preorder_traversal(self) if not a.args}
+         return result
+ 
+     @property
+     def free_symbols(self):
+```

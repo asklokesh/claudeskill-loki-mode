@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-12286",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the issue description and the architect's analysis, I need to generate a patch for Django's translation.E004 check. The patch should modify the check to allow sublanguages when their base language is available. Here's the patch:\n\n--- a/django/core/checks/translation.py\n+++ b/django/core/checks/translation.py\n@@ -55,7 +55,12 @@ def check_language_settings_consistent(app_configs, **kwargs):\n     available_tags = {i for i, _ in settings.LANGUAGES} | {'en-us'}\n     messages = []\n     if settings.LANGUAGE_CODE not in available_tags:\n-        messages.append(E004)\n+        # Check if base language is available when using sublanguages.\n+        # For example, if LANGUAGE_CODE is \"de-at\" but only \"de\" is available,\n+        # Django will fall back to \"de\" per documented behavior.\n+        base_language = settings.LANGUAGE_CODE.split('-')[0]\n+        if base_language not in available_tags:\n+            messages.append(E004)\n     return messages",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:24:43.236728"
+}

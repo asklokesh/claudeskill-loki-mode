@@ -1,0 +1,9 @@
+{
+  "instance_id": "matplotlib__matplotlib-22711",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "This appears to be a different repository (claudeskill-loki-mode), not the matplotlib repository. Based on the issue description, I need to generate a patch for the matplotlib/matplotlib repository. Let me create the patch based on the bug report and architect's analysis.\n\nFrom the issue, the problem is in the `set_val` method around line 915 in `/matplotlib/widgets.py`. The polygon has only 4 vertices when values are equal, but the code tries to access `xy[4]`, causing an IndexError.\n\nThe fix is to remove the lines that set `xy[4]` since polygons automatically close and don't need the 5th vertex to be explicitly set.\n\n--- a/lib/matplotlib/widgets.py\n+++ b/lib/matplotlib/widgets.py\n@@ -912,13 +912,11 @@\n         xy = self.poly.xy\n         if self.orientation == \"vertical\":\n             xy[0] = .25, val[0]\n             xy[1] = .25, val[1]\n             xy[2] = .75, val[1]\n             xy[3] = .75, val[0]\n-            xy[4] = .25, val[0]\n         else:\n             xy[0] = val[0], .25\n             xy[1] = val[0], .75\n             xy[2] = val[1], .75\n             xy[3] = val[1], .25\n-            xy[4] = val[0], .25\n         self.poly.xy = xy",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T19:29:44.723973"
+}

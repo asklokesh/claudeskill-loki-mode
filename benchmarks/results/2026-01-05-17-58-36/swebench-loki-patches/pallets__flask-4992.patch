@@ -1,0 +1,46 @@
+# pallets__flask-4992
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on my knowledge of Flask's Config class and the issue description, I'll generate the patch. The `from_file()` method needs to accept a `text` parameter to control binary vs text mode file opening.
+
+--- a/src/flask/config.py
++++ b/src/flask/config.py
+@@ -240,7 +240,7 @@ class Config(dict):
+         self.from_mapping(mapping)
+         return True
+ 
+-    def from_file(self, filename: str, load: t.Callable[[t.IO[t.Any]], t.Mapping], silent: bool = False) -> bool:
++    def from_file(self, filename: str, load: t.Callable[[t.IO[t.Any]], t.Mapping], silent: bool = False, text: bool = True) -> bool:
+         """Update the values in the config from a file that is loaded
+         using the ``load`` parameter. The loaded data is passed to the
+         :meth:`from_mapping` method.
+@@ -259,6 +259,10 @@ class Config(dict):
+             import json
+             app.config.from_file("config.json", load=json.load)
+ 
++            import tomllib
++            app.config.from_file("config.toml", load=tomllib.load, text=False)
++
++        .. versionchanged:: 2.3
++            The ``text`` parameter was added.
+ 
+         .. versionadded:: 2.0
+ 
+@@ -266,13 +270,14 @@ class Config(dict):
+             The name of the file to load.
+         :param load: A callable that takes a file handle and returns a
+             mapping of loaded data from the file.
+-        :type load: ``Callable[[Reader], Mapping]`` where ``Reader``
+-            implements a ``read`` method.
++        :param text: Open the file in text or binary mode.
+         :param silent: Ignore the file if it doesn't exist.
+         :return: ``True`` if the file was loaded successfully.
+         """
+         filename = os.path.join(self.root_path, filename)
+ 
+         try:
+-            with open(filename) as f:
++            with open(filename, "r" if text else "rb") as f:
+                 obj = load(f)
+         except OSError as e:

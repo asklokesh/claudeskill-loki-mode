@@ -1,0 +1,28 @@
+{
+  "benchmark": "SWE-bench-LokiMode",
+  "mode": "multi-agent",
+  "version": "1.0",
+  "timestamp": "2026-01-05T15:51:08.016868",
+  "model": "sonnet",
+  "max_retries": 3,
+  "total_problems": 2,
+  "predictions": [
+    {
+      "instance_id": "astropy__astropy-12907",
+      "model_patch": "--- a/astropy/modeling/separable.py\n+++ b/astropy/modeling/separable.py\n@@ -242,7 +242,7 @@\n \n def _cstack(left, right):\n     \"\"\"Compute the separability of two models stacked with ``&``.\"\"\"\n-    sepleft = np.eye(left.n_inputs)\n-    sepright = np.eye(right.n_inputs)\n+    sepleft = _separable(left)\n+    sepright = _separable(right)\n     return np.block([[sepleft, np.zeros((left.n_outputs, right.n_inputs))],\n                      [np.zeros((right.n_outputs, left.n_inputs)), sepright]])",
+      "model_name_or_path": "loki-mode-sonnet",
+      "attempts": 1
+    },
+    {
+      "instance_id": "astropy__astropy-14182",
+      "model_patch": "",
+      "model_name_or_path": "loki-mode-sonnet",
+      "attempts": 1
+    }
+  ],
+  "generated": 1,
+  "fixed_by_rarv": 0,
+  "errors": 1,
+  "avg_attempts": 1.0,
+  "elapsed_time": 170.89650678634644
+}

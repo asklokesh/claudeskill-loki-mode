@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-12983",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the architect's analysis and the Django documentation for the `slugify()` function, I'll generate the patch. The standard Django `slugify()` implementation needs to strip leading and trailing dashes and underscores from the result.\n\n--- a/django/utils/text.py\n+++ b/django/utils/text.py\n@@ -417,7 +417,7 @@ def slugify(value, allow_unicode=False):\n     if allow_unicode:\n         value = unicodedata.normalize(\"NFKC\", value)\n     value = re.sub(r\"[^\\w\\s-]\", \"\", value.lower())\n-    return re.sub(r\"[-\\s]+\", \"-\", value)\n+    return re.sub(r\"[-\\s]+\", \"-\", value).strip(\"-_\")\n \n \n def camel_case_to_spaces(value):\n--- a/tests/utils_tests/test_text.py\n+++ b/tests/utils_tests/test_text.py\n@@ -121,6 +121,12 @@ class TestUtilsText(SimpleTestCase):\n         self.assertEqual(slugify(\"\u4f60\u597d World\"), \"world\")\n         self.assertEqual(slugify(\"\u4f60\u597d World\", allow_unicode=True), \"\u4f60\u597d-world\")\n \n+    def test_slugify_strip_dashes_and_underscores(self):\n+        self.assertEqual(slugify(\"___This is a test ---\"), \"this-is-a-test\")\n+        self.assertEqual(slugify(\"---test---\"), \"test\")\n+        self.assertEqual(slugify(\"___test___\"), \"test\")\n+        self.assertEqual(slugify(\"_-_test_-_\"), \"test\")\n+\n     def test_camel_case_to_spaces(self):\n         self.assertEqual(camel_case_to_spaces(\"camelCase\"), \"camel Case\")\n         self.assertEqual(camel_case_to_spaces(\"CamelCase\"), \"Camel Case\")",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:34:17.765618"
+}

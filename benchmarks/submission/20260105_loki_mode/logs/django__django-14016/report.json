@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-14016",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the context, I understand this is a Django issue about Q objects and pickle. Since this is a theoretical patch generation task for the django/django repository (not present in this working directory), I'll generate the appropriate patch based on the issue description and architect's analysis.\n\n--- a/django/db/models/query_utils.py\n+++ b/django/db/models/query_utils.py\n@@ -43,6 +43,18 @@ class Q(tree.Node):\n     def __init__(self, *args, _connector=None, _negated=False, **kwargs):\n         super().__init__(children=[*args, *sorted(kwargs.items())], connector=_connector, negated=_negated)\n \n+    def _prepare_for_deepcopy(self):\n+        \"\"\"Convert non-pickleable iterables to lists before deepcopy.\"\"\"\n+        for i, child in enumerate(self.children):\n+            if isinstance(child, tuple) and len(child) == 2:\n+                key, value = child\n+                if hasattr(value, '__iter__') and not isinstance(value, (str, bytes, list, tuple)):\n+                    try:\n+                        self.children[i] = (key, list(value))\n+                    except TypeError:\n+                        pass\n+        return self\n+\n     def _combine(self, other, conn):\n         if not isinstance(other, Q):\n             raise TypeError(other)\n@@ -59,8 +71,10 @@ class Q(tree.Node):\n             obj = type(self)()\n             obj.connector = conn\n             obj.add(self, conn)\n+            other._prepare_for_deepcopy()\n             obj.add(other, conn)\n             return obj\n+        self._prepare_for_deepcopy()\n         obj = copy.deepcopy(self)\n         obj.add(other, conn)\n         return obj",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:50:31.901126"
+}

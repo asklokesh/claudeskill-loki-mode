@@ -1,0 +1,9 @@
+{
+  "instance_id": "scikit-learn__scikit-learn-13241",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "I understand now. This repository is the Loki Mode skill project, not the scikit-learn repository. I'm being asked to generate a patch for a scikit-learn issue, but I don't have the scikit-learn code here.\n\nLet me generate the patch based on the issue description and my knowledge of the scikit-learn codebase structure:\n\n--- a/sklearn/decomposition/kernel_pca.py\n+++ b/sklearn/decomposition/kernel_pca.py\n@@ -14,6 +14,7 @@ from ..utils import check_random_state\n from ..utils.validation import check_is_fitted\n from ..utils.validation import check_array\n from ..exceptions import NotFittedError\n+from ..utils.extmath import svd_flip\n \n \n class KernelPCA(BaseEstimator, TransformerMixin):\n@@ -180,6 +181,10 @@ class KernelPCA(BaseEstimator, TransformerMixin):\n             self.lambdas_ = eigvals[-self.n_components:]\n             self.alphas_ = eigvecs[:, -self.n_components:]\n \n+        # Flip eigenvectors' sign to enforce deterministic output\n+        # See: https://github.com/scikit-learn/scikit-learn/issues/8129\n+        self.alphas_, _ = svd_flip(self.alphas_, np.empty_like(self.alphas_).T)\n+\n         # sort eigenvectors in descending order\n         indices = self.lambdas_.argsort()[::-1]\n         self.lambdas_ = self.lambdas_[indices]",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T20:32:08.641196"
+}

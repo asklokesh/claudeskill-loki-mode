@@ -1,0 +1,20 @@
+# scikit-learn__scikit-learn-14087
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and traceback, I can generate the patch. The error occurs at lines 2193-2194 where `coefs_paths` is indexed with 4 dimensions (`coefs_paths[:, i, best_indices[i], :]`) but when `refit=False`, the array structure is different.
+
+Looking at the traceback and the code pattern, when `refit=False`, the coefficients are not collected per fold in the same way - the `coefs_paths` array has shape `(n_classes, n_Cs, n_features)` instead of `(n_classes, n_folds, n_Cs, n_features)`. The fix needs to handle this case by using the correct indexing.
+
+--- a/sklearn/linear_model/logistic.py
++++ b/sklearn/linear_model/logistic.py
+@@ -2189,9 +2189,9 @@ class LogisticRegressionCV(LogisticRegression, BaseEstimator,
+                 if multi_class == 'multinomial':
+                     w = np.mean([coefs_paths[i, best_indices[i], :]
+                                  for i in range(len(folds))], axis=0)
+                 else:
+-                    w = np.mean([coefs_paths[:, i, best_indices[i], :]
++                    w = np.mean([coefs_paths[i, :, best_indices[i], :]
+                                  for i in range(len(folds))], axis=0)
+ 
+                 best_indices_C = best_indices % len(self.Cs_)

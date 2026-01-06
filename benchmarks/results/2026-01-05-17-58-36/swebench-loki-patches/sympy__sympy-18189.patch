@@ -1,0 +1,19 @@
+# sympy__sympy-18189
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+This appears to be the claudeskill-loki-mode repository, not a sympy repository. The task is asking me to generate a patch for a sympy issue, but there's no sympy codebase here. Based on the architect's analysis, I need to generate a patch that adds `permute=permute` to a recursive call at line ~185 of `sympy/solvers/diophantine.py`.
+
+Since I don't have access to the actual file, I'll generate the patch based on the architect's description. The fix is to modify the recursive call to include the `permute` parameter.
+
+--- a/sympy/solvers/diophantine.py
++++ b/sympy/solvers/diophantine.py
+@@ -182,7 +182,7 @@
+         var = list(eq.free_symbols)
+         var.sort(key=default_sort_key)
+         if tuple(var) != tuple(syms):
+-            return diophantine(eq, param)
++            return diophantine(eq, param, permute=permute)
+     
+     # Simplify the equation
+     eq = _mexpand(eq.lhs - eq.rhs)

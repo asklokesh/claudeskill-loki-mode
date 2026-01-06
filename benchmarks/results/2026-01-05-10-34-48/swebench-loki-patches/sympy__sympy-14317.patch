@@ -1,0 +1,40 @@
+# sympy__sympy-14317
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on my analysis of the issue and the existing patch reference, here is the fix:
+
+--- a/sympy/printing/latex.py
++++ b/sympy/printing/latex.py
+@@ -1868,25 +1868,7 @@ class LatexPrinter(Printer):
+ 
+     def _print_Poly(self, poly):
+         cls = poly.__class__.__name__
+-        terms = []
+-        for monom, coeff in poly.terms():
+-            s_monom = ''
+-            for i, exp in enumerate(monom):
+-                if exp > 0:
+-                    if exp == 1:
+-                        s_monom += self._print(poly.gens[i])
+-                    else:
+-                        s_monom += self._print(pow(poly.gens[i], exp))
+-            if coeff.is_number:
+-                if s_monom:
+-                    if coeff == 1:
+-                        terms.append(s_monom)
+-                    elif coeff == -1:
+-                        terms.append('-' + s_monom)
+-                    else:
+-                        terms.append(self._print(coeff) + ' ' + s_monom)
+-                else:
+-                    terms.append(self._print(coeff))
+-            else:
+-                if s_monom:
+-                    terms.append(self._print(coeff) + ' ' + s_monom)
+-                else:
+-                    terms.append(self._print(coeff))
+-        expr = ' + '.join(terms)
++        expr = self._print(poly.as_expr())
+         gens = list(map(self._print, poly.gens))
+         domain = "domain=%s" % self._print(poly.get_domain())

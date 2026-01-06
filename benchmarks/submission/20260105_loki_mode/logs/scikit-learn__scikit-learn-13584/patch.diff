@@ -1,0 +1,33 @@
+--- a/sklearn/utils/_pprint.py
++++ b/sklearn/utils/_pprint.py
+@@ -69,6 +69,21 @@
+     return signature(estimator.__class__).parameters
+ 
+ 
++def _safe_equality_check(a, b):
++    """Check equality handling numpy arrays and other objects safely."""
++    try:
++        result = a == b
++        # Handle numpy arrays and other iterables that return array-like results
++        if isinstance(result, np.ndarray):
++            return result.all()
++        # Handle other array-like objects
++        if hasattr(result, '__iter__') and not isinstance(a, str):
++            return all(result)
++        return result
++    except (ValueError, TypeError):
++        return False
++
++
+ def _changed_params(estimator):
+     """Return dict (param_name: value) of parameters that were given to
+     estimator with non-default values."""
+@@ -100,7 +115,7 @@
+             pass
+         else:
+             # Ignore NaN values
+-            if v != init_params[k] and not (is_scalar_nan(init_params[k]) and
++            if not _safe_equality_check(v, init_params[k]) and not (is_scalar_nan(init_params[k]) and
+                                             is_scalar_nan(v)):
+                 filtered_params[k] = v
+     return filtered_params

@@ -1,0 +1,28 @@
+# sympy__sympy-21171
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description, this appears to be a SWE-bench task for the sympy/sympy repository. Since I'm being asked to generate a patch for a repository that's not in the current working directory, I need to create the patch based on the issue description and architect's analysis.
+
+The issue is clear: `_print_SingularityFunction` in the LaTeX printer doesn't accept an `exp` keyword argument, but `_print_Pow` tries to pass one when a SingularityFunction is raised to a power.
+
+Let me generate the patch based on the standard sympy codebase structure:
+
+--- a/sympy/printing/latex.py
++++ b/sympy/printing/latex.py
+@@ -2316,8 +2316,11 @@ class LatexPrinter(Printer):
+     def _print_FallingFactorial(self, expr, exp=None):
+         return self._print_function_power(expr, exp)
+ 
+-    def _print_SingularityFunction(self, expr):
+-        shift = self._print(expr.args[0] - expr.args[1])
++    def _print_SingularityFunction(self, expr, exp=None):
++        tex = r"{\left\langle %s \right\rangle}^{%s}" % (
++            self._print(expr.args[0] - expr.args[1]),
++            self._print(expr.args[2]))
++        if exp is not None:
++            tex = r"{%s}^{%s}" % (tex, exp)
++        return tex
+-        power = self._print(expr.args[2])
+-        tex = r"{\left\langle %s \right\rangle}^{%s}" % (shift, power)
+-        return tex

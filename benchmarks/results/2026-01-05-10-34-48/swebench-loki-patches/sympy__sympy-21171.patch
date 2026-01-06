@@ -1,0 +1,26 @@
+# sympy__sympy-21171
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis, I can generate the patch directly. The fix is straightforward - adding `exp=None` parameter to `_print_SingularityFunction` and handling it properly when provided.
+
+--- a/sympy/printing/latex.py
++++ b/sympy/printing/latex.py
+@@ -1959,7 +1959,7 @@ class LatexPrinter(Printer):
+             self._print(expr.args[2]))
+         return r"{%s}^{%s}" % (tex, exp)
+ 
+-    def _print_SingularityFunction(self, expr):
++    def _print_SingularityFunction(self, expr, exp=None):
+         shift = self._print(expr.args[0] - expr.args[1])
+         power = self._print(expr.args[2])
+         tex = r"{\left\langle %s \right\rangle}^{%s}" % (shift, power)
+@@ -1967,6 +1967,8 @@ class LatexPrinter(Printer):
+             null = r"\hspace{5mm} \mathrm{for}\hspace{1mm} %s > %s"
+             null = null % (self._print(expr.args[0]), self._print(expr.args[1]))
+             tex = r"\begin{cases} %s %s \\ \bot \hspace{5mm} \mathrm{otherwise} \end{cases}" % (tex, null)
++        if exp is not None:
++            tex = r"{\left(%s\right)}^{%s}" % (tex, exp)
+         return tex
+ 
+     def _print_mathieuc(self, expr):

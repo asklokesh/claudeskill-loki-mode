@@ -1,0 +1,28 @@
+# django__django-13447
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/django/contrib/admin/sites.py
++++ b/django/contrib/admin/sites.py
+@@ -431,6 +431,7 @@ class AdminSite:
+                     model_dict = {
+                         'name': capfirst(model._meta.verbose_name_plural),
+                         'object_name': model._meta.object_name,
++                        'model': model,
+                         'perms': perms,
+                         'admin_url': None,
+                         'add_url': None,
+@@ -479,6 +480,13 @@ class AdminSite:
+ 
+         return app_dict
+ 
++    def build_app_dict(self, request, label=None):
++        """
++        Build the app dictionary. The optional `label` parameter filters models
++        of a specific app.
++        """
++        return self._build_app_dict(request, label)
++
+     def get_app_list(self, request):
+         """
+         Return a sorted list of all the installed apps that have been

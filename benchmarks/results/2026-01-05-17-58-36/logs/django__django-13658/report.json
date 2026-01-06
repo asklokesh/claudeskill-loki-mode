@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-13658",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the issue description, I need to create a patch for the Django repository that adds the `prog` parameter to the `CommandParser` instantiation in the `ManagementUtility` class. Since I don't have direct access to the Django repository in the current workspace, I'll generate the patch based on the issue description and standard Django file structure.\n\n--- a/django/core/management/__init__.py\n+++ b/django/core/management/__init__.py\n@@ -335,6 +335,7 @@ class ManagementUtility:\n         # Preprocess options to extract --settings and --pythonpath.\n         # These options could affect the commands that are available, so they\n         # must be processed early.\n         parser = CommandParser(\n+            prog=self.prog_name,\n             usage='%(prog)s subcommand [options] [args]',\n             add_help=False,\n             allow_abbrev=False)",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:44:19.065495"
+}

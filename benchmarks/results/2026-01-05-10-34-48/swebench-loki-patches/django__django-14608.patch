@@ -1,0 +1,17 @@
+# django__django-14608
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/django/forms/formsets.py
++++ b/django/forms/formsets.py
+@@ -333,7 +333,7 @@ class BaseFormSet:
+         if self._non_form_errors is None:
+             self.full_clean()
+         return self._non_form_errors
+ 
+     def _non_form_error(self):
+-        return self.error_class()
++        return self.error_class(error_class='nonform')
+ 
+     def full_clean(self):
+         """

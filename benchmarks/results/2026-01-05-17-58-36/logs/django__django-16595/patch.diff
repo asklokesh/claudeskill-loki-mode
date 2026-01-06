@@ -1,0 +1,60 @@
+Based on the context, I understand this is a SWE-bench task where I need to generate a patch for a Django migration optimizer issue. Since the Django source files aren't present in this repository (this appears to be a benchmark/testing repository), I'll generate the patch based on the issue description and architect's analysis.
+
+--- a/django/db/migrations/operations/fields.py
++++ b/django/db/migrations/operations/fields.py
+@@ -258,6 +258,10 @@ class AlterField(FieldOperation):
+                 operation.field,
+             )
+             return [operation]
++        elif isinstance(operation, AlterField) and self.is_same_field_operation(
++            operation
++        ):
++            return [operation]
+         return super().reduce(operation, app_label)
+ 
+ 
+--- a/tests/migrations/test_optimizer.py
++++ b/tests/migrations/test_optimizer.py
+@@ -644,6 +644,38 @@ class OptimizerTests(SimpleTestCase):
+         )
+ 
+     def test_alter_field_alter_field(self):
++        """
++        Multiple AlterField operations should be reduced to the last one.
++        """
++        self.assertOptimizesTo(
++            [
++                migrations.AlterField(
++                    model_name="book",
++                    name="title",
++                    field=models.CharField(max_length=256, null=True),
++                ),
++                migrations.AlterField(
++                    model_name="book",
++                    name="title",
++                    field=models.CharField(max_length=128, null=True),
++                ),
++                migrations.AlterField(
++                    model_name="book",
++                    name="title",
++                    field=models.CharField(max_length=128, null=True, help_text="help"),
++                ),
++                migrations.AlterField(
++                    model_name="book",
++                    name="title",
++                    field=models.CharField(max_length=128, null=True, help_text="help", default=None),
++                ),
++            ],
++            [
++                migrations.AlterField(
++                    model_name="book",
++                    name="title",
++                    field=models.CharField(max_length=128, null=True, help_text="help", default=None),
++                ),
++            ],
++        )
++
++    def test_alter_field_alter_field_different_fields(self):
+         """
+         AlterField operations on different fields should not be reduced.
+         """

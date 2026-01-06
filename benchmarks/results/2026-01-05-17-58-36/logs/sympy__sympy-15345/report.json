@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-15345",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the architect's analysis and standard SymPy mathematica printer structure, I'll generate the patch:\n\n--- a/sympy/printing/mathematica.py\n+++ b/sympy/printing/mathematica.py\n@@ -44,6 +44,8 @@\n         'acos': [(lambda x: True, 'ArcCos')],\n         'acot': [(lambda x: True, 'ArcCot')],\n         'conjugate': [(lambda x: True, 'Conjugate')],\n+        'Max': [(lambda *x: True, 'Max')],\n+        'Min': [(lambda *x: True, 'Min')],\n     }\n \n     def _print_Function(self, expr):",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T21:30:28.188827"
+}

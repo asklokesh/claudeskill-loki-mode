@@ -1,0 +1,20 @@
+# django__django-14411
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis, I know exactly what the fix should be. The `ReadOnlyPasswordHashWidget` class needs to override `id_for_label()` to return `None`. Let me generate the patch based on the standard Django codebase structure:
+
+```
+--- a/django/contrib/auth/forms.py
++++ b/django/contrib/auth/forms.py
+@@ -47,6 +47,9 @@ class ReadOnlyPasswordHashWidget(forms.Widget):
+         }
+         return context
+ 
++    def id_for_label(self, id_, suffix=None):
++        return None
++
+ 
+ class ReadOnlyPasswordHashField(forms.Field):
+     widget = ReadOnlyPasswordHashWidget
+```

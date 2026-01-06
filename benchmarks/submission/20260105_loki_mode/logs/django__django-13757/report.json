@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-13757",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the architect's analysis, I need to generate a patch for Django's JSON field handling. Since this is a SWE-bench task for the django/django repository, I should generate the patch based on the typical Django structure and the architect's description.\n\n--- a/django/db/models/fields/json.py\n+++ b/django/db/models/fields/json.py\n@@ -200,10 +200,14 @@ class KeyTransformIsNull(lookups.IsNull):\n         return HasKey(self.lhs.lhs, self.lhs.key_name).as_oracle(compiler, connection)\n \n     def as_sqlite(self, compiler, connection):\n-        if not self.rhs:\n-            return HasKey(self.lhs.lhs, self.lhs.key_name).as_sqlite(compiler, connection)\n-        return super().as_sqlite(compiler, connection)\n+        has_key_lookup = HasKey(self.lhs.lhs, self.lhs.key_name)\n+        if self.rhs:\n+            sql, params = has_key_lookup.as_sqlite(compiler, connection)\n+            return 'NOT %s' % sql, params\n+        return has_key_lookup.as_sqlite(compiler, connection)\n \n     def as_oracle(self, compiler, connection):\n-        if not self.rhs:\n-            return HasKey(self.lhs.lhs, self.lhs.key_name).as_oracle(compiler, connection)\n-        return super().as_oracle(compiler, connection)\n+        has_key_lookup = HasKey(self.lhs.lhs, self.lhs.key_name)\n+        if self.rhs:\n+            sql, params = has_key_lookup.as_oracle(compiler, connection)\n+            return 'NOT %s' % sql, params\n+        return has_key_lookup.as_oracle(compiler, connection)",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:47:31.417580"
+}

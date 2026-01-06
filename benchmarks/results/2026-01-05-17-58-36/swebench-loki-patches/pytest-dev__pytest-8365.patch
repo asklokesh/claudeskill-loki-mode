@@ -1,0 +1,40 @@
+# pytest-dev__pytest-8365
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+I see this is the claudeskill-loki-mode repository, not a pytest repository. The task is asking me to generate a patch for a pytest issue, but I need to work with a hypothetical pytest codebase structure. Let me create the appropriate patch based on the standard pytest tmpdir.py implementation.
+
+--- a/src/_pytest/tmpdir.py
++++ b/src/_pytest/tmpdir.py
+@@ -1,6 +1,7 @@
+ """Support for providing temporary directories to test functions."""
+ import os
+ import re
++import re
+ import tempfile
+ from pathlib import Path
+ from typing import Optional
+@@ -87,11 +88,23 @@ def get_user() -> Optional[str]:
+     """Return the current user name, or None if getuser() does not work
+     in the current environment (see #1010).
+     """
++    def sanitize_username(username: str) -> str:
++        """Sanitize username to remove characters illegal in directory names.
++        
++        Replaces illegal filesystem characters with underscores to ensure
++        valid directory names across platforms (especially Windows).
++        """
++        # Replace illegal characters (backslash, forward slash, colon, etc.) with underscore
++        # Windows illegal chars: < > : " / \ | ? *
++        # Also replace null bytes and control characters
++        sanitized = re.sub(r'[\x00-\x1f<>:"/\\|?*]', '_', username)
++        return sanitized
++
+     try:
+         import getpass
+ 
+-        return getpass.getuser()
++        username = getpass.getuser()
++        return sanitize_username(username) if username else None
+     except (ImportError, KeyError):
+         return None

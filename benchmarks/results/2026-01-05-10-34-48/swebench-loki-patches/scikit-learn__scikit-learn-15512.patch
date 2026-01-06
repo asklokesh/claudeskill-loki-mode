@@ -1,0 +1,106 @@
+# scikit-learn__scikit-learn-15512
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on my knowledge of scikit-learn's AffinityPropagation implementation around version 0.20.3 (the version mentioned in the issue), I'll generate the patch to fix this bug:
+
+```
+--- a/sklearn/cluster/affinity_propagation_.py
++++ b/sklearn/cluster/affinity_propagation_.py
+@@ -15,6 +15,7 @@ from ..utils import as_float_array, check_array
+ from ..utils.validation import check_is_fitted
+ from ..metrics import euclidean_distances
+ from ..metrics import pairwise_distances_argmin
++from ..exceptions import ConvergenceWarning
+ 
+ 
+ def affinity_propagation(S, preference=None, convergence_iter=15, max_iter=200,
+@@ -93,6 +94,10 @@ def affinity_propagation(S, preference=None, convergence_iter=15, max_iter=200,
+     labels : array, shape (n_samples,)
+         cluster labels for each point
+ 
++    n_iter : int
++        Number of iterations run.
++
++    converged : bool
+     Notes
+     -----
+     For an example, see :ref:`examples/cluster/plot_affinity_propagation.py
+@@ -194,6 +199,16 @@ def affinity_propagation(S, preference=None, convergence_iter=15, max_iter=200,
+                 break
+     else:
+         if verbose:
++            warnings.warn("Affinity propagation did not converge, this model "
++                          "will not have any cluster centers.", ConvergenceWarning)
++        return np.array([]), np.array([-1] * n_samples), it + 1
++
++    if verbose:
++        print("Converged after %d iterations." % it)
++
++    I = np.where(np.diag(A + R) > 0)[0]
++    K = I.size  # Identify exemplars
++    if K > 0:
+             print("Did not converge")
+ 
+     I = np.where(np.diag(A + R) > 0)[0]
+@@ -227,7 +242,7 @@ def affinity_propagation(S, preference=None, convergence_iter=15, max_iter=200,
+         labels = np.array([-1] * n_samples)
+         cluster_centers_indices = []
+ 
+-    return cluster_centers_indices, labels, it + 1
++    return cluster_centers_indices, labels, it + 1, converged
+ 
+ 
+ ###############################################################################
+@@ -353,8 +368,9 @@ class AffinityPropagation(BaseEstimator, ClusterMixin):
+             self.affinity_matrix_ = -euclidean_distances(X, squared=True)
+         else:
+             self.affinity_matrix_ = X
+-        self.cluster_centers_indices_, self.labels_, self.n_iter_ = \
+-            affinity_propagation(
++        (self.cluster_centers_indices_, self.labels_, self.n_iter_,
++         self.converged_) = affinity_propagation(
+                 self.affinity_matrix_, self.preference, max_iter=self.max_iter,
+                 convergence_iter=self.convergence_iter, damping=self.damping,
+                 copy=self.copy, verbose=self.verbose, return_n_iter=True)
+```
+
+Let me provide a cleaner, more accurate patch based on the standard structure of the file:
+
+--- a/sklearn/cluster/affinity_propagation_.py
++++ b/sklearn/cluster/affinity_propagation_.py
+@@ -15,6 +15,7 @@ from ..utils import as_float_array, check_array
+ from ..utils.validation import check_is_fitted
+ from ..metrics import euclidean_distances
+ from ..metrics import pairwise_distances_argmin
++from ..exceptions import ConvergenceWarning
+ 
+ 
+ def affinity_propagation(S, preference=None, convergence_iter=15, max_iter=200,
+@@ -93,6 +94,9 @@ def affinity_propagation(S, preference=None, convergence_iter=15, max_iter=200,
+     labels : array, shape (n_samples,)
+         cluster labels for each point
+ 
++    n_iter : int
++        Number of iterations run.
++
+     Notes
+     -----
+     For an example, see :ref:`examples/cluster/plot_affinity_propagation.py
+@@ -191,9 +195,13 @@ def affinity_propagation(S, preference=None, convergence_iter=15, max_iter=200,
+             if verbose:
+                 print("Converged after %d iterations." % it)
+             break
+-    else:
+-        if verbose:
+-            print("Did not converge")
++    else:  # did not converge
++        warnings.warn("Affinity propagation did not converge, this model "
++                      "will not have any cluster centers.", ConvergenceWarning)
++        if return_n_iter:
++            return np.array([]), np.array([-1] * n_samples), it + 1
++        else:
++            return np.array([]), np.array([-1] * n_samples)
+ 
+     I = np.where(np.diag(A + R) > 0)[0]
+     K = I.size  # Identify exemplars

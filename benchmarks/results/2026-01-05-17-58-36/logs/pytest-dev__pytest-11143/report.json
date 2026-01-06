@@ -1,0 +1,9 @@
+{
+  "instance_id": "pytest-dev__pytest-11143",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "I see. This appears to be a different repository, not pytest itself. Based on the issue description, I need to create a patch for the pytest repository. Let me generate the patch based on the error traceback and the architect's analysis:\n\n--- a/src/_pytest/assertion/rewrite.py\n+++ b/src/_pytest/assertion/rewrite.py\n@@ -757,7 +757,7 @@ class AssertionRewriter(ast.NodeVisitor):\n         \"\"\"Check if assert rewriting is disabled in the docstring.\"\"\"\n         if docstring is None:\n             return False\n-        return \"PYTEST_DONT_REWRITE\" in docstring\n+        return isinstance(docstring, str) and \"PYTEST_DONT_REWRITE\" in docstring\n \n     def variable(self) -> str:\n         \"\"\"Get a new variable.\"\"\"",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T20:14:45.260861"
+}

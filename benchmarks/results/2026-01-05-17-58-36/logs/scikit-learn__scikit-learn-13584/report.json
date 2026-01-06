@@ -1,0 +1,9 @@
+{
+  "instance_id": "scikit-learn__scikit-learn-13584",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/sklearn/utils/_pprint.py\n+++ b/sklearn/utils/_pprint.py\n@@ -69,6 +69,21 @@\n     return signature(estimator.__class__).parameters\n \n \n+def _safe_equality_check(a, b):\n+    \"\"\"Check equality handling numpy arrays and other objects safely.\"\"\"\n+    try:\n+        result = a == b\n+        # Handle numpy arrays and other iterables that return array-like results\n+        if isinstance(result, np.ndarray):\n+            return result.all()\n+        # Handle other array-like objects\n+        if hasattr(result, '__iter__') and not isinstance(a, str):\n+            return all(result)\n+        return result\n+    except (ValueError, TypeError):\n+        return False\n+\n+\n def _changed_params(estimator):\n     \"\"\"Return dict (param_name: value) of parameters that were given to\n     estimator with non-default values.\"\"\"\n@@ -100,7 +115,7 @@\n             pass\n         else:\n             # Ignore NaN values\n-            if v != init_params[k] and not (is_scalar_nan(init_params[k]) and\n+            if not _safe_equality_check(v, init_params[k]) and not (is_scalar_nan(init_params[k]) and\n                                             is_scalar_nan(v)):\n                 filtered_params[k] = v\n     return filtered_params",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T20:34:14.164914"
+}

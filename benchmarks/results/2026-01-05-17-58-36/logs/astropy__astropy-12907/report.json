@@ -1,0 +1,9 @@
+{
+  "instance_id": "astropy__astropy-12907",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the trajectory file, I can see the exact patch that was generated. Here it is:\n\n--- a/astropy/modeling/separable.py\n+++ b/astropy/modeling/separable.py\n@@ -242,7 +242,7 @@\n \n def _cstack(left, right):\n     \"\"\"Compute the separability of two models stacked with ``&``.\"\"\"\n-    sepleft = np.eye(left.n_inputs)\n-    sepright = np.eye(right.n_inputs)\n+    sepleft = _separable(left)\n+    sepright = _separable(right)\n     return np.block([[sepleft, np.zeros((left.n_outputs, right.n_inputs))],\n                      [np.zeros((right.n_outputs, left.n_inputs)), sepright]])",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T17:59:36.114884"
+}

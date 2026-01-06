@@ -1,0 +1,23 @@
+# matplotlib__matplotlib-24970
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis, I'll generate the patch for the NumPy 1.24 deprecation warning fix. The issue is that sentinel values (256, 257, 258) are being assigned to uint8 arrays which can only hold 0-255. The fix is to promote the array to a larger dtype before assignment.
+
+--- a/lib/matplotlib/colors.py
++++ b/lib/matplotlib/colors.py
+@@ -670,6 +670,14 @@
+         # filling it in in two stages: First we clip empty to the
+         # valid range, then we fill in the three special values.
+         xa = np.array(x, copy=True)
++        
++        # Promote to int16 to avoid overflow when assigning sentinel values
++        # (self._i_under=256, self._i_over=257, self._i_bad=258) which are
++        # out of range for uint8 arrays
++        if np.issubdtype(xa.dtype, np.integer):
++            # Use int16 to safely hold sentinel values up to self.N + 2
++            xa = xa.astype(np.int16)
++        
+         xa = np.clip(xa, 0, self.N - 1)
+         xa[xa > self.N - 1] = self._i_over
+         xa[xa < 0] = self._i_under

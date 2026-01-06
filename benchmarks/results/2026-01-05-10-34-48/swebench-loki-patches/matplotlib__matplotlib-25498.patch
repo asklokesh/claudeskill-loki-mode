@@ -1,0 +1,16 @@
+# matplotlib__matplotlib-25498
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/lib/matplotlib/cm.py
++++ b/lib/matplotlib/cm.py
+@@ -343,6 +343,9 @@ class ScalarMappable(object):
+             self.norm = mcolors.Normalize()
+         self.norm.vmin = norm.vmin
+         self.norm.vmax = norm.vmax
++        # Autoscale the new norm's limits if they are None and we have data
++        if self._A is not None:
++            self.autoscale_None()
+         self.changed()
+ 
+     def set_norm(self, norm):

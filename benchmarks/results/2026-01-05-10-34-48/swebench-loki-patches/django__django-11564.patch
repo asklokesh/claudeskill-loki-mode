@@ -1,0 +1,94 @@
+# django__django-11564
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and my knowledge of Django's codebase, I'll generate the patch to add SCRIPT_NAME support in STATIC_URL and MEDIA_URL. The fix involves modifying the storage classes to use `get_script_prefix()` for relative URLs.
+
+```
+--- a/django/contrib/staticfiles/storage.py
++++ b/django/contrib/staticfiles/storage.py
+@@ -1,6 +1,7 @@
+ import hashlib
+ import json
+ import os
++import posixpath
+ import re
+ from urllib.parse import unquote, urldefrag, urlsplit, urlunsplit
+ 
+@@ -9,6 +10,7 @@ from django.core.cache import (
+     InvalidCacheBackendError, caches,
+ )
+ from django.core.files.storage import FileSystemStorage
++from django.urls import get_script_prefix
+ 
+ 
+ class StaticFilesStorage(FileSystemStorage):
+@@ -21,6 +23,15 @@ class StaticFilesStorage(FileSystemStorage):
+             location = settings.STATIC_ROOT
+         super().__init__(location, base_url, *args, **kwargs)
+ 
++    def url(self, name):
++        url = super().url(name)
++        # Prepend SCRIPT_NAME if the URL is root-relative (starts with / but
++        # doesn't have a scheme like http:// or https://)
++        if url.startswith('/') and not url.startswith('//'):
++            script_prefix = get_script_prefix()
++            if script_prefix != '/':
++                url = posixpath.join(script_prefix.rstrip('/'), url.lstrip('/'))
++        return url
+ 
+ class ManifestFilesMixin:
+     manifest_version = '1.0'  # the manifest format version
+--- a/django/core/files/storage.py
++++ b/django/core/files/storage.py
+@@ -4,6 +4,7 @@ import pathlib
+ from datetime import datetime
+ from urllib.parse import urljoin
+ 
++from django.urls import get_script_prefix
+ from django.conf import settings
+ from django.core.exceptions import SuspiciousFileOperation
+ from django.core.files import File, locks
+@@ -111,7 +112,14 @@ class FileSystemStorage(Storage):
+             url = filepath_to_uri(name)
+         if url is not None:
+             url = url.lstrip('/')
+-        return urljoin(self.base_url, url)
++        final_url = urljoin(self.base_url, url)
++        # Prepend SCRIPT_NAME if the URL is root-relative (starts with / but
++        # doesn't have a scheme like http:// or https://)
++        if final_url.startswith('/') and not final_url.startswith('//'):
++            script_prefix = get_script_prefix()
++            if script_prefix != '/':
++                final_url = script_prefix.rstrip('/') + final_url
++        return final_url
+ 
+     @cached_property
+     def base_url(self):
+--- a/django/templatetags/static.py
++++ b/django/templatetags/static.py
+@@ -1,5 +1,6 @@
+ from urllib.parse import quote, urljoin
+ 
++from django.urls import get_script_prefix
+ from django import template
+ from django.apps import apps
+ from django.utils.encoding import iri_to_uri
+@@ -67,7 +68,14 @@ class StaticNode(template.Node):
+ def static(path):
+     """
+     Given a relative path to a static asset, return the absolute path to the
+-    asset.
++    asset. Prepends SCRIPT_NAME prefix for sub-path deployments.
+     """
+     prefix = iri_to_uri(get_static_url())
+-    return urljoin(prefix, quote(path))
++    url = urljoin(prefix, quote(path))
++    # Prepend SCRIPT_NAME if the URL is root-relative (starts with / but
++    # doesn't have a scheme like http:// or https://)
++    if url.startswith('/') and not url.startswith('//'):
++        script_prefix = get_script_prefix()
++        if script_prefix != '/':
++            url = script_prefix.rstrip('/') + url
++    return url
+```

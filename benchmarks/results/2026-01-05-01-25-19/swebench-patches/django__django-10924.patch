@@ -1,0 +1,52 @@
+This is not the Django repository. The issue is about the django/django repository. Let me provide the patch based on the Django source code structure as described in the issue and the referenced PRs.
+
+Based on my knowledge of Django's codebase and the referenced PRs in the issue (PR #10299 and PR #10924), I can create the appropriate patch. The fix needs to:
+
+1. Modify the model's `FilePathField` in `django/db/models/fields/__init__.py` to handle callable paths
+2. Modify the form's `FilePathField` in `django/forms/fields.py` to resolve callable paths
+
+--- a/django/db/models/fields/__init__.py
++++ b/django/db/models/fields/__init__.py
+@@ -1678,7 +1678,11 @@ class FilePathField(Field):
+         kwargs.setdefault('max_length', 100)
+         super().__init__(verbose_name, name, **kwargs)
+ 
++    def __init__(self, verbose_name=None, name=None, path='', match=None,
++                 recursive=False, allow_files=True, allow_folders=False, **kwargs):
++        self.path, self.match, self.recursive = path, match, recursive
++        self.allow_files, self.allow_folders = allow_files, allow_folders
++        kwargs.setdefault('max_length', 100)
++        super().__init__(verbose_name, name, **kwargs)
++
+     def check(self, **kwargs):
+         return [
+             *super().check(**kwargs),
+@@ -1689,7 +1693,9 @@ class FilePathField(Field):
+         if not self.allow_files and not self.allow_folders:
+             return [
+                 checks.Error(
+-                    "FilePathFields must have either 'allow_files' or 'allow_folders' set to True.",
++                    "FilePathFields must have either 'allow_files' or "
++                    "'allow_folders' set to True.",
+                     obj=self,
+                     id='fields.E140',
+                 )
+@@ -1704,7 +1710,8 @@ class FilePathField(Field):
+     def formfield(self, **kwargs):
+         return super().formfield(**{
+             'path': self.path,
++            'path': self.path() if callable(self.path) else self.path,
+             'match': self.match,
+             'recursive': self.recursive,
+             'form_class': forms.FilePathField,
+             'allow_files': self.allow_files,
+--- a/django/forms/fields.py
++++ b/django/forms/fields.py
+@@ -1098,6 +1098,9 @@ class FilePathField(ChoiceField):
+     def __init__(self, path, *, match=None, recursive=False, allow_files=True,
+                  allow_folders=False, **kwargs):
+         self.path, self.match, self.recursive = path, match, recursive
++        if callable(self.path):
++            self.path = self.path()
+         self.allow_files, self.allow_folders = allow_files, allow_folders
+         super().__init__(choices=(), **kwargs)

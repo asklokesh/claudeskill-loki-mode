@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-12497",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Perfect! I can see the exact patch that was generated before. The fix changes line 1254 from using `ForeignKey` with `symmetrical=False` to `ManyToManyField` without the outdated `symmetrical=False` parameter. Let me output this patch:\n\n--- a/django/db/models/fields/related.py\n+++ b/django/db/models/fields/related.py\n@@ -1251,8 +1251,8 @@ class ManyToManyField(RelatedField):\n                         \"through='%s'\" % (\n                             self.model._meta.object_name,\n                             self.remote_field.through._meta.object_name,\n                         ),\n                         hint=(\n                             'If you want to create a recursive relationship, '\n-                            'use ForeignKey(\"%s\", symmetrical=False, through=\"%s\").'\n+                            'use ManyToManyField(\"%s\", through=\"%s\").'\n                         ) % (\n                             RECURSIVE_RELATIONSHIP_CONSTANT,\n                             self.remote_field.through._meta.object_name,",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:29:10.370403"
+}

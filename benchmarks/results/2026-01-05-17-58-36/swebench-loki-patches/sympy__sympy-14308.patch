@@ -1,0 +1,36 @@
+# sympy__sympy-14308
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on my analysis of the existing patches and the issue description, I can now generate the proper patch. The issue shows that:
+
+1. The vector `e.j` is being printed twice (duplicated)
+2. The baseline alignment is incorrect
+
+The fix needs to:
+1. Properly separate the scalar coefficient from the basis vector
+2. Ensure the basis vector is centered with respect to multiline scalar expressions
+
+--- a/sympy/printing/pretty/pretty.py
++++ b/sympy/printing/pretty/pretty.py
+@@ -2356,9 +2356,17 @@ class PrettyPrinter(Printer):
+             inneritems.sort(key = lambda x: x[0].__str__())
+             for k, v in inneritems:
+                 #Build the pretty form for the coefficient
+-                pform = self._print(v)
+-                vec_str = self._print(k)
+-                pform = prettyForm(*pform.right(' ', vec_str))
++                if v == 1:
++                    pform = self._print(k)
++                else:
++                    pform = self._print(v)
++                    # Parenthesize if needed
++                    if v.is_Add or _coeff_isneg(v):
++                        pform = prettyForm(*pform.parens())
++                    # Print the basis vector and center it with the scalar
++                    vec_pform = self._print(k)
++                    vec_pform.baseline = pform.baseline
++                    pform = prettyForm(*pform.right(' ', vec_pform))
+                 o1.append(pform)
+ 
+         #Omit printing of the 0 vector

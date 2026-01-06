@@ -1,0 +1,20 @@
+# sympy__sympy-21627
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/sympy/functions/elementary/complexes.py
++++ b/sympy/functions/elementary/complexes.py
+@@ -613,10 +613,12 @@ def eval(cls, arg):
+                 return sqrt(arg2)
+             if arg2.is_positive:
+                 return sqrt(arg2)
++        if arg.is_extended_real:
++            return
+         _arg = arg
+         if not _arg.is_extended_real:
+             conj = _arg.conjugate()
+-            if _arg != conj or _arg != -conj:
++            if _arg not in (conj, -conj):
+                 _arg = (_arg*conj)
+                 if _arg.is_extended_real and _arg.is_positive:
+                     return sqrt(_arg)

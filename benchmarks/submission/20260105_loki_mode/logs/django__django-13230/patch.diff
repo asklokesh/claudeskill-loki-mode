@@ -1,0 +1,25 @@
+Based on the architect's analysis and the Django syndication framework structure, I'll generate the patch for adding `item_comments` support:
+
+--- a/django/contrib/syndication/views.py
++++ b/django/contrib/syndication/views.py
+@@ -120,6 +120,11 @@ class Feed:
+         """
+         return self._get_dynamic_attr("item_enclosures", item)
+ 
++    def item_comments(self, item):
++        """
++        Returns the comments URL for a particular item.
++        """
++        return self._get_dynamic_attr("item_comments", item)
++
+     def item_pubdate(self, item):
+         """
+         Returns the pubdate for every item in the feed.
+@@ -220,6 +225,7 @@ class Feed:
+                 author_link=author_link,
+                 author_email=author_email,
+                 categories=self._get_dynamic_attr("item_categories", item),
++                comments=self.__get_dynamic_attr("item_comments", item),
+                 item_copyright=self._get_dynamic_attr("item_copyright", item),
+                 **self.item_extra_kwargs(item),
+             )

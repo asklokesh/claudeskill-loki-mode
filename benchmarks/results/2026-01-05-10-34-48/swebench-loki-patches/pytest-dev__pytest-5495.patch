@@ -1,0 +1,30 @@
+# pytest-dev__pytest-5495
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/src/_pytest/assertion/util.py
++++ b/src/_pytest/assertion/util.py
+@@ -256,11 +256,11 @@ def _compare_eq_sequence(
+     len_left = len(left)
+     len_right = len(right)
+     for i in range(min(len_left, len_right)):
+-        if left[i] != right[i]:
++        if left[i] != right[i] and not isinstance(left, (bytes, bytearray)):
+             explanation += [
+                 "At index %s diff: %r != %r" % (i, left[i], right[i])
+             ]
+             break
+-    if len_left > len_right:
++    if len_left > len_right and not isinstance(left, (bytes, bytearray)):
+         explanation += [
+             "Left contains %d more items, first extra item: %s"
+             % (len_left - len_right, saferepr(left[len_right]))
+@@ -268,7 +268,7 @@ def _compare_eq_sequence(
+     elif len_left < len_right:
+         explanation += [
+-            "Right contains %d more items, first extra item: %s"
++            "Right contains %d more items, first extra item: %s"
+             % (len_right - len_left, saferepr(right[len_left]))
+-        ]
++        ] if not isinstance(left, (bytes, bytearray)) else []
+     return explanation

@@ -1,0 +1,80 @@
+# django__django-10914
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and my knowledge of Django's codebase structure, I can generate the patch for this issue. The fix involves changing `FILE_UPLOAD_PERMISSIONS` from `None` to `0o644` and updating the relevant documentation.
+
+```
+--- a/django/conf/global_settings.py
++++ b/django/conf/global_settings.py
+@@ -304,7 +304,7 @@ EMAIL_TIMEOUT = None
+ # List of compiled regular expression objects representing User-Agent strings
+ # that are not allowed to visit any page, systemwide. Use this for bad
+ # robots/crawlers. Here are a few examples:
+-FILE_UPLOAD_PERMISSIONS = None
++FILE_UPLOAD_PERMISSIONS = 0o644
+ FILE_UPLOAD_DIRECTORY_PERMISSIONS = None
+ 
+ # Python module path where user will place custom format definition.
+--- a/docs/ref/settings.txt
++++ b/docs/ref/settings.txt
+@@ -1757,14 +1757,15 @@ FILE_UPLOAD_PERMISSIONS
+ 
+ Default: ``None``
+ 
+-The numeric mode (i.e. ``0o644``) to set newly uploaded files to. For
+-more information about what these modes mean, see the documentation for
+-:func:`os.chmod`.
++Default: ``0o644``
+ 
+-If this isn't given or is ``None``, you'll get operating-system
+-dependent behavior. On most platforms, temporary files will have a mode
+-of ``0o600``, and files saved from memory will be saved using the
+-system's standard umask.
++The numeric mode (i.e. ``0o644``) to set newly uploaded files to. For
++more information about what these modes mean, see the documentation for
++:func:`os.chmod`.
++
++If ``None`` is given, you'll get operating-system dependent behavior.
++On most platforms, temporary files will have a mode of ``0o600``, and
++files saved from memory will be saved using the system's standard umask.
+ 
+ .. warning::
+ 
+--- a/docs/howto/deployment/checklist.txt
++++ b/docs/howto/deployment/checklist.txt
+@@ -100,7 +100,7 @@ You may also want to configure :setting:`DEFAULT_FROM_EMAIL` and
+ :setting:`SERVER_EMAIL`, though these are typically configured on a per-site
+ basis.
+ 
+-You should ensure that your uploaded files have correct permissions.
++The default :setting:`FILE_UPLOAD_PERMISSIONS` is ``0o644``.
+ 
+ Performance optimizations
+ =========================
+--- a/docs/releases/3.0.txt
++++ b/docs/releases/3.0.txt
+@@ -1,6 +1,23 @@
+ ========================
+ Django 3.0 release notes
+ ========================
++
++Backwards incompatible changes in 3.0
++=====================================
++
++File Uploads
++------------
++
++* The default value of :setting:`FILE_UPLOAD_PERMISSIONS` has changed from
++  ``None`` to ``0o644``. In previous versions, if ``FILE_UPLOAD_PERMISSIONS``
++  was not explicitly set, uploaded files could have different permissions
++  depending on their size and the upload handler used. Files smaller than
++  :setting:`FILE_UPLOAD_MAX_MEMORY_SIZE` used the system's standard umask,
++  while larger files that were written to a temporary file ended up with
++  ``0o600`` permissions due to Python's ``tempfile`` module.
++
++  To restore the previous behavior, set ``FILE_UPLOAD_PERMISSIONS = None``.
+ 
+ *UNDER DEVELOPMENT*
+ 
+```

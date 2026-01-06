@@ -1,0 +1,9 @@
+{
+  "instance_id": "pytest-dev__pytest-5692",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the standard pytest repository structure and the issue description, I'll generate the patch for adding hostname and timestamp attributes to the JUnit XML testsuite element:\n\n--- a/src/_pytest/junitxml.py\n+++ b/src/_pytest/junitxml.py\n@@ -1,6 +1,8 @@\n \"\"\"Report test results in JUnit-XML format, for use with Jenkins and build integration servers.\"\"\"\n import functools\n import os\n+import platform\n+import socket\n from datetime import datetime\n from typing import Callable\n from typing import Dict\n@@ -394,6 +396,8 @@ class _NodeReporter:\n \n \n def _warn_incompatibility_with_xunit2(request, fixture_name):\n+    \"\"\"Warn about incompatibility with xunit2.\"\"\"\n+    from _pytest.warning_types import PytestWarning\n \n \n @pytest.hookimpl(tryfirst=True)\n@@ -617,6 +621,8 @@ class LogXML:\n         suite_stop_time = timing.time()\n         suite_time_delta = suite_stop_time - self.suite_start_time\n \n+        hostname = platform.node()\n+        timestamp = datetime.fromtimestamp(self.suite_start_time).isoformat()\n+\n         numtests = (\n             self.stats[\"passed\"]\n             + self.stats[\"failure\"]\n@@ -628,6 +634,8 @@ class LogXML:\n \n         logfile.write(\n             Junit.testsuite(\n+                hostname=hostname,\n+                timestamp=timestamp,\n                 self._get_global_properties_node(),\n                 [x.to_xml() for x in self.node_reporters_ordered],\n                 name=self.suite_name,",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T20:19:57.899843"
+}

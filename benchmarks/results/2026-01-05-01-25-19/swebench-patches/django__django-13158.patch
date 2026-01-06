@@ -1,0 +1,41 @@
+This repository doesn't contain Django source code. I need to work with my knowledge of Django's internals to provide the fix. Let me analyze the issue based on my understanding of Django's QuerySet implementation.
+
+The issue is that `QuerySet.none()` on combined queries (using `union()`, `intersection()`, `difference()`) returns all results instead of an empty queryset.
+
+Looking at Django's source code structure:
+1. `django/db/models/query.py` contains the `QuerySet` class with the `none()` method
+2. The `none()` method typically adds an `EmptyResultSet` marker to the query
+3. Combined queries store the combined querysets and need special handling
+
+The fix should be in `django/db/models/query.py`. The `none()` method needs to properly handle combined querysets by clearing the combined queries when `none()` is called.
+
+Based on my knowledge of Django's codebase, here's the patch:
+
+--- a/django/db/models/query.py
++++ b/django/db/models/query.py
+@@ -1253,6 +1253,7 @@ class QuerySet(AltersData):
+     def none(self):
+         """Return an empty QuerySet."""
+         clone = self._chain()
++        clone.query.set_empty()
+         clone.query.set_empty()
+         return clone
+
+Wait, that's not right. Let me think more carefully about this issue.
+
+The problem is that when you have a combined query (union/intersection/difference) and call `none()`, the `set_empty()` method is called but it doesn't properly handle the case where `query.combinator` is set.
+
+Looking at the SQL query class in `django/db/models/sql/query.py`, the `set_empty()` method adds a WHERE clause that's always false (like `0=1`). However, when the query has a combinator set, this WHERE clause might not be applied correctly during SQL compilation.
+
+The fix should ensure that when `none()` is called on a combined query, the combined queries are cleared and the result is an empty queryset.
+
+--- a/django/db/models/query.py
++++ b/django/db/models/query.py
+@@ -1253,6 +1253,8 @@ class QuerySet(AltersData):
+     def none(self):
+         """Return an empty QuerySet."""
+         clone = self._chain()
++        clone.query.combined_queries = ()
++        clone.query.combinator = None
+         clone.query.set_empty()
+         return clone

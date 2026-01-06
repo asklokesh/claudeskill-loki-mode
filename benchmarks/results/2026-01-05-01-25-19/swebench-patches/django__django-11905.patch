@@ -1,0 +1,16 @@
+Based on the GitHub issue and the hints provided, I can generate the patch directly. The issue clearly shows the required fix in the discussion - adding validation in the `IsNull.as_sql` method to raise a `ValueError` when a non-boolean value is passed.
+
+--- a/django/db/models/lookups.py
++++ b/django/db/models/lookups.py
+@@ -461,6 +461,11 @@ class IsNull(BuiltinLookup):
+     prepare_rhs = False
+ 
+     def as_sql(self, compiler, connection):
++        if not isinstance(self.rhs, bool):
++            raise ValueError(
++                'The QuerySet value for an isnull lookup must be True or '
++                'False.'
++            )
+         sql, params = compiler.compile(self.lhs)
+         if self.rhs:
+             return "%s IS NULL" % sql, params

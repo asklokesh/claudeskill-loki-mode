@@ -1,0 +1,30 @@
+# matplotlib__matplotlib-23562
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+I understand now. This is a benchmark task for Loki Mode to generate a patch for a matplotlib issue. Based on the architect's analysis, I need to create a patch for the `art3d.py` file that fixes the `_facecolors2d` and `_edgecolors2d` AttributeError issue.
+
+Let me generate the patch based on the analysis provided:
+
+--- a/lib/mpl_toolkits/mplot3d/art3d.py
++++ b/lib/mpl_toolkits/mplot3d/art3d.py
+@@ -631,10 +631,18 @@ class Poly3DCollection(PolyCollection):
+         self._edgecolors3d = PolyCollection.get_edgecolor(self)
+ 
+     def get_facecolors(self):
+-        return self._facecolors2d
++        if not hasattr(self, '_facecolors2d'):
++            self.do_3d_projection()
++            if not hasattr(self, '_facecolors2d'):
++                self._facecolors2d = PolyCollection.get_facecolor(self)
++        return self._facecolors2d
+     get_facecolor = get_facecolors
+ 
+     def get_edgecolors(self):
+-        return self._edgecolors2d
++        if not hasattr(self, '_edgecolors2d'):
++            self.do_3d_projection()
++            if not hasattr(self, '_edgecolors2d'):
++                self._edgecolors2d = PolyCollection.get_edgecolor(self)
++        return self._edgecolors2d
+     get_edgecolor = get_edgecolors

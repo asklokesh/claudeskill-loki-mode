@@ -1,0 +1,9 @@
+{
+  "instance_id": "pytest-dev__pytest-5227",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/src/_pytest/logging.py\n+++ b/src/_pytest/logging.py\n@@ -12,7 +12,7 @@ from typing import Mapping\n from typing import Optional\n from typing import Union\n \n-DEFAULT_LOG_FORMAT = \"%(filename)-25s %(lineno)4d %(levelname)-8s %(message)s\"\n+DEFAULT_LOG_FORMAT = \"%(levelname)-8s %(name)s:%(filename)s:%(lineno)d %(message)s\"\n DEFAULT_LOG_DATE_FORMAT = \"%H:%M:%S\"",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T20:17:37.697016"
+}

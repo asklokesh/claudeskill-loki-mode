@@ -1,0 +1,46 @@
+{
+  "benchmark": "SWE-bench-LokiMode",
+  "mode": "multi-agent",
+  "version": "1.0",
+  "timestamp": "2026-01-05T09:48:55.022789",
+  "model": "opus",
+  "max_retries": 3,
+  "total_problems": 5,
+  "predictions": [
+    {
+      "instance_id": "astropy__astropy-12907",
+      "model_patch": "",
+      "model_name_or_path": "loki-mode-opus",
+      "attempts": 1
+    },
+    {
+      "instance_id": "astropy__astropy-14182",
+      "model_patch": "Based on my knowledge of the astropy codebase and the issue description, I can generate the patch. The RST writer in astropy inherits from FixedWidth, and the fix requires passing `header_rows` to the parent class.\n\n```\n--- a/astropy/io/ascii/rst.py\n+++ b/astropy/io/ascii/rst.py\n@@ -27,6 +27,12 @@ from .fixedwidth import FixedWidth, FixedWidthData, FixedWidthHeader\n from .core import Column\n \n \n+class SimpleRSTHeader(FixedWidthHeader):\n+    \"\"\"Header class for RST output that supports header_rows parameter.\"\"\"\n+\n+    position_line = None\n+\n+\n class SimpleRSTData(FixedWidthData):\n     \"\"\"\n     Read and write RestructuredText simple table data.\n@@ -57,7 +63,8 @@ class RST(FixedWidth):\n         Formatting character(s) used to separate rows in the RST output.\n     \"\"\"\n \n-    data_class = SimpleRSTData\n+    header_class = SimpleRSTHeader\n+    data_class = SimpleRSTData\n \n     def __init__(self, header_rows=None):\n-        super().__init__(delimiter_pad=None, bookend=False)\n+        super().__init__(delimiter_pad=None, bookend=False, header_rows=header_rows)\n```",
+      "model_name_or_path": "loki-mode-opus",
+      "attempts": 1
+    },
+    {
+      "instance_id": "astropy__astropy-14365",
+      "model_patch": "Based on my knowledge of the astropy codebase and the issue description, I can generate the patch. The `qdp.py` file uses regex patterns to match QDP commands, and the fix requires adding the `re.IGNORECASE` flag to make the command matching case-insensitive.\n\n```\n--- a/astropy/io/ascii/qdp.py\n+++ b/astropy/io/ascii/qdp.py\n@@ -68,7 +68,7 @@ def _line_type(line, delimiter=None):\n     _new_re = rf\"NO({sep}NO)+\"\n     _data_re = rf\"({_decimal_re}|NO|[-+]?nan)({sep}({_decimal_re}|NO|[-+]?nan))*)\"\n     _type_re = rf\"^\\s*((?P<command>{_command_re})|(?P<new>{_new_re})|(?P<data>{_data_re})?\\s*(\\!(?P<comment>.*))?\\s*$\"\n-    _line_type_re = re.compile(_type_re)\n+    _line_type_re = re.compile(_type_re, re.IGNORECASE)\n     line = line.strip()\n     if not line:\n         return \"comment\"\n@@ -88,7 +88,7 @@ def _line_type(line, delimiter=None):\n \n \n def _get_type_from_list_of_lines(lines, delimiter=None):\n-    for line in lines:\n+    for line in lines:\n         if _line_type(line, delimiter=delimiter) != \"comment\":\n             return _line_type(line, delimiter=delimiter)\n     return None\n@@ -105,7 +105,7 @@ def _get_lines_from_file(qdp_file):\n \n def _interpret_err_lines(err_specs, ncols, names=None):\n     \"\"\"Give list of column names from the READ SERR/TERR commands.\"\"\"\n-    serr_cols = []\n+    serr_cols = []\n     terr_cols = []\n \n     for spec in err_specs:\n@@ -113,9 +113,9 @@ def _interpret_err_lines(err_specs, ncols, names=None):\n         if command == \"!\":\n             continue\n         command = command.strip().split()\n-        if command[0] == \"READ\" and command[1] == \"SERR\":\n+        if command[0].upper() == \"READ\" and command[1].upper() == \"SERR\":\n             serr_cols.extend([int(x) for x in command[2:]])\n-        if command[0] == \"READ\" and command[1] == \"TERR\":\n+        if command[0].upper() == \"READ\" and command[1].upper() == \"TERR\":\n             terr_cols.extend([int(x) for x in command[2:]])\n \n     shift = 0\n```",
+      "model_name_or_path": "loki-mode-opus",
+      "attempts": 1
+    },
+    {
+      "instance_id": "astropy__astropy-14995",
+      "model_patch": "--- a/astropy/nddata/mixins/ndarithmetic.py\n+++ b/astropy/nddata/mixins/ndarithmetic.py\n@@ -485,7 +485,7 @@ class NDArithmeticMixin:\n             return deepcopy(self.mask)\n \n         # Now lets calculate the resulting mask (operation enforces copy)\n-        return handle_mask(self.mask, operand, **kwds)\n+        return handle_mask(self.mask, operand.mask, **kwds)\n \n     def _arithmetic_wcs(self, operation, operand, compare_wcs, **kwds):\n         \"\"\"",
+      "model_name_or_path": "loki-mode-opus",
+      "attempts": 1
+    },
+    {
+      "instance_id": "astropy__astropy-6938",
+      "model_patch": "Based on the issue description and the architect's analysis, I can generate the patch. The bug is clear: `output_field.replace()` returns a copy but the result is not assigned back. Let me generate the patch based on the code snippet provided in the issue:\n\n```\n--- a/astropy/io/fits/fitsrec.py\n+++ b/astropy/io/fits/fitsrec.py\n@@ -1262,7 +1262,7 @@\n \n         # Replace exponent separator in floating point numbers\n         if 'D' in format:\n-            output_field.replace(encode_ascii('E'), encode_ascii('D'))\n+            output_field[:] = output_field.replace(encode_ascii('E'), encode_ascii('D'))\n \n```",
+      "model_name_or_path": "loki-mode-opus",
+      "attempts": 1
+    }
+  ],
+  "generated": 4,
+  "fixed_by_rarv": 0,
+  "errors": 1,
+  "avg_attempts": 1.0,
+  "elapsed_time": 255.91427206993103
+}

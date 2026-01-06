@@ -1,0 +1,9 @@
+{
+  "instance_id": "scikit-learn__scikit-learn-25747",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "I understand now. This is a task to generate a patch for a scikit-learn issue, but I'm in the loki-mode repository. I need to create the patch based on the issue description and the architect's analysis. Let me create the appropriate patch for the scikit-learn repository.\n\nBased on the architect's analysis, the fix needs to be in `sklearn/utils/_set_output.py` in the `_wrap_in_pandas_container` function. The issue is that it unconditionally sets the index from the original input, which fails when the transformer changes the number of rows (aggregation).\n\nHere's the patch:\n\n--- a/sklearn/utils/_set_output.py\n+++ b/sklearn/utils/_set_output.py\n@@ -56,8 +56,13 @@\n     if isinstance(data_to_wrap, pd.DataFrame):\n         if columns is not None:\n             data_to_wrap.columns = columns\n-        if index is not None:\n-            data_to_wrap.index = index\n+        if index is not None:\n+            # Only set the index if lengths match to support transformers\n+            # that aggregate/filter data (change number of rows)\n+            if len(index) == len(data_to_wrap):\n+                data_to_wrap.index = index\n+            # Otherwise, preserve the transformer's output index\n+        \n         return data_to_wrap\n \n     return pd.DataFrame(data_to_wrap, index=index, columns=columns)",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T20:44:49.126789"
+}

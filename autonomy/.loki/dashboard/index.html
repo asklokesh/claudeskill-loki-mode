@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loki Mode Dashboard</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Söhne', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #FAF9F6;
+            color: #1A1A1A;
+            padding: 24px;
+            min-height: 100vh;
+        }
+        .header {
+            text-align: center;
+            padding: 32px 20px;
+            margin-bottom: 32px;
+        }
+        .header h1 {
+            color: #D97757;
+            font-size: 28px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+        }
+        .header .subtitle {
+            color: #666;
+            font-size: 14px;
+            font-weight: 400;
+        }
+        .header .phase {
+            display: inline-block;
+            margin-top: 16px;
+            padding: 8px 16px;
+            background: #FFF;
+            border: 1px solid #E5E3DE;
+            border-radius: 20px;
+            font-size: 13px;
+            color: #1A1A1A;
+            font-weight: 500;
+        }
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+        .stat {
+            background: #FFF;
+            border: 1px solid #E5E3DE;
+            border-radius: 12px;
+            padding: 20px 32px;
+            text-align: center;
+            min-width: 140px;
+            transition: box-shadow 0.2s ease;
+        }
+        .stat:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+        .stat .number { font-size: 36px; font-weight: 600; margin-bottom: 4px; }
+        .stat .label { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat.pending .number { color: #D97757; }
+        .stat.progress .number { color: #5B8DEF; }
+        .stat.completed .number { color: #2E9E6E; }
+        .stat.failed .number { color: #D44F4F; }
+        .stat.agents .number { color: #9B6DD6; }
+        .section-header {
+            text-align: center;
+            font-size: 16px;
+            font-weight: 600;
+            color: #666;
+            margin: 40px 0 20px 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .agents-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 16px;
+            max-width: 1400px;
+            margin: 0 auto 40px auto;
+        }
+        .agent-card {
+            background: #FFF;
+            border: 1px solid #E5E3DE;
+            border-radius: 12px;
+            padding: 16px;
+            transition: box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+        .agent-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+            border-color: #9B6DD6;
+        }
+        .agent-card .agent-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+        .agent-card .agent-id {
+            font-size: 11px;
+            color: #999;
+            font-family: monospace;
+        }
+        .agent-card .model-badge {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .agent-card .model-badge.sonnet {
+            background: #E8F0FD;
+            color: #5B8DEF;
+        }
+        .agent-card .model-badge.haiku {
+            background: #FFF4E6;
+            color: #F59E0B;
+        }
+        .agent-card .model-badge.opus {
+            background: #F3E8FF;
+            color: #9B6DD6;
+        }
+        .agent-card .agent-type {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1A1A1A;
+            margin-bottom: 8px;
+        }
+        .agent-card .agent-status {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 500;
+            margin-bottom: 12px;
+        }
+        .agent-card .agent-status.active {
+            background: #E6F5EE;
+            color: #2E9E6E;
+        }
+        .agent-card .agent-status.completed {
+            background: #F0EFEA;
+            color: #666;
+        }
+        .agent-card .agent-work {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+        .agent-card .agent-meta {
+            display: flex;
+            gap: 12px;
+            font-size: 11px;
+            color: #999;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #F0EFEA;
+        }
+        .agent-card .agent-meta span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .columns {
+            display: flex;
+            gap: 20px;
+            overflow-x: auto;
+            padding-bottom: 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .column {
+            flex: 1;
+            min-width: 300px;
+            max-width: 350px;
+            background: #FFF;
+            border: 1px solid #E5E3DE;
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .column h2 {
+            font-size: 13px;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .column h2 .count {
+            background: #F0EFEA;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            color: #1A1A1A;
+        }
+        .column.pending h2 .count { background: #FCEEE8; color: #D97757; }
+        .column.progress h2 .count { background: #E8F0FD; color: #5B8DEF; }
+        .column.completed h2 .count { background: #E6F5EE; color: #2E9E6E; }
+        .column.failed h2 .count { background: #FCE8E8; color: #D44F4F; }
+        .task {
+            background: #FAF9F6;
+            border: 1px solid #E5E3DE;
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 12px;
+            transition: border-color 0.2s ease;
+        }
+        .task:hover { border-color: #D97757; }
+        .task .id { font-size: 10px; color: #999; margin-bottom: 6px; font-family: monospace; }
+        .task .type {
+            display: inline-block;
+            background: #FCEEE8;
+            color: #D97757;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+        .task .title { font-size: 13px; color: #1A1A1A; line-height: 1.5; }
+        .task .error {
+            font-size: 11px;
+            color: #D44F4F;
+            margin-top: 10px;
+            padding: 10px;
+            background: #FCE8E8;
+            border-radius: 6px;
+            font-family: monospace;
+        }
+        .refresh {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #D97757;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s ease;
+            box-shadow: 0 4px 12px rgba(217, 119, 87, 0.3);
+        }
+        .refresh:hover { background: #C56747; }
+        .updated {
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+            margin-top: 24px;
+        }
+        .empty {
+            color: #999;
+            font-size: 13px;
+            text-align: center;
+            padding: 24px;
+            font-style: italic;
+        }
+        .powered-by {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 24px;
+            border-top: 1px solid #E5E3DE;
+            color: #999;
+            font-size: 12px;
+        }
+        .powered-by span { color: #D97757; font-weight: 500; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>LOKI MODE</h1>
+        <div class="subtitle">Autonomous Multi-Agent Startup System</div>
+        <div class="phase" id="phase">Loading...</div>
+    </div>
+    <div class="stats">
+        <div class="stat agents"><div class="number" id="agents-count">-</div><div class="label">Active Agents</div></div>
+        <div class="stat pending"><div class="number" id="pending-count">-</div><div class="label">Pending</div></div>
+        <div class="stat progress"><div class="number" id="progress-count">-</div><div class="label">In Progress</div></div>
+        <div class="stat completed"><div class="number" id="completed-count">-</div><div class="label">Completed</div></div>
+        <div class="stat failed"><div class="number" id="failed-count">-</div><div class="label">Failed</div></div>
+    </div>
+    <div class="section-header">Active Agents</div>
+    <div class="agents-grid" id="agents-grid"></div>
+    <div class="section-header">Task Queue</div>
+    <div class="columns">
+        <div class="column pending"><h2>Pending <span class="count" id="pending-badge">0</span></h2><div id="pending-tasks"></div></div>
+        <div class="column progress"><h2>In Progress <span class="count" id="progress-badge">0</span></h2><div id="progress-tasks"></div></div>
+        <div class="column completed"><h2>Completed <span class="count" id="completed-badge">0</span></h2><div id="completed-tasks"></div></div>
+        <div class="column failed"><h2>Failed <span class="count" id="failed-badge">0</span></h2><div id="failed-tasks"></div></div>
+    </div>
+    <div class="updated" id="updated">Last updated: -</div>
+    <div class="powered-by">Powered by <span>Claude</span></div>
+    <button class="refresh" onclick="loadData()">Refresh</button>
+    <script>
+        async function loadJSON(path) {
+            try {
+                const res = await fetch(path + '?t=' + Date.now());
+                if (!res.ok) return [];
+                const text = await res.text();
+                if (!text.trim()) return [];
+                const data = JSON.parse(text);
+                return Array.isArray(data) ? data : (data.tasks || data.agents || []);
+            } catch { return []; }
+        }
+        function getModelClass(model) {
+            if (!model) return 'sonnet';
+            const m = model.toLowerCase();
+            if (m.includes('haiku')) return 'haiku';
+            if (m.includes('opus')) return 'opus';
+            return 'sonnet';
+        }
+        function formatDuration(isoDate) {
+            if (!isoDate) return 'Unknown';
+            const start = new Date(isoDate);
+            const now = new Date();
+            const seconds = Math.floor((now - start) / 1000);
+            if (seconds < 60) return seconds + 's';
+            if (seconds < 3600) return Math.floor(seconds / 60) + 'm';
+            return Math.floor(seconds / 3600) + 'h ' + Math.floor((seconds % 3600) / 60) + 'm';
+        }
+        function renderAgent(agent) {
+            const modelClass = getModelClass(agent.model);
+            const modelName = agent.model || 'Sonnet 4.5';
+            const agentType = agent.agent_type || 'general-purpose';
+            const status = agent.status === 'completed' ? 'completed' : 'active';
+            const currentTask = agent.current_task || (agent.tasks_completed && agent.tasks_completed.length > 0
+                ? 'Completed: ' + agent.tasks_completed.join(', ')
+                : 'Initializing...');
+            const duration = formatDuration(agent.spawned_at);
+            const tasksCount = agent.tasks_completed ? agent.tasks_completed.length : 0;
+
+            return `
+                <div class="agent-card">
+                    <div class="agent-header">
+                        <div class="agent-id">${agent.agent_id || 'Unknown'}</div>
+                        <div class="model-badge ${modelClass}">${modelName}</div>
+                    </div>
+                    <div class="agent-type">${agentType}</div>
+                    <div class="agent-status ${status}">${status}</div>
+                    <div class="agent-work">${currentTask}</div>
+                    <div class="agent-meta">
+                        <span>⏱ ${duration}</span>
+                        <span>✓ ${tasksCount} tasks</span>
+                    </div>
+                </div>
+            `;
+        }
+        function renderTask(task) {
+            const payload = task.payload || {};
+            const title = payload.description || payload.action || task.type || 'Task';
+            const error = task.lastError ? `<div class="error">${task.lastError}</div>` : '';
+            return `<div class="task"><div class="id">${task.id}</div><span class="type">${task.type || 'general'}</span><div class="title">${title}</div>${error}</div>`;
+        }
+        async function loadData() {
+            const [pending, progress, completed, failed, agents] = await Promise.all([
+                loadJSON('../queue/pending.json'),
+                loadJSON('../queue/in-progress.json'),
+                loadJSON('../queue/completed.json'),
+                loadJSON('../queue/failed.json'),
+                loadJSON('../state/agents.json')
+            ]);
+
+            // Agent stats
+            document.getElementById('agents-count').textContent = agents.length;
+            document.getElementById('agents-grid').innerHTML = agents.length
+                ? agents.map(renderAgent).join('')
+                : '<div class="empty">No active agents</div>';
+
+            // Task stats
+            document.getElementById('pending-count').textContent = pending.length;
+            document.getElementById('progress-count').textContent = progress.length;
+            document.getElementById('completed-count').textContent = completed.length;
+            document.getElementById('failed-count').textContent = failed.length;
+            document.getElementById('pending-badge').textContent = pending.length;
+            document.getElementById('progress-badge').textContent = progress.length;
+            document.getElementById('completed-badge').textContent = completed.length;
+            document.getElementById('failed-badge').textContent = failed.length;
+            document.getElementById('pending-tasks').innerHTML = pending.length ? pending.map(renderTask).join('') : '<div class="empty">No pending tasks</div>';
+            document.getElementById('progress-tasks').innerHTML = progress.length ? progress.map(renderTask).join('') : '<div class="empty">No tasks in progress</div>';
+            document.getElementById('completed-tasks').innerHTML = completed.length ? completed.slice(-10).reverse().map(renderTask).join('') : '<div class="empty">No completed tasks</div>';
+            document.getElementById('failed-tasks').innerHTML = failed.length ? failed.map(renderTask).join('') : '<div class="empty">No failed tasks</div>';
+
+            try {
+                const state = await fetch('../state/orchestrator.json?t=' + Date.now()).then(r => r.json());
+                document.getElementById('phase').textContent = 'Phase: ' + (state.currentPhase || 'UNKNOWN');
+            } catch { document.getElementById('phase').textContent = 'Phase: UNKNOWN'; }
+            document.getElementById('updated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+        }
+        loadData();
+        setInterval(loadData, 3000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "instance_id": "scikit-learn__scikit-learn-13497",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/sklearn/feature_selection/_mutual_info.py\n+++ b/sklearn/feature_selection/_mutual_info.py\n@@ -47,7 +47,7 @@ def _estimate_mi(X, y, discrete_features='auto', discrete_target=False,\n     if isinstance(discrete_features, bool):\n         discrete_features = np.full(n_features, discrete_features)\n     \n-    if discrete_features == 'auto':\n+    if isinstance(discrete_features, str) and discrete_features == 'auto':\n         discrete_features = issparse(X)\n     \n     if issparse(X):",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T20:33:45.716038"
+}

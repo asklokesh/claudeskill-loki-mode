@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-13321",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "This appears to be an ENGINEER AGENT task for generating a patch for a Django repository issue. Based on the architect's analysis, I need to create a patch that wraps the `_legacy_decode()` call to catch exceptions and return an empty dict when session decoding fails.\n\n--- a/django/contrib/sessions/backends/base.py\n+++ b/django/contrib/sessions/backends/base.py\n@@ -119,7 +119,11 @@\n         except signing.BadSignature:\n             logger = logging.getLogger('django.security.SuspiciousSession')\n             logger.warning('Session data corrupted')\n-        return self._legacy_decode(session_data)\n+        try:\n+            return self._legacy_decode(session_data)\n+        except Exception:\n+            logger = logging.getLogger('django.security.SuspiciousSession')\n+            logger.warning('Invalid session data')\n+            return {}\n \n     def _legacy_decode(self, session_data):\n         # RemovedInDjango40Warning: pre-Django 3.1 format will be invalid.",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:39:36.160552"
+}

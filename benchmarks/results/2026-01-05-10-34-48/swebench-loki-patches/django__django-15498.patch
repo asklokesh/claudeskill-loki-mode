@@ -1,0 +1,18 @@
+# django__django-15498
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and my knowledge of Django's `was_modified_since()` function, I can generate the patch. The function typically checks if a resource has been modified since the date in the If-Modified-Since header.
+
+```
+--- a/django/views/static.py
++++ b/django/views/static.py
+@@ -75,6 +75,8 @@ def was_modified_since(header=None, mtime=0, size=0):
+     """
+     try:
++        if header is None or len(header) == 0:
++            raise ValueError
+         header_mtime = parse_http_date(header)
+         if mtime > header_mtime:
+             return True
+```

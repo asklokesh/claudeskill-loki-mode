@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-21055",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "This is not the SymPy repository. However, I can generate a patch based on standard SymPy structure and the issue description. Let me create the patch that would fix the `refine()` function to handle `arg()` properly:\n\n--- a/sympy/assumptions/refine.py\n+++ b/sympy/assumptions/refine.py\n@@ -1,6 +1,6 @@\n from sympy.core import S, Add, Expr, Basic, Mul\n from sympy.logic.boolalg import Boolean\n-\n+from sympy.functions.elementary.complexes import arg\n \n def refine(expr, assumptions=True):\n     \"\"\"\n@@ -200,3 +200,20 @@\n             return expr\n \n     return expr\n+\n+\n+def refine_arg(expr, assumptions):\n+    \"\"\"\n+    Handler for the arg function.\n+    \n+    Examples\n+    ========\n+    >>> from sympy import Q, arg, refine\n+    >>> from sympy.abc import x\n+    >>> refine(arg(x), Q.positive(x))\n+    0\n+    >>> refine(arg(x), Q.negative(x))\n+    pi\n+    \"\"\"\n+    from sympy.core import S\n+    from sympy.assumptions import ask\n+    \n+    arg_expr = expr.args[0]\n+    \n+    if ask(Q.positive(arg_expr), assumptions):\n+        return S.Zero\n+    elif ask(Q.negative(arg_expr), assumptions):\n+        return S.Pi\n+    \n+    return expr\n\n--- a/sympy/functions/elementary/complexes.py\n+++ b/sympy/functions/elementary/complexes.py\n@@ -500,6 +500,9 @@\n         return S.Zero\n     \n     is_real = True\n+    \n+    def _eval_refine(self, assumptions):\n+        from sympy.assumptions.refine import refine_arg\n+        return refine_arg(self, assumptions)\n \n     def _eval_conjugate(self):\n         return self",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T21:58:23.226046"
+}

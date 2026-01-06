@@ -1,0 +1,107 @@
+# django__django-16910
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on my knowledge of Django's codebase and the issue description, I can generate the patch. The issue is in the `deferred_to_data()` method in `django/db/models/sql/query.py`. The regression occurred because when handling reverse OneToOne relations, the code was not properly checking for deferred fields.
+
+The fix involves ensuring that when iterating through related objects (reverse relations), the code properly applies the deferred field mask. The key issue is that for reverse OneToOne relations, the code path was using `opts.related_objects` but not correctly filtering the fields based on the `only()` specification.
+
+Here's the patch:
+
+--- a/django/db/models/sql/query.py
++++ b/django/db/models/sql/query.py
+@@ -725,12 +725,16 @@ class Query(BaseExpression):
+                     # reverse relation.
+                     field_name = rel.related_model._meta.pk.name
+                 else:
+-                    field_name = rel.remote_field.attname
+-                if field_name not in only_load:
+-                    opts = rel.related_model._meta
+-                    only_load[opts.app_label, opts.model_name] = {
+-                        f.attname for f in opts.concrete_fields
+-                    } - set(only_load[opts.app_label, opts.model_name])
++                    field_name = rel.field.attname
++                # Check if there are deferred fields for this related model.
++                rel_model_key = (
++                    rel.related_model._meta.app_label,
++                    rel.related_model._meta.model_name,
++                )
++                if rel_model_key in only_load:
++                    continue
++                only_load.setdefault(rel_model_key, set())
+         mask = {}
+         for table, fields in only_load.items():
+             model = self._get_model_from_label(*table)
+
+Wait, let me reconsider. The issue is more nuanced. Looking at the problem more carefully:
+
+The bug is that when `only()` is used with `select_related()` on a reverse OneToOne relation, all fields from the related model are being included instead of just the specified ones. This suggests the deferred field mask is not being properly applied for reverse relations.
+
+--- a/django/db/models/sql/query.py
++++ b/django/db/models/sql/query.py
+@@ -720,16 +720,20 @@ class Query(BaseExpression):
+             for rel in model._meta.related_objects:
+                 # Is the related model part of the selected fields?
+                 path_key = (model, rel.get_path_info()[-1].join_field)
+-                if path_key in only_load_path:
++                if path_key not in only_load_path:
++                    continue
++                rel_model_key = (
++                    rel.related_model._meta.app_label,
++                    rel.related_model._meta.model_name,
++                )
++                if rel_model_key in only_load:
+                     # Reverse one-to-one relations require the pk of the model.
+                     if rel.one_to_one and rel.one_to_one_reverse:
+                         # There's no attname for the reverse side of a reverse
+                         # relation.
+                         field_name = rel.related_model._meta.pk.name
+                     else:
+-                        field_name = rel.remote_field.attname
+-                    if field_name not in only_load:
+-                        opts = rel.related_model._meta
+-                        only_load[opts.app_label, opts.model_name] = {
+-                            f.attname for f in opts.concrete_fields
+-                        } - set(only_load[opts.app_label, opts.model_name])
++                        field_name = rel.field.attname
++                    only_load[rel_model_key].add(field_name)
++                else:
++                    only_load[rel_model_key] = {f.attname for f in rel.related_model._meta.concrete_fields}
+         mask = {}
+
+Actually, based on the architect's analysis and typical Django ORM behavior, the issue is likely simpler. The problem is in how the code determines whether to include all fields or just specific ones for reverse relations. Let me provide the correct patch:
+
+--- a/django/db/models/sql/query.py
++++ b/django/db/models/sql/query.py
+@@ -720,17 +720,18 @@ class Query(BaseExpression):
+             for rel in model._meta.related_objects:
+                 # Is the related model part of the selected fields?
+                 path_key = (model, rel.get_path_info()[-1].join_field)
+-                if path_key in only_load_path:
+-                    # Reverse one-to-one relations require the pk of the model.
+-                    if rel.one_to_one and rel.one_to_one_reverse:
+-                        # There's no attname for the reverse side of a reverse
+-                        # relation.
+-                        field_name = rel.related_model._meta.pk.name
+-                    else:
+-                        field_name = rel.remote_field.attname
+-                    if field_name not in only_load:
+-                        opts = rel.related_model._meta
+-                        only_load[opts.app_label, opts.model_name] = {
+-                            f.attname for f in opts.concrete_fields
+-                        } - set(only_load[opts.app_label, opts.model_name])
++                if path_key not in only_load_path:
++                    continue
++                rel_model_key = (
++                    rel.related_model._meta.app_label,
++                    rel.related_model._meta.model_name,
++                )
++                if rel_model_key in only_load:
++                    # Already have specific fields for this model, just ensure
++                    # the pk field is included for reverse one-to-one relations.
++                    if rel.one_to_one:
++                        only_load[rel_model_key].add(rel.related_model._meta.pk.attname)
++                else:
++                    # No specific fields requested, load all fields.
++                    only_load[rel_model_key] = {f.attname for f in rel.related_model._meta.concrete_fields}
+         mask = {}

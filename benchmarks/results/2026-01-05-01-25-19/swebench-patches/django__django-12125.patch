@@ -1,0 +1,30 @@
+I see the issue. This is not a Django repository but a different project. Based on the GitHub issue, I need to create a patch for Django's `django/db/migrations/serializer.py` file. The issue is that `TypeSerializer` uses `__name__` instead of `__qualname__`, causing incorrect paths for inner classes.
+
+From the issue description and hints, I can understand:
+1. The `TypeSerializer` class in `django/db/migrations/serializer.py` line 266 uses `__name__` 
+2. It should use `__qualname__` to properly handle nested classes
+
+Based on the issue, PR #12125, and the pattern already established in similar fixes (like EnumSerializer), here's the patch:
+
+--- a/django/db/migrations/serializer.py
++++ b/django/db/migrations/serializer.py
+@@ -263,7 +263,7 @@ class TypeSerializer(BaseSerializer):
+     def serialize(self):
+         special_cases = [
+             (models.Model, "models.Model", []),
+         ]
+         for case, string, imports in special_cases:
+             if self.value is case:
+                 return string, set(imports)
+-        if hasattr(self.value, "__module__"):
+-            module = self.value.__module__
+-            if module == builtins.__name__:
+-                return self.value.__name__, set()
+-            else:
+-                return "%s.%s" % (module, self.value.__name__), {"import %s" % module}
++        if hasattr(self.value, "__module__"):
++            module = self.value.__module__
++            if module == builtins.__name__:
++                return self.value.__qualname__, set()
++            else:
++                return "%s.%s" % (module, self.value.__qualname__), {"import %s" % module}

@@ -1,0 +1,20 @@
+# django__django-12908
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and my knowledge of Django's codebase structure, I'll generate the patch. The issue states that `distinct()` should raise `NotSupportedError` on union querysets, following the pattern of other unsupported operations.
+
+--- a/django/db/models/query.py
++++ b/django/db/models/query.py
+@@ -1410,6 +1410,11 @@
+         Return a new QuerySet instance that will select only distinct results.
+         """
+         self._not_support_combined_queries("distinct")
++        if self.query.combinator:
++            raise NotSupportedError(
++                "Calling distinct() after %s() is not supported."
++                % self.query.combinator
++            )
+         assert not self.query.is_sliced, \
+             "Cannot create distinct fields once a slice has been taken."
+         obj = self._chain()

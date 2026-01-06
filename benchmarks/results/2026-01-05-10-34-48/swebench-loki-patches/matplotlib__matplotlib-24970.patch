@@ -1,0 +1,22 @@
+# matplotlib__matplotlib-24970
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and architect's analysis, I can generate the patch. The issue is in `lib/matplotlib/colors.py` in the `Colormap.__call__()` method. The problem is that when input arrays are uint8, assigning values 256, 257, 258 (for N=256 colormap) overflows. The fix is to promote the array to a larger integer type before these assignments.
+
+```
+--- a/lib/matplotlib/colors.py
++++ b/lib/matplotlib/colors.py
+@@ -717,6 +717,11 @@ class Colormap:
+                 xa = xa.astype(int)
+         # Set the over-range indices before the under-range;
+         # otherwise the under-range values get converted to over-range.
++        # Ensure the array dtype can hold values up to N+2 to avoid
++        # overflow warnings with NumPy 1.24+ for small integer types.
++        if xa.dtype.kind in ('i', 'u') and np.iinfo(xa.dtype).max < self.N + 2:
++            xa = xa.astype(np.int16 if self.N + 2 <= 32767 else np.int32)
++
+         xa[xa > self.N - 1] = self._i_over
+         xa[xa < 0] = self._i_under
+         xa[mask_bad] = self._i_bad
+```

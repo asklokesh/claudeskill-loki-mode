@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-18621",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/sympy/matrices/expressions/blockmatrix.py\n+++ b/sympy/matrices/expressions/blockmatrix.py\n@@ -301,7 +301,7 @@ class BlockDiagMatrix(BlockMatrix):\n     @property\n     def blocks(self):\n         from sympy.matrices.immutable import ImmutableDenseMatrix\n         mats = self.args\n         data = [[mats[i] if i == j else ZeroMatrix(mats[i].rows, mats[j].cols)\n                 for j in range(len(mats))]\n                 for i in range(len(mats))]\n-        return ImmutableDenseMatrix(data)\n+        return ImmutableDenseMatrix(data, evaluate=False)",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T21:44:50.486885"
+}

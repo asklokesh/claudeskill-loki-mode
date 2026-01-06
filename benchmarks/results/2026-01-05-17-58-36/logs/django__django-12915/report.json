@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-12915",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the existing patch I found, I can now generate the correct patch for this issue. The solution is to add a `get_response_async` method to the `StaticFilesHandlerMixin` class that mirrors the sync `get_response` method but properly handles async/await.\n\n--- a/django/contrib/staticfiles/handlers.py\n+++ b/django/contrib/staticfiles/handlers.py\n@@ -43,6 +43,11 @@ class StaticFilesHandlerMixin:\n             return self.serve(request)\n         return super().get_response(request)\n \n+    async def get_response_async(self, request):\n+        if self._should_handle(request.path):\n+            return self.serve(request)\n+        return await super().get_response_async(request)\n+\n \n class StaticFilesHandler(StaticFilesHandlerMixin, WSGIHandler):\n     \"\"\"",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:33:44.430653"
+}

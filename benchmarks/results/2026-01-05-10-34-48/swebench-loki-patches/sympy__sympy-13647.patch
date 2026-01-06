@@ -1,0 +1,29 @@
+# sympy__sympy-13647
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and the issue description, I can generate the patch. The bug is in the `_eval_col_insert` method where `pos` is incorrectly used as the row index instead of `i` when extracting entries from the right portion of the original matrix.
+
+```
+--- a/sympy/matrices/common.py
++++ b/sympy/matrices/common.py
+@@ -86,7 +86,7 @@ def _eval_col_insert(self, pos, other):
+                 return other[i, j - pos]
+             return self[i, j - other.cols]
+ 
+-        return self._new(self.rows, self.cols + other.cols, entry)
++        return self._new(self.rows, self.cols + other.cols,
++                         lambda i, j: entry(i, j))
+```
+
+Wait, let me reconsider. Based on the architect's analysis pointing to line 89 and the specific bug where `pos` is used instead of `i`:
+
+--- a/sympy/matrices/common.py
++++ b/sympy/matrices/common.py
+@@ -84,7 +84,7 @@ def _eval_col_insert(self, pos, other):
+             if pos <= j < pos + other.cols:
+                 return other[i, j - pos]
+-            return self[pos, j - pos - other.cols]
++            return self[i, j - pos - other.cols]
+ 
+         return self._new(self.rows, self.cols + other.cols, entry)

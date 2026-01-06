@@ -1,0 +1,19 @@
+Based on the issue description and the hints provided in the comments, I can understand the bug. The issue is in the astropy/nddata code where a line was accidentally changed from checking `operand.mask is None` to checking `operand is None`. Let me create the patch based on the information provided in the issue:
+
+The bug is in the mask propagation logic. According to the comments:
+- The buggy line is `elif operand is None:` which should be `elif operand.mask is None:`
+- This is in the `_arithmetic_mask` method of the NDData class
+
+Based on the issue description and the specific fix mentioned by @chris-simpson, here is the patch:
+
+--- a/astropy/nddata/mixins/ndarithmetic.py
++++ b/astropy/nddata/mixins/ndarithmetic.py
+@@ -518,7 +518,7 @@ class NDArithmeticMixin:
+         # If only one mask is present we need not bother about any type checks
+         if self.mask is None and operand is not None:
+             return deepcopy(operand.mask)
+-        elif operand is None:
++        elif operand.mask is None:
+             return deepcopy(self.mask)
+         else:
+             # Now lets calculate the resulting mask (operation enforces copy)

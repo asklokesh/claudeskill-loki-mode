@@ -1,0 +1,30 @@
+# django__django-13757
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis, I have enough information to generate the patch. The issue is in `django/db/models/fields/json.py` in the `KeyTransformIsNull` class. When `isnull=True` on SQLite and Oracle, it should use `NOT HasKey(...)` instead of the default `IS NULL` check.
+
+Let me generate the patch based on the standard Django codebase structure:
+
+--- a/django/db/models/fields/json.py
++++ b/django/db/models/fields/json.py
+@@ -366,9 +366,13 @@ class KeyTransformIsNull(lookups.IsNull):
+     # key transforms. Ex: value__d__contains.
+     def as_oracle(self, compiler, connection):
+         if not self.rhs:
+-            return HasKey(self.lhs.lhs, self.lhs.key_name).as_oracle(compiler, connection)
+-        return super().as_sql(compiler, connection)
++            return HasKey(self.lhs.lhs, self.lhs.key_name).as_oracle(compiler, connection)
++        lhs, lhs_params, rhs, rhs_params = self.resolve_expression_parameter(
++            compiler, connection, HasKey(self.lhs.lhs, self.lhs.key_name), False
++        )
++        return '(NOT %s)' % lhs, lhs_params
+ 
+     def as_sqlite(self, compiler, connection):
+         if not self.rhs:
+             return HasKey(self.lhs.lhs, self.lhs.key_name).as_sqlite(compiler, connection)
+-        return super().as_sql(compiler, connection)
++        lhs, lhs_params, rhs, rhs_params = self.resolve_expression_parameter(
++            compiler, connection, HasKey(self.lhs.lhs, self.lhs.key_name), False
++        )
++        return '(NOT %s)' % lhs, lhs_params

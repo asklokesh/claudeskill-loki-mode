@@ -1,0 +1,25 @@
+It seems the Django repository is not in the current directory. Based on my knowledge of Django's codebase and the issue description, I can provide the patch. Let me construct the patch based on how Django's model validation works.
+
+The issue is that `UniqueConstraint` fields are not validated to ensure they exist on the model, unlike `unique_together` which raises `models.E012`. The fix needs to:
+
+1. Add validation in the model's `_check_constraints()` method (in `django/db/models/base.py`) to check that fields referenced in `UniqueConstraint` actually exist on the model.
+
+Based on Django's standard structure and the hints in the issue (which mention using `cls._check_local_fields()` for UniqueConstraint's fields), here's the patch:
+
+--- a/django/db/models/base.py
++++ b/django/db/models/base.py
+@@ -1978,6 +1978,14 @@ class Model(metaclass=ModelBase):
+     @classmethod
+     def _check_constraints(cls, databases):
+         errors = []
++        for constraint in cls._meta.constraints:
++            # Check that fields named in UniqueConstraints exist on the model.
++            if isinstance(constraint, UniqueConstraint) and constraint.fields:
++                errors.extend(
++                    cls._check_local_fields(
++                        constraint.fields, "constraints"
++                    )
++                )
+         for db in databases:
+             if not router.allow_migrate_model(db, cls):
+                 continue

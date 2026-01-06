@@ -1,0 +1,16 @@
+# django__django-13925
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and my knowledge of Django's codebase, I can generate the patch for the `_check_default_pk` method in `django/db/models/base.py`. The fix needs to add a check that the primary key's model matches the current class being checked.
+
+--- a/django/db/models/base.py
++++ b/django/db/models/base.py
+@@ -1298,6 +1298,7 @@ class Model(metaclass=ModelBase):
+         if (
+             cls._meta.pk.auto_created
+             and not cls._meta.swapped
++            and cls._meta.pk.model._meta.label == cls._meta.label
+             and not (
+                 settings.is_overridden("DEFAULT_AUTO_FIELD")
+                 or cls._meta.app_config

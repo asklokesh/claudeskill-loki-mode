@@ -1,0 +1,27 @@
+Based on the error traceback in the issue and my knowledge of the astropy codebase, I can create the fix. The issue is that when empty arrays are passed to WCS transformation methods, the code doesn't check for this case early and passes them to the underlying C library which fails.
+
+The fix should be in the `_array_converter` method in `astropy/wcs/wcs.py`. The method needs to check if the input arrays are empty and return empty arrays immediately without calling the underlying C function.
+
+Looking at the traceback:
+- Line 1269: `return _return_list_of_arrays(axes, origin)`
+- Line 1225: `output = func(xy, origin)` - this is where it fails
+
+The `_return_list_of_arrays` function creates the `xy` array from the input axes, and when empty, this causes issues when passed to `self.wcs.p2s()`.
+
+The fix needs to be added in `_return_list_of_arrays` (which is a nested function inside `_array_converter`) to check if the input is empty and return empty arrays early.
+
+Here's the patch:
+
+--- a/astropy/wcs/wcs.py
++++ b/astropy/wcs/wcs.py
+@@ -1220,6 +1220,10 @@ reduce these to 2 dimensions using the naxis kwarg.
+ 
+         def _return_list_of_arrays(axes, origin):
+             xy = np.hstack([x.reshape((x.size, 1)) for x in axes])
++
++            if xy.size == 0:
++                return [np.array([]) for _ in range(self.naxis)]
++
+             if ra_dec_order and sky == 'input':
+                 xy = self._denormalize_sky(xy)
+             output = func(xy, origin)

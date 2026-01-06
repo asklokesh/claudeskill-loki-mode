@@ -1,0 +1,12 @@
+Based on the architect's analysis, I'll generate the patch for the pytest repository. The issue is to add fixture scope display in the `pytest --fixtures` output by modifying the `showfixtures` function in `src/_pytest/python.py`.
+
+--- a/src/_pytest/python.py
++++ b/src/_pytest/python.py
+@@ -1320,6 +1320,7 @@
+             tw.line()
+             tw.sep("-", "%s fixtures defined from %s" % (currentargname, currentmodule))
+         tw.write(argname, green=True)
++        tw.write(" [scope: %s]" % fixturedef.scope, cyan=True)
+         if fixturedef.params:
+             tw.write(" [params: %s]" % (", ".join(str(x) for x in fixturedef.params)),)
+         tw.line()

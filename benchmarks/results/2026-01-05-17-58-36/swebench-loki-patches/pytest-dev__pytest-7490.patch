@@ -1,0 +1,27 @@
+# pytest-dev__pytest-7490
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+I understand now. This is a task to generate a patch for the pytest repository issue, but I'm in a different repository. Based on the issue description and the architect's analysis, I need to generate a patch that would fix the pytest issue where dynamically adding xfail markers no longer works in pytest 6.0.
+
+Let me create the appropriate patch based on the analysis:
+
+--- a/src/_pytest/skipping.py
++++ b/src/_pytest/skipping.py
+@@ -259,6 +259,16 @@ def pytest_runtest_makereport(item: Item, call: CallInfo[None]):
+     elif call.when == "call":
+         outcome = "passed"
+         rep = call.excinfo
++        # Check for dynamically added xfail markers
++        xfailed = item._store.get(xfailed_key, None)
++        if xfailed is None:
++            # Re-evaluate xfail markers in case they were added dynamically
++            evalxfail = _evalxfail(item)
++            if evalxfail.wasvalid() and evalxfail.istrue():
++                xfailed = evalxfail
++                item._store[xfailed_key] = xfailed
++        
++        # Apply xfail logic if marker is present
+         if xfailed:
+             if call.excinfo:
+                 outcome = "skipped"

@@ -1,0 +1,37 @@
+Perfect! I found the patch. However, the patch has markdown code blocks around it. Let me extract just the raw patch content in proper unified diff format:
+
+--- a/pylint/lint/expand_modules.py
++++ b/pylint/lint/expand_modules.py
+@@ -1,6 +1,7 @@
+ # Licensed under the GPL: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
+ # For details: https://github.com/pylint-dev/pylint/blob/main/LICENSE
+ # Copyright (c) https://github.com/pylint-dev/pylint/blob/main/CONTRIBUTORS.txt
++from __future__ import annotations
+ 
+ import os
+ import sys
+@@ -48,14 +49,21 @@ def expand_modules(
+         basename = os.path.basename(something)
+         if _is_in_ignore_list_re(basename, ignore_list_re) or _is_in_ignore_list_paths_re(something, ignore_list_paths_re):
+             continue
+-        module_path = get_python_path(something)
+-        additional_search_path = [".", module_path] + path
+         if os.path.exists(something):
+             # this is a file or a directory
+             try:
+-                modname = ".".join(
+-                    modutils.modpath_from_file(something, path=additional_search_path)
+-                )
++                if os.path.isdir(something):
++                    # Handle directories specially to avoid confusing a directory
++                    # with a module of the same name inside it (e.g., a/a.py)
++                    modname = os.path.basename(os.path.normpath(os.path.abspath(something)))
++                else:
++                    module_path = get_python_path(something)
++                    additional_search_path = [".", module_path] + path
++                    modname = ".".join(
++                        modutils.modpath_from_file(something, path=additional_search_path)
++                    )
+             except ImportError:
+                 modname = os.path.splitext(basename)[0]
+             if os.path.isdir(something):

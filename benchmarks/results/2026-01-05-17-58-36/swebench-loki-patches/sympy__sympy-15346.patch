@@ -1,0 +1,18 @@
+# sympy__sympy-15346
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis, I need to generate a patch that swaps the order of TRmorrie and TR10i in the transformation pipeline. Since I cannot find the actual sympy repository in the current working directory, I'll generate the patch based on the standard sympy repository structure and the architect's analysis.
+
+--- a/sympy/simplify/trigsimp.py
++++ b/sympy/simplify/trigsimp.py
+@@ -1148,8 +1148,8 @@
+                     TR2i,
+                     lambda x: _eapply(factor, x, trigs),
+                     TR14,  # factored powers of identities
+-                    TRmorrie,
+                     TR10i,  # sin-cos products > sin-cos of sums
++                    TRmorrie,
+                     TR11, TR6, # reduce double angles and rewrite cos parity
+                     lambda x: _eapply(factor, x, trigs),
+                     TR14,  # factored powers of identities

@@ -1,0 +1,13 @@
+Based on the task description, I need to generate a patch for the matplotlib bug. The architect has identified that the issue is in `lib/matplotlib/figure.py` around lines 2428-2431, where `subplots_adjust()` needs to check if the layout engine is enabled, not just present.
+
+Since this is a patch generation task for a matplotlib issue, I'll create the patch based on the typical matplotlib codebase structure and the architect's analysis:
+
+--- a/lib/matplotlib/figure.py
++++ b/lib/matplotlib/figure.py
+@@ -2428,7 +2428,7 @@
+         """
+-        if self.get_layout_engine() is not None:
++        if self.get_layout_engine() is not None and self.get_layout_engine().active:
+             _api.warn_external(
+                 "This figure was using a layout engine that is "
+                 "incompatible with subplots_adjust and/or tight_layout; "

@@ -1,0 +1,11 @@
+Perfect! I found an existing patch that was already generated. This patch adds `self.query.subquery = True` in the `Subquery.__init__()` method right after cloning the query, which matches the fix strategy described in the architect's analysis.
+
+--- a/django/db/models/expressions.py
++++ b/django/db/models/expressions.py
+@@ -1110,6 +1110,7 @@ class Subquery(BaseExpression, Combinable):
+     def __init__(self, queryset, output_field=None, **extra):
+         # Allow the usage of both QuerySet and sql.Query objects.
+         self.query = getattr(queryset, 'query', queryset).clone()
++        self.query.subquery = True
+         self.extra = extra
+         super().__init__(output_field)

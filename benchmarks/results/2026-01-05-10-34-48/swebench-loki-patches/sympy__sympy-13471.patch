@@ -1,0 +1,19 @@
+# sympy__sympy-13471
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis, I can generate the patch. The issue is clear: Python 2 pickles contain hex strings with `L` suffix for long integers, and Python 3's `int()` cannot parse this. The fix is to strip the `L` suffix before conversion.
+
+```
+--- a/sympy/core/numbers.py
++++ b/sympy/core/numbers.py
+@@ -1042,7 +1042,7 @@ class Float(Number):
+             # the mpz-hierarchies, we're obligated to accept them as arguments
+             # so convert num to a tuple and use that.
+             num = list(num)
+-            num[1] = long(num[1], 16)
++            num[1] = long(num[1].rstrip('L'), 16)
+             _mpf_ = tuple(num)
+         else:
+             if prec is None:
+```

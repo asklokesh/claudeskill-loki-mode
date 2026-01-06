@@ -1,0 +1,64 @@
+# sympy__sympy-19007
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and my knowledge of SymPy's BlockMatrix implementation, I can generate the patch. The `_entry` method in `blockmatrix.py` needs to check if block membership can be definitively determined when indices or block dimensions are symbolic.
+
+```
+--- a/sympy/matrices/expressions/blockmatrix.py
++++ b/sympy/matrices/expressions/blockmatrix.py
+@@ -1,6 +1,7 @@
+ from __future__ import print_function, division
+ 
+ from sympy import ask, Q
++from sympy.core import Basic
+ from sympy.core.compatibility import range
+ from sympy.strategies import typed, exhaust, condition, do_one, unpack
+ from sympy.strategies.traverse import bottom_up
+@@ -232,17 +233,28 @@ class BlockMatrix(MatrixExpr):
+         return self.blocks[i, j]
+ 
+     def _entry(self, i, j, **kwargs):
+-        # Find row entry
++        from sympy.functions import Piecewise
++        from sympy.matrices.expressions import MatrixElement
++        
++        # Try to find which block contains (i, j)
++        row_block = None
++        col_block = None
++        offset_i = i
++        offset_j = j
++        
++        # Find row block
+         for row_block, numrows in enumerate(self.rowblocksizes):
+-            if (i < numrows) != False:
++            cmp = ask(Q.lt(i, numrows))
++            if cmp is None:
++                # Cannot determine block membership - return unevaluated
++                return MatrixElement(self, i, j)
++            elif cmp:
+                 break
+-            else:
+-                i -= numrows
+-        for col_block, numcols in enumerate(self.colblocksizes):
+-            if (j < numcols) != False:
++            offset_i -= numrows
++        
++        # Find column block
++        for col_block, numcols in enumerate(self.colblocksizes):
++            cmp = ask(Q.lt(j, numcols))
++            if cmp is None:
++                # Cannot determine block membership - return unevaluated
++                return MatrixElement(self, i, j)
++            elif cmp:
+                 break
+-            else:
+-                j -= numcols
+-        return self.blocks[row_block, col_block][i, j]
++            offset_j -= numcols
++        
++        return self.blocks[row_block, col_block][offset_i, offset_j]
+ 
+     @property
+     def is_Identity(self):
+```

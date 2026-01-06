@@ -1,0 +1,30 @@
+# django__django-15996
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/django/db/migrations/serializer.py
++++ b/django/db/migrations/serializer.py
+@@ -120,9 +120,19 @@ class EnumSerializer(BaseSerializer):
+         enum_class = self.value.__class__
+         module = enum_class.__module__
+         imports = {"import %s" % module}
+-        return (
+-            "%s.%s[%r]" % (module, enum_class.__qualname__, self.value.name),
+-            imports,
+-        )
++        
++        # Handle combined Flag values (e.g., re.UNICODE | re.IGNORECASE)
++        if isinstance(self.value, enum.Flag) and self.value.name is None:
++            # Decompose combined flags into individual members
++            members = list(self.value)
++            if members:
++                items = ["%s.%s[%r]" % (module, enum_class.__qualname__, m.name) for m in members]
++                return (" | ".join(items), imports)
++            else:
++                # Empty flag (zero value)
++                return ("%s.%s(%r)" % (module, enum_class.__qualname__, self.value.value), imports)
++        else:
++            return (
++                "%s.%s[%r]" % (module, enum_class.__qualname__, self.value.name),
++                imports,
++            )

@@ -1,0 +1,64 @@
+# scikit-learn__scikit-learn-11040
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/sklearn/neighbors/base.py
++++ b/sklearn/neighbors/base.py
+@@ -10,6 +10,7 @@
+ from abc import ABCMeta, abstractmethod
+ from functools import partial
+ 
++import numbers
+ import warnings
+ 
+ import numpy as np
+@@ -267,6 +268,12 @@ class KNeighborsMixin:
+         >>> neigh.kneighbors([[1., 1., 1.]])
+         (array([[0.5]]), array([[2]]))
+         """
++        if n_neighbors is not None and not isinstance(n_neighbors, numbers.Integral):
++            raise TypeError(
++                "n_neighbors does not take %s value, "
++                "enter integer value" %
++                type(n_neighbors))
++
+         check_is_fitted(self)
+ 
+         if n_neighbors is None:
+@@ -424,6 +431,12 @@ class RadiusNeighborsMixin:
+ 
+ class SupervisedFloatMixin:
+     def fit(self, X, y):
++        if not isinstance(self.n_neighbors, numbers.Integral):
++            raise TypeError(
++                "n_neighbors does not take %s value, "
++                "enter integer value" %
++                type(self.n_neighbors))
++
+         self._y = y
+         return self._fit(X)
+ 
+@@ -440,6 +453,12 @@ class SupervisedIntegerMixin:
+         classes_ : list of class labels known to the classifier
+         outputs_2d_ : bool, whether labels of X are 2-dimensional
+         """
++        if not isinstance(self.n_neighbors, numbers.Integral):
++            raise TypeError(
++                "n_neighbors does not take %s value, "
++                "enter integer value" %
++                type(self.n_neighbors))
++
+         if not isinstance(X, (KDTree, BallTree)):
+             X, y = check_X_y(X, y, "csr", multi_output=True)
+ 
+@@ -464,6 +483,12 @@ class UnsupervisedMixin:
+ 
+     def fit(self, X, y=None):
+         """Fit the model using X as training data."""
++        if self.n_neighbors is not None and not isinstance(self.n_neighbors, numbers.Integral):
++            raise TypeError(
++                "n_neighbors does not take %s value, "
++                "enter integer value" %
++                type(self.n_neighbors))
++
+         return self._fit(X)

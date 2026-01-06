@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-12454",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the issue description and architect's analysis, I can generate the patch directly. The bug is in the `is_upper()` and `is_lower()` methods in `sympy/matrices/matrices.py`. The fix is to bound the iteration to prevent accessing indices beyond the matrix dimensions.\n\n--- a/sympy/matrices/matrices.py\n+++ b/sympy/matrices/matrices.py\n@@ -1110,7 +1110,7 @@\n         even if the matrix is not square.\"\"\"\n         return all(self[i, j].is_zero\n                    for i in range(1, self.rows)\n-                   for j in range(i))\n+                   for j in range(min(i, self.cols)))\n \n     @property\n     def is_lower(self):\n@@ -1118,7 +1118,7 @@\n         even if the matrix is not square.\"\"\"\n         return all(self[i, j].is_zero\n                    for j in range(1, self.cols)\n-                   for i in range(j))\n+                   for i in range(min(j, self.rows)))\n \n     @property\n     def is_square(self):",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T21:08:29.611115"
+}

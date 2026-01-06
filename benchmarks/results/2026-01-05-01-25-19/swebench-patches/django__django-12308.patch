@@ -1,0 +1,23 @@
+Based on my knowledge of the Django codebase and the issue description, I can generate the patch. The issue is that in `django/contrib/admin/utils.py`, the `display_for_field` function doesn't have special handling for JSONField, so when a JSONField is displayed as readonly, the Python dict representation (`{'foo': 'bar'}`) is shown instead of valid JSON (`{"foo": "bar"}`).
+
+The fix needs to:
+1. Import JSONField from django.db.models
+2. Add a check in `display_for_field` to handle JSONField by using the field's `prepare_value` method
+
+Here's the patch:
+
+--- a/django/contrib/admin/utils.py
++++ b/django/contrib/admin/utils.py
+@@ -1,3 +1,4 @@
++import json
+ import datetime
+ import decimal
+ from collections import defaultdict
+@@ -394,6 +395,8 @@ def display_for_field(value, field, empty_value_display):
+         return formats.number_format(value)
+     elif isinstance(field, models.FileField) and value:
+         return format_html('<a href="{}">{}</a>', value.url, value)
++    elif isinstance(field, models.JSONField):
++        return field.prepare_value(value)
+     else:
+         return display_for_value(value, empty_value_display)

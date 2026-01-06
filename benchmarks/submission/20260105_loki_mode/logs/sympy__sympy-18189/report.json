@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-18189",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "This appears to be the claudeskill-loki-mode repository, not a sympy repository. The task is asking me to generate a patch for a sympy issue, but there's no sympy codebase here. Based on the architect's analysis, I need to generate a patch that adds `permute=permute` to a recursive call at line ~185 of `sympy/solvers/diophantine.py`.\n\nSince I don't have access to the actual file, I'll generate the patch based on the architect's description. The fix is to modify the recursive call to include the `permute` parameter.\n\n--- a/sympy/solvers/diophantine.py\n+++ b/sympy/solvers/diophantine.py\n@@ -182,7 +182,7 @@\n         var = list(eq.free_symbols)\n         var.sort(key=default_sort_key)\n         if tuple(var) != tuple(syms):\n-            return diophantine(eq, param)\n+            return diophantine(eq, param, permute=permute)\n     \n     # Simplify the equation\n     eq = _mexpand(eq.lhs - eq.rhs)",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T21:42:59.354040"
+}

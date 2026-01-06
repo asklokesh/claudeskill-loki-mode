@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-20639",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the architect's analysis and the issue description, I need to generate a proper patch. The problem is that `exp(-1)` doesn't have the same structure as rational fractions, so the pretty printer incorrectly renders `pi**(1/E)` as a radical. Let me create the correct patch:\n\n--- a/sympy/printing/pretty/pretty.py\n+++ b/sympy/printing/pretty/pretty.py\n@@ -1811,6 +1811,10 @@ def _print_Pow(self, power):\n                 bpretty.baseline = 0\n                 bpretty = bpretty**' '\n                 return bpretty\n+            # Check if exponent is exp(-1) or similar - these should not be rendered as radicals\n+            # exp(-1) has args=(-1,) unlike Rational(1, x) which has proper numerator/denominator\n+            if expt.func.__name__ == 'exp':\n+                return self._print_Pow_standard(power, b, expt)\n             n, d = fraction(expt)\n             if n is S.One and d.is_Atom and not e.is_Integer and self._settings['root_notation']:\n                 bpretty = self._print(b)",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T21:57:42.611895"
+}

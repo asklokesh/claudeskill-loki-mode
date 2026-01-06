@@ -1,0 +1,63 @@
+# django__django-13315
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/django/db/models/fields/related.py
++++ b/django/db/models/fields/related.py
+@@ -1,6 +1,7 @@
+ import functools
+ import inspect
+ from functools import partial
++from operator import attrgetter
+ 
+ from django import forms
+ from django.apps import apps
+@@ -1101,6 +1102,16 @@ class ForeignKey(ForeignObject):
+         return super().formfield(**{
+             'form_class': forms.ModelChoiceField,
+             'queryset': self.remote_field.model._default_manager.using(using),
++            'to_field_name': self.remote_field.field_name,
++            **kwargs,
++        })
++
++    def formfield(self, *, using=None, **kwargs):
++        defaults = super().formfield(**{
++            'form_class': forms.ModelChoiceField,
++            'queryset': self.remote_field.model._default_manager.using(using),
+             'to_field_name': self.remote_field.field_name,
+             **kwargs,
+         })
++        # Apply limit_choices_to and remove duplicates that may result from joins
++        if defaults.get('queryset') is not None and self.remote_field.limit_choices_to:
++            queryset = defaults['queryset']
++            # Use iterator with distinct pk values to handle duplicates from joins
++            # without requiring all fields to be comparable
++            pk_name = self.remote_field.model._meta.pk.name
++            seen_pks = set()
++            unique_pks = []
++            for obj in queryset:
++                pk = getattr(obj, pk_name)
++                if pk not in seen_pks:
++                    seen_pks.add(pk)
++                    unique_pks.append(pk)
++            if len(unique_pks) != queryset.count():
++                defaults['queryset'] = queryset.model._default_manager.using(using).filter(
++                    pk__in=unique_pks
++                )
++        return defaults
+--- a/django/forms/models.py
++++ b/django/forms/models.py
+@@ -1263,7 +1263,12 @@ class ModelChoiceField(ChoiceField):
+ 
+     def _get_queryset(self):
+         return self._queryset
+-
++    
++    def _set_queryset(self, queryset):
++        self._queryset = None if queryset is None else queryset.distinct()
++        self.widget.choices = self.choices
++    
++    queryset = property(_get_queryset, _set_queryset)
+     def _set_queryset(self, queryset):
+         self._queryset = queryset
+         self.widget.choices = self.choices

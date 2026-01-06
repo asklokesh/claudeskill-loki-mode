@@ -1,0 +1,17 @@
+Based on my knowledge of Django's codebase and the issue description, I can provide the fix for this inconsistency. The issue is in `django/db/models/deletion.py` in the `Collector.delete()` method.
+
+When QuerySet.delete() is called on a model without foreign keys and there are zero objects to delete, the code still adds an entry to the deleted_counter dictionary with a count of 0. However, when the model has foreign keys, the dictionary remains empty because the code path that adds entries only runs when there are actual objects to process.
+
+The fix should ensure consistent behavior by not including model entries with zero counts in the result dictionary.
+
+--- a/django/db/models/deletion.py
++++ b/django/db/models/deletion.py
+@@ -459,6 +459,10 @@ class Collector:
+                         sender=model, origin=self.origin,
+                     )
+ 
++        # Remove any entries with zero counts to ensure consistent results
++        for model, count in list(deleted_counter.items()):
++            if count == 0:
++                del deleted_counter[model]
+         return sum(deleted_counter.values()), dict(deleted_counter)

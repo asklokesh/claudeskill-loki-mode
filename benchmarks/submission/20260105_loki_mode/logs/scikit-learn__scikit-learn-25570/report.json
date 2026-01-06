@@ -1,0 +1,9 @@
+{
+  "instance_id": "scikit-learn__scikit-learn-25570",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the architect's analysis and the issue description, I can generate the patch. The issue is in the `_hstack` method where `_add_prefix_for_feature_names_out` is called with all transformers, but it should only be called with fitted transformers to match `_iter(fitted=True)`.\n\n--- a/sklearn/compose/_column_transformer.py\n+++ b/sklearn/compose/_column_transformer.py\n@@ -856,7 +856,9 @@\n             output = np.hstack(Xs)\n         if self._sklearn_output_config[\"dense\"] == \"pandas\":\n             output = pd.DataFrame(output, index=X_index)\n-            names_out = self._add_prefix_for_feature_names_out(self.transformers)\n+            names_out = self._add_prefix_for_feature_names_out(\n+                list(self._iter(fitted=True, replace_strings=True))\n+            )\n             output.columns = names_out\n \n         return output",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T20:43:23.474032"
+}

@@ -1,0 +1,70 @@
+# sympy__sympy-15011
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and the issue description, I need to generate a patch for the sympy repository. The issue is in `sympy/utilities/lambdify.py` around line 742 in the `_EvaluatorPrinter._preprocess` method. The fix should ensure `MatrixSymbol` names are dummified when they contain invalid Python identifiers.
+
+```
+--- a/sympy/utilities/lambdify.py
++++ b/sympy/utilities/lambdify.py
+@@ -739,9 +739,14 @@ class _EvaluatorPrinter(object):
+         from sympy import Dummy, Symbol, Function, flatten
+         from sympy.matrices import DeferredVector
++        from sympy.matrices.expressions.matexpr import MatrixSymbol
+ 
+         dummify = self._dummify
+ 
++        # Helper to check if a string is a valid Python identifier
++        def _isidentifier(s):
++            return s.isidentifier()
++
+         argstrs = [None]*len(args)
+         for arg, i in reversed(list(zip(args, range(len(args))))):
+             if iterable(arg):
+@@ -752,7 +757,13 @@ class _EvaluatorPrinter(object):
+                 argstrs[i] = self._argrepr(arg)
+             elif isinstance(arg, DeferredVector):
+                 argstrs[i] = str(arg)
+-            elif isinstance(arg, Symbol):
++            elif isinstance(arg, MatrixSymbol):
++                argrep = self._argrepr(arg)
++                if dummify or not _isidentifier(arg.name):
++                    dummy = Dummy()
++                    argstrs[i] = self._argrepr(dummy)
++                    expr = self._subexpr(expr, {arg: dummy})
++                else:
++                    argstrs[i] = argrep
++            elif isinstance(arg, Symbol):
+                 argrep = self._argrepr(arg)
+                 if dummify or not self._is_safe_ident(argrep):
+                     dummy = Dummy()
+```
+
+Wait, let me provide a cleaner patch based on the standard sympy codebase structure:
+
+```
+--- a/sympy/utilities/lambdify.py
++++ b/sympy/utilities/lambdify.py
+@@ -739,6 +739,7 @@ class _EvaluatorPrinter(object):
+         from sympy import Dummy, Symbol, Function, flatten
+         from sympy.matrices import DeferredVector
++        from sympy.matrices.expressions.matexpr import MatrixSymbol
+ 
+         dummify = self._dummify
+ 
+@@ -752,6 +753,13 @@ class _EvaluatorPrinter(object):
+                 argstrs[i] = self._argrepr(arg)
+             elif isinstance(arg, DeferredVector):
+                 argstrs[i] = str(arg)
++            elif isinstance(arg, MatrixSymbol):
++                argrep = self._argrepr(arg)
++                if dummify or not self._is_safe_ident(arg.name):
++                    dummy = Dummy()
++                    argstrs[i] = self._argrepr(dummy)
++                    expr = self._subexpr(expr, {arg: dummy})
++                else:
++                    argstrs[i] = argrep
+             elif isinstance(arg, Symbol):
+                 argrep = self._argrepr(arg)
+                 if dummify or not self._is_safe_ident(argrep):
+```

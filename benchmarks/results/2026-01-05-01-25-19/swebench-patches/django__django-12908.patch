@@ -1,0 +1,22 @@
+Based on my knowledge of Django's codebase and the issue description, I can provide the patch. The issue references ticket #27995 and the documentation states that only specific operations are allowed on combined querysets.
+
+In Django's `query.py`, the `distinct()` method needs to check if the query has a combinator (union/intersection/difference) and raise `NotSupportedError` if so. The pattern used is to check `self.query.combinator` and raise the error.
+
+Here's the patch:
+
+--- a/django/db/models/query.py
++++ b/django/db/models/query.py
+@@ -1000,6 +1000,10 @@ class QuerySet:
+ 
+     def distinct(self, *field_names):
+         """
+         Return a new QuerySet instance that will select only distinct results.
+         """
++        if self.query.combinator:
++            raise NotSupportedError(
++                'Calling distinct() after %s() is not supported.'
++                % self.query.combinator
++            )
+         clone = self._clone()
+         clone.query.add_distinct_fields(*field_names)
+         return clone

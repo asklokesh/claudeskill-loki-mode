@@ -1,0 +1,15 @@
+# astropy__astropy-14995
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/astropy/nddata/mixins/ndarithmetic.py
++++ b/astropy/nddata/mixins/ndarithmetic.py
+@@ -485,7 +485,7 @@ class NDArithmeticMixin:
+             return deepcopy(self.mask)
+ 
+         # Now lets calculate the resulting mask (operation enforces copy)
+-        return handle_mask(self.mask, operand, **kwds)
++        return handle_mask(self.mask, operand.mask, **kwds)
+ 
+     def _arithmetic_wcs(self, operation, operand, compare_wcs, **kwds):
+         """

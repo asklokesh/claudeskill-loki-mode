@@ -1,0 +1,19 @@
+# django__django-11620
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis, I need to generate a patch for the Django codebase. The issue is in `django/views/debug.py` around line 482 where `Resolver404` needs to be changed to `Http404`. Let me provide the patch based on the standard Django codebase structure:
+
+```
+--- a/django/views/debug.py
++++ b/django/views/debug.py
+@@ -479,7 +479,7 @@ def technical_404_response(request, exception):
+     try:
+         tried = resolver.resolve(urlpath)
+         resolved = True
+-    except Resolver404 as e:
++    except Http404 as e:
+         tried = e.args[0].get('tried', [])
+         resolved = False
+     urlconf = getattr(request, 'urlconf', settings.ROOT_URLCONF)
+```

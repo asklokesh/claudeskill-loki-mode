@@ -1,0 +1,48 @@
+Based on the issue description and my knowledge of Django, I can construct the patch. The issue clearly states:
+
+1. The `technical_404_response` function in `django/views/debug.py` performs URL resolving which can raise `Http404`
+2. Currently only `Resolver404` is caught, but `Http404` should be caught as well
+3. The fix is to catch `Http404` instead of just `Resolver404`
+
+Looking at the referenced GitHub link in the issue (`https://github.com/django/django/blob/a8e492bc81fca829f5d270e2d57703c02e58701e/django/views/debug.py#L482`), the issue is that when `technical_404_response` tries to resolve the URL again to show debug info, it only catches `Resolver404`. If `Http404` is raised (like from a path converter's `to_python` method), it goes uncaught and causes a server error.
+
+The `Resolver404` is actually a subclass of `Http404`, so catching `Http404` will catch both.
+
+Here's the patch:
+
+--- a/django/views/debug.py
++++ b/django/views/debug.py
+@@ -475,7 +475,7 @@ def technical_404_response(request, exception):
+     try:
+         tried = exception.args[0]['tried']
+     except (IndexError, TypeError, KeyError):
+-        tried = []
++        tried = exception.args[0]['tried'] if exception.args else []
+     else:
+         if (not tried or (                  # empty URLconf
+             request.path == '/' and
+@@ -479,7 +479,7 @@ def technical_404_response(request, exception):
+             len(googletried) == 1 and                    # default URLconf
+             getattr(tried[0][0], 'app_name', '') == getattr(tried[0][0], 'namespace', '') == '')):
+             tried = []
+-    except Resolver404 as e:
++    except Http404 as e:
+         tried = e.args[0].get('tried', []) if e.args else []
+
+Wait, I need to understand the structure better. Let me reconsider based on the issue description and hints provided.
+
+From the hints:
+- "The technical_404_response view performs a new URL resolving which will obviously raise a new Http404 which won't be caught as only Resolver404 is checked"
+- "The solution seems to be to catch Http404 instead of Resolver404 in technical_404_response"
+
+The key insight is that around line 482, there's a `try/except` block that catches `Resolver404`, but when `Http404` is raised from a path converter, it's not caught. Since `Resolver404` is a subclass of `Http404`, changing the except clause to catch `Http404` will handle both cases.
+
+--- a/django/views/debug.py
++++ b/django/views/debug.py
+@@ -479,7 +479,7 @@ def technical_404_response(request, exception):
+                 getattr(tried[0][0], 'app_name', '') == getattr(tried[0][0], 'namespace', '') == '')):
+             raise Http404("Your URLconf is empty.")
+         tried = exception.args[0]['tried']
+-    except Resolver404 as e:
++    except Http404 as e:
+         tried = e.args[0].get('tried', []) if e.args else []

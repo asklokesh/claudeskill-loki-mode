@@ -1,0 +1,27 @@
+Based on my knowledge of matplotlib and the issue description, I can generate a patch. The `align_labels()` method creates weakref references between axes to maintain alignment groups. The fix requires implementing `__getstate__` and `__setstate__` methods to handle these weakrefs during pickling.
+
+--- a/lib/matplotlib/axis.py
++++ b/lib/matplotlib/axis.py
+@@ -717,6 +717,22 @@ class Axis(martist.Artist):
+         self._minor_tick_kw = dict()
+         self.clear()
+ 
++    def __getstate__(self):
++        state = self.__dict__.copy()
++        # Remove unpicklable alignment group weakrefs
++        state['_align_label_groups'] = None
++        return state
++
++    def __setstate__(self, state):
++        self.__dict__.update(state)
++        # Restore alignment groups as empty dict
++        # Alignment information is not preserved across pickle/unpickle
++        if not hasattr(self, '_align_label_groups'):
++            self._align_label_groups = {}
++        if self._align_label_groups is None:
++            self._align_label_groups = {}
++        self.stale = True
++
+     def set_label_coords(self, x, y, transform=None):
+         """
+         Set the coordinates of the label.

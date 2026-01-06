@@ -1,0 +1,9 @@
+{
+  "instance_id": "pylint-dev__pylint-7080",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the architect's analysis and the issue description, I need to generate a patch that fixes the path normalization issue when using `--recursive=y`. The fix should normalize paths before matching against `ignore-paths` patterns. Here's the patch:\n\n--- a/pylint/lint/pylinter.py\n+++ b/pylint/lint/pylinter.py\n@@ -597,6 +597,8 @@ class PyLinter:\n             )\n \n         for root, _, files in os.walk(os.path.normpath(filepath)):\n+            # Normalize root path to ensure consistent matching with ignore-paths patterns\n+            root = os.path.normpath(root)\n             if any(fnmatch.fnmatch(root, pattern) for pattern in self.config.ignore_patterns):\n                 continue\n             if any(",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T20:09:37.218147"
+}

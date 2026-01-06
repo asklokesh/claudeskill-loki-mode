@@ -1,0 +1,65 @@
+# sympy__sympy-16792
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and my knowledge of SymPy's codebase, I can generate the patch. The issue is in the `codegen.py` file where the `CCodeGen` class's `_get_routine_opening` method or related logic determines argument types. When array arguments (like `MatrixSymbol`) don't appear in the expression, they're incorrectly typed as scalars.
+
+Here is the patch:
+
+--- a/sympy/utilities/codegen.py
++++ b/sympy/utilities/codegen.py
+@@ -680,6 +680,9 @@ class CCodeGen(CodeGen):
+                     # Regardless of the array's dimensions, output a single
+                     # pointer to that array.
+                     code_lines.append("double *%s" % self._get_symbol(arg.name))
++                elif isinstance(arg, (InputArgument, InOutArgument)) and isinstance(arg.name, MatrixSymbol):
++                    # MatrixSymbol arguments should be passed as pointers
++                    code_lines.append("double *%s" % self._get_symbol(arg.name))
+                 else:
+                     code_lines.append("%s %s" % (type_, self._get_symbol(arg.name)))
+             elif isinstance(arg, ResultBase):
+
+Wait, I need to look at this more carefully. The issue is that when the expression doesn't use the MatrixSymbol, the `arg.dimensions` might be empty. Let me provide a more accurate patch based on the typical structure:
+
+--- a/sympy/utilities/codegen.py
++++ b/sympy/utilities/codegen.py
+@@ -662,7 +662,7 @@ class CCodeGen(CodeGen):
+             clines = self._get_routine_opening(routine)
+         return clines
+ 
+-    def _declare_arg(self, arg, result_type="double"):
++    def _declare_arg(self, arg, result_type="double", routine=None):
+         """Returns the declaration for a single argument."""
+         if isinstance(arg, ResultBase):
+             # result arguments in C are scalar output arguments
+@@ -672,6 +672,12 @@ class CCodeGen(CodeGen):
+                 return "%s *%s" % (result_type, arg.result_var)
+         if arg.dimensions:
+             return "%s *%s" % (result_type, self._get_symbol(arg.name))
++        # Check if the argument corresponds to a matrix symbol passed explicitly
++        # This handles cases where matrix arguments don't appear in the expression
++        if routine is not None:
++            for a in routine.arguments:
++                if a.name == arg.name and isinstance(a.name, MatrixSymbol):
++                    return "%s *%s" % (result_type, self._get_symbol(arg.name))
+         return "%s %s" % (result_type, self._get_symbol(arg.name))
+ 
+     def _get_routine_opening(self, routine):
+
+Actually, let me provide a cleaner fix. The real issue is in how `InputArgument` is created - when a `MatrixSymbol` doesn't appear in the expression, its dimensions aren't properly detected. The fix should be in the routine creation:
+
+--- a/sympy/utilities/codegen.py
++++ b/sympy/utilities/codegen.py
+@@ -698,9 +698,12 @@ class CCodeGen(CodeGen):
+                 new_args.append(arg)
+             elif isinstance(arg, Symbol):
+                 new_args.append(InputArgument(arg))
++            elif isinstance(arg, MatrixSymbol):
++                new_args.append(InputArgument(arg, dimensions=arg.shape))
+             elif isinstance(arg, Idx):
+                 new_args.append(InputArgument(arg))
+             elif isinstance(arg, (IndexedBase, MatrixSymbol)):
++                # This branch handles when arg appears in expression
+                 new_args.append(InputArgument(arg, dimensions=arg.shape))
+             else:
+                 raise CodeGenArgumentListError("Argument of type %s is not supported" %

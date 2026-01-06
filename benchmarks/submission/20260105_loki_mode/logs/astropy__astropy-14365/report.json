@@ -1,0 +1,9 @@
+{
+  "instance_id": "astropy__astropy-14365",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/astropy/io/ascii/qdp.py\n+++ b/astropy/io/ascii/qdp.py\n@@ -63,7 +63,7 @@ def _line_type(line, delimiter=None):\n     _decimal_re = r\"[+-]?(\\d+(\\.\\d*)?|\\.\\d+)([eE][+-]?\\d+)?\"\n     _command_re = r\"READ [TS]ERR(\\s+[0-9]+)+\"\n \n     sep = delimiter\n     if delimiter is None:\n         sep = r\"\\s+\"\n     _new_re = rf\"NO({sep}NO)+\"\n     _data_re = rf\"({_decimal_re}|NO|[-+]?nan)({sep}({_decimal_re}|NO|[-+]?nan))*)\"\n     _type_re = rf\"^\\s*((?P<command>{_command_re})|(?P<new>{_new_re})|(?P<data>{_data_re})?\\s*(\\!(?P<comment>.*))?\\s*$\"\n     _line_type_re = re.compile(_type_re, re.IGNORECASE)\n     line = line.strip()\n     if not line:\n         return \"comment\"\n-    match = _line_type_re.match(line)\n+    match = _line_type_re.match(line.upper())\n \n     if match is None:\n         raise ValueError(f\"Unrecognized QDP line: {line}\")",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:02:57.536131"
+}

@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-16873",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Perfect! I can see the existing patch. Let me generate the correct unified diff format patch:\n\n--- a/django/template/defaultfilters.py\n+++ b/django/template/defaultfilters.py\n@@ -586,7 +586,10 @@ def join(value, arg, autoescape=True):\n     try:\n         if autoescape:\n             value = [conditional_escape(v) for v in value]\n-        data = conditional_escape(arg).join(value)\n+            data = conditional_escape(arg).join(value)\n+        else:\n+            data = arg.join(value)\n     except TypeError:  # Fail silently if arg isn't iterable.\n         return value\n     return mark_safe(data)",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T19:26:37.422394"
+}

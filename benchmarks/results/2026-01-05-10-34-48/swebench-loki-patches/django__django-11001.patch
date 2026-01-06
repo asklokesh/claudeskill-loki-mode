@@ -1,0 +1,32 @@
+# django__django-11001
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and the architect's analysis, I can generate the patch. The key points are:
+
+1. The `ordering_parts` regex at ~line 24 needs `re.MULTILINE | re.DOTALL` flags
+2. In `get_order_by()` at ~line 358, the SQL needs to be normalized before the regex search
+
+Here is the patch:
+
+--- a/django/db/models/sql/compiler.py
++++ b/django/db/models/sql/compiler.py
+@@ -24,7 +24,7 @@ class SQLCompiler:
+     # ordering_parts contains a regex for matching ordering clauses.
+     # It captures everything up to but not including the ordering direction.
+     ordering_parts = re.compile(
+-        r'^(.*)\s(ASC|DESC)(.*)',
++        r'^(.*)\s(?:ASC|DESC).*',
+         re.MULTILINE | re.DOTALL,
+     )
+ 
+@@ -355,7 +355,8 @@ class SQLCompiler:
+                 continue
+ 
+             if sql:
+-                without_ordering = self.ordering_parts.search(sql).group(1)
++                sql_oneline = ' '.join(sql.split())
++                without_ordering = self.ordering_parts.search(sql_oneline).group(1)
+                 params_hash = make_hashable(params)
+                 if (without_ordering, params_hash) not in seen:
+                     result.append((resolved, (sql, params, is_ref)))

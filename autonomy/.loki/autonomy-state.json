@@ -1,0 +1,10 @@
+{
+    "retryCount": 0,
+    "status": "running",
+    "lastExitCode": 0,
+    "lastRun": "2026-01-05T01:57:04Z",
+    "prdPath": "",
+    "pid": 94823,
+    "maxRetries": 50,
+    "baseWait": 60
+}

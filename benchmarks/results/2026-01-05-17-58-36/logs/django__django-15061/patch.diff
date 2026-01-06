@@ -1,0 +1,9 @@
+--- a/django/forms/widgets.py
++++ b/django/forms/widgets.py
+@@ -851,4 +851,4 @@ class MultiWidget(Widget):
+ 
+     def id_for_label(self, id_, index='0'):
+         if index == '0':
+-            return f'{id_}_{index}'
++            return ''
+         return ''

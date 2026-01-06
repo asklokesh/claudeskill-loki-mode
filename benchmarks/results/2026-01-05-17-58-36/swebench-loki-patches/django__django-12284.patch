@@ -1,0 +1,26 @@
+# django__django-12284
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis, I understand this is a SWE-bench task where I need to generate a patch for the Django repository. The issue is in the Django codebase (django/django repository), not in the current working directory. I need to generate a patch that fixes the `get_FOO_display()` method for inherited choices.
+
+According to the analysis:
+- The bug is in `django/db/models/fields/__init__.py` around line 766
+- The issue is caused by a `hasattr` check that prevents child models from overriding the display method
+- The fix is to remove or modify this check
+
+Let me generate the patch based on the architect's analysis:
+
+--- a/django/db/models/fields/__init__.py
++++ b/django/db/models/fields/__init__.py
+@@ -763,7 +763,9 @@
+             setattr(cls, 'get_next_by_%s' % self.name, curry(cls._get_next_or_previous_by_FIELD, field=self, is_next=True))
+             setattr(cls, 'get_previous_by_%s' % self.name, curry(cls._get_next_or_previous_by_FIELD, field=self, is_next=False))
+         # Add get_foo_display() method
+-        if not hasattr(cls, 'get_%s_display' % self.name):
++        # Always set get_FOO_display to allow child models to override choices
++        # Only skip if the method was explicitly overridden (not inherited)
++        if 'get_%s_display' % self.name not in cls.__dict__:
+             setattr(cls, 'get_%s_display' % self.name, partialmethod(cls._get_FIELD_display, field=self))
+ 
+     def get_filter_kwargs_for_object(self, obj):

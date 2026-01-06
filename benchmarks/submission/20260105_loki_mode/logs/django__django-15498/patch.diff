@@ -1,0 +1,10 @@
+--- a/django/views/static.py
++++ b/django/views/static.py
+@@ -75,6 +75,8 @@ def was_modified_since(header=None, mtime=0, size=0):
+     """
+     try:
++        if header is None or len(header) == 0:
++            raise ValueError
+         header_mtime = parse_http_date(header)
+         if mtime > header_mtime:
+             return True

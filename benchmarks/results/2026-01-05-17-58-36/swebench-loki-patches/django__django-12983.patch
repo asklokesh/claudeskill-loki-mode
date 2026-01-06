@@ -1,0 +1,32 @@
+# django__django-12983
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and the Django documentation for the `slugify()` function, I'll generate the patch. The standard Django `slugify()` implementation needs to strip leading and trailing dashes and underscores from the result.
+
+--- a/django/utils/text.py
++++ b/django/utils/text.py
+@@ -417,7 +417,7 @@ def slugify(value, allow_unicode=False):
+     if allow_unicode:
+         value = unicodedata.normalize("NFKC", value)
+     value = re.sub(r"[^\w\s-]", "", value.lower())
+-    return re.sub(r"[-\s]+", "-", value)
++    return re.sub(r"[-\s]+", "-", value).strip("-_")
+ 
+ 
+ def camel_case_to_spaces(value):
+--- a/tests/utils_tests/test_text.py
++++ b/tests/utils_tests/test_text.py
+@@ -121,6 +121,12 @@ class TestUtilsText(SimpleTestCase):
+         self.assertEqual(slugify("你好 World"), "world")
+         self.assertEqual(slugify("你好 World", allow_unicode=True), "你好-world")
+ 
++    def test_slugify_strip_dashes_and_underscores(self):
++        self.assertEqual(slugify("___This is a test ---"), "this-is-a-test")
++        self.assertEqual(slugify("---test---"), "test")
++        self.assertEqual(slugify("___test___"), "test")
++        self.assertEqual(slugify("_-_test_-_"), "test")
++
+     def test_camel_case_to_spaces(self):
+         self.assertEqual(camel_case_to_spaces("camelCase"), "camel Case")
+         self.assertEqual(camel_case_to_spaces("CamelCase"), "Camel Case")

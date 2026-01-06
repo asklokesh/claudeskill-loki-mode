@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-14580",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the issue description, this is about a missing import for `models.Model` when it appears in the bases tuple. Let me generate the correct patch:\n\n--- a/django/db/migrations/serializer.py\n+++ b/django/db/migrations/serializer.py\n@@ -273,7 +273,7 @@ class TypeSerializer(BaseSerializer):\n \n     def serialize(self):\n         special_cases = [\n-            (models.Model, \"models.Model\", []),\n+            (models.Model, \"models.Model\", [\"from django.db import models\"]),\n             (type(None), \"type(None)\", []),\n         ]\n         for case, string, imports in special_cases:",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:55:20.312341"
+}

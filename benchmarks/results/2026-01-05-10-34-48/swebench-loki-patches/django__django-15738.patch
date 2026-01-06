@@ -1,0 +1,145 @@
+# django__django-15738
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and my knowledge of Django's migration system, I need to generate a patch that fixes the ordering issue when a ForeignKey is changed to ManyToManyField while removing unique_together. The fix should ensure that when a field is being "replaced" (same name, different type), the AlterUniqueTogether/RemoveField operations happen before the new AddField.
+
+Here's the patch:
+
+```
+--- a/django/db/migrations/autodetector.py
++++ b/django/db/migrations/autodetector.py
+@@ -166,6 +166,16 @@ class MigrationAutodetector:
+         self.renamed_models = {}
+         self.renamed_models_rel = {}
+         self.renamed_fields = {}
++        # Track fields that are being replaced (removed and re-added with same
++        # name but different type, e.g., ForeignKey to ManyToManyField).
++        # This is needed to properly order operations when a field changes type
++        # in a way that requires remove + add rather than alter.
++        self.replaced_fields = set()
++        for app_label, model_name, field_name in self.new_field_keys - self.old_field_keys:
++            if (app_label, model_name, field_name) in self.old_field_keys - self.new_field_keys:
++                continue
++            if field_name in self.from_state.models.get((app_label, model_name), type('', (), {'fields': {}})()).fields:
++                self.replaced_fields.add((app_label, model_name, field_name))
+         self.generate_renamed_models()
+         # Prepare lists of fields and generate through model map
+         self._prepare_field_lists()
+@@ -180,6 +190,13 @@ class MigrationAutodetector:
+             old_field = old_model_state.fields.get(field_name)
+             new_field = new_model_state.fields.get(field_name)
+             if old_field and new_field:
++                # Check if this field is being replaced (removed and re-added
++                # with same name) - happens when changing field type radically
++                # (e.g., ForeignKey to ManyToManyField)
++                old_is_relation = old_field.is_relation and not old_field.many_to_many
++                new_is_m2m = new_field.many_to_many
++                if old_is_relation and new_is_m2m:
++                    self.replaced_fields.add((app_label, model_name, field_name))
+                 through_model_map[(app_label, old_field.remote_field.through._meta.app_label, old_field.remote_field.through._meta.model_name)] = (
+                     app_label, new_field.remote_field.through._meta.app_label, new_field.remote_field.through._meta.model_name
+                 )
+@@ -424,6 +441,17 @@ class MigrationAutodetector:
+                             dependencies.append((app_label, model_name, field_name, "alter"))
+ 
+         for app_label, model_name, field_name in sorted(self.new_field_keys - self.old_field_keys):
++            # If this field is replacing an old field with the same name
++            # (e.g., ForeignKey to ManyToManyField), we need to depend on
++            # the removal of the old field first.
++            if (app_label, model_name, field_name) in self.replaced_fields:
++                dependencies.append((app_label, model_name, field_name, "remove_field"))
++                # Also depend on any unique_together/index_together changes
++                # that reference the old field, as they must be removed first.
++                if (app_label, model_name) in self.altered_unique_together:
++                    dependencies.append((app_label, model_name, None, "alter_unique_together"))
++                if (app_label, model_name) in self.altered_index_together:
++                    dependencies.append((app_label, model_name, None, "alter_index_together"))
+             self.add_operation(
+                 app_label,
+                 operations.AddField(
+@@ -910,6 +938,14 @@ class MigrationAutodetector:
+         """
+         for app_label, model_name, field_name in sorted(self.old_field_keys - self.new_field_keys):
+             self._generate_removed_field(app_label, model_name, field_name)
++    
++    def _get_dependencies_for_removed_field(self, app_label, model_name, field_name):
++        """
++        Return dependencies for a RemoveField operation.
++        """
++        dependencies = []
++        # No additional dependencies needed for basic removal
++        return dependencies
+ 
+     def _generate_removed_field(self, app_label, model_name, field_name):
+         self.add_operation(
+```
+
+Wait, I need to look at this more carefully. The issue is about the ordering of operations. Let me reconsider the approach based on the architect's analysis.
+
+The problem is:
+1. When FK is changed to M2M with same name, Django generates: AddField (new M2M), AlterUniqueTogether, RemoveField (old FK)
+2. But it should be: AlterUniqueTogether, RemoveField (old FK), AddField (new M2M)
+
+The fix needs to ensure AddField depends on RemoveField when there's a field name collision. Here's the corrected patch:
+
+--- a/django/db/migrations/autodetector.py
++++ b/django/db/migrations/autodetector.py
+@@ -166,6 +166,7 @@ class MigrationAutodetector:
+         self.renamed_models = {}
+         self.renamed_models_rel = {}
+         self.renamed_fields = {}
++        self.replaced_fields = {}
+         self.generate_renamed_models()
+         # Prepare lists of fields and generate through model map
+         self._prepare_field_lists()
+@@ -176,6 +177,18 @@ class MigrationAutodetector:
+         for app_label, model_name in self.kept_model_keys:
+             old_model_state = self.from_state.models[app_label, model_name]
+             new_model_state = self.to_state.models[app_label, model_name]
++            # Detect fields that are being replaced (same name, incompatible types
++            # requiring remove + add rather than alter, e.g., ForeignKey to ManyToManyField)
++            old_field_names = set(old_model_state.fields)
++            new_field_names = set(new_model_state.fields)
++            for field_name in old_field_names & new_field_names:
++                old_field = old_model_state.fields[field_name]
++                new_field = new_model_state.fields[field_name]
++                # ForeignKey/OneToOneField to ManyToManyField is a replacement
++                old_is_fk = old_field.is_relation and not old_field.many_to_many
++                new_is_m2m = new_field.many_to_many
++                if old_is_fk and new_is_m2m:
++                    self.replaced_fields[(app_label, model_name, field_name)] = True
+             for field_name in old_model_state.fields:
+                 old_field = old_model_state.fields.get(field_name)
+                 new_field = new_model_state.fields.get(field_name)
+@@ -424,6 +437,15 @@ class MigrationAutodetector:
+                             dependencies.append((app_label, model_name, field_name, "alter"))
+ 
+         for app_label, model_name, field_name in sorted(self.new_field_keys - self.old_field_keys):
++            # If this field replaces an old field with the same name (e.g.,
++            # ForeignKey changed to ManyToManyField), depend on the old field
++            # being removed first, which in turn depends on unique_together
++            # being altered first.
++            if (app_label, model_name, field_name) in self.replaced_fields:
++                dependencies = [
++                    (app_label, model_name, field_name, "remove_field"),
++                ]
++            else:
++                dependencies = []
+             self.add_operation(
+                 app_label,
+                 operations.AddField(
+@@ -431,12 +443,13 @@ class MigrationAutodetector:
+                     name=field_name,
+                     field=self.to_state.models[app_label, model_name].fields[field_name],
+                 ),
+-                dependencies=[
++                dependencies=dependencies + [
+                     (app_label, model_name, None, "model"),
+                 ],
+             )
+ 
+     def generate_removed_fields(self):
+         """Make RemoveField operations."""
+         for app_label, model_name, field_name in sorted(self.old_field_keys - self.new_field_keys):
+             self._generate_removed_field(app_label, model_name, field_name)

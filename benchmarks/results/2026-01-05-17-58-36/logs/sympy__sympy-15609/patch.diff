@@ -1,0 +1,30 @@
+Based on the architect's analysis, I understand this is a sympy repository issue. However, I don't see sympy source files in this repository. This appears to be a claudeskill-loki-mode repository. Let me create a patch based on the issue description and standard sympy repository structure.
+
+--- a/sympy/printing/latex.py
++++ b/sympy/printing/latex.py
+@@ -1840,7 +1840,7 @@ class LatexPrinter(Printer):
+ 
+     def _print_MatrixElement(self, expr):
+         return self._print(expr.parent) + '_{%s, %s}' % (
+-            expr.i, expr.j)
++            self._print(expr.i), self._print(expr.j))
+ 
+     def _print_MatrixSlice(self, expr):
+         def latexslice(x, dim):
+--- a/sympy/printing/tests/test_latex.py
++++ b/sympy/printing/tests/test_latex.py
+@@ -1850,6 +1850,14 @@ def test_MatrixElement_printing():
+     assert latex(A[x, y]) == r"A_{x, y}"
+     assert latex(A[0, 1]) == r"A_{0, 1}"
+ 
++    # Test for indexed matrix expressions (issue with double subscripts)
++    i, j, k = symbols("i j k")
++    M = MatrixSymbol("M", k, k)
++    N = MatrixSymbol("N", k, k)
++    result = latex((M*N)[i, j])
++    # Should not contain double underscores like _i_1
++    assert r'__' not in result and r'_{_' not in result
++
+ 
+ def test_MatrixSymbol_printing():
+     A = MatrixSymbol("A", 3, 3)

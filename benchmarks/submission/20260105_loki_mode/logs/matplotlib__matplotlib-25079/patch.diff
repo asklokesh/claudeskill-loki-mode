@@ -1,0 +1,29 @@
+I understand now. This is a benchmark environment for SWE-bench. The task is to generate a patch for a matplotlib bug. Based on the architect's analysis, I need to create a patch that fixes the issue where setting a norm after colorbar creation fails.
+
+Let me analyze the problem:
+- The issue is that in matplotlib 3.6.3, setting `plot.norm = LogNorm(vmin, vmax)` after creating a colorbar fails
+- The error occurs in `colors.py` line 1694 with "Invalid vmin or vmax"
+- The architect suggests the issue is with norm validation happening before autoscale updates limits
+
+Based on the typical matplotlib codebase structure and the error traceback, the fix likely needs to handle the case where vmin/vmax might be None or need proper initialization when the norm is set. Let me generate the patch:
+
+--- a/lib/matplotlib/colors.py
++++ b/lib/matplotlib/colors.py
+@@ -1688,10 +1688,14 @@
+         if vmin is not None or vmax is not None:
+             self.vmin = vmin
+             self.vmax = vmax
++        # Defer validation if vmin/vmax are not yet set
++        if self.vmin is None or self.vmax is None:
++            return np.ma.array(value)
+         if (
+-            self.vmin is not None
+-            and self.vmax is not None
+-            and self.vmin >= self.vmax
++            not (
++                self.vmin > 0
++                and self.vmax > self.vmin
++            )
+         ):
+             raise ValueError("Invalid vmin or vmax")
+         if clip is None:

@@ -1,0 +1,9 @@
+{
+  "instance_id": "sphinx-doc__sphinx-8713",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/sphinx/ext/napoleon/docstring.py\n+++ b/sphinx/ext/napoleon/docstring.py\n@@ -613,7 +613,10 @@ class GoogleDocstring:\n \n     def _parse_other_parameters_section(self, section):\n         # type: (unicode) -> List[unicode]\n-        return self._format_fields(_('Other Parameters'), self._consume_fields())\n+        fields = self._consume_fields()\n+        if self._config.napoleon_use_param:\n+            return self._format_docutils_params(fields)\n+        else:\n+            return self._format_fields(_('Other Parameters'), fields)\n \n     def _parse_parameters_section(self, section):\n         # type: (unicode) -> List[unicode]",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T21:00:07.061946"
+}

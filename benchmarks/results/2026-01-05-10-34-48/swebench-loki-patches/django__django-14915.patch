@@ -1,0 +1,23 @@
+# django__django-14915
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis, I can generate the patch for the Django issue. The `ModelChoiceIteratorValue` class needs a `__hash__` method that returns `hash(self.value)`.
+
+Here is the patch:
+
+```
+--- a/django/forms/models.py
++++ b/django/forms/models.py
+@@ -1162,6 +1162,9 @@ class ModelChoiceIteratorValue:
+     def __eq__(self, other):
+         if isinstance(other, ModelChoiceIteratorValue):
+             other = other.value
+         return self.value == other
++
++    def __hash__(self):
++        return hash(self.value)
+ 
+ 
+ class ModelChoiceIterator:
+```

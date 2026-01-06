@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-11179",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the architect's analysis, I need to generate a patch for django/db/models/deletion.py. Since this is a SWE-bench task where I'm generating a patch for a Django repository issue, I'll create the patch based on the provided information about lines 276-281 and the need to mirror the behavior at lines 324-326.\n\n--- a/django/db/models/deletion.py\n+++ b/django/db/models/deletion.py\n@@ -277,6 +277,8 @@\n                 query = sql.DeleteQuery(model)\n                 query.delete_batch(pk_list, self.using)\n                 deleted_counter[model._meta.label] += len(pk_list)\n+                for instance in instances:\n+                    setattr(instance, model._meta.pk.attname, None)\n \n         # update fields\n         for model, instances_for_fieldvalues in self.field_updates.items():",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:10:21.538534"
+}

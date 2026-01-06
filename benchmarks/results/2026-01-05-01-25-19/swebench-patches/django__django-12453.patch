@@ -1,0 +1,33 @@
+Based on the problem statement and the provided diff, I can generate the required patch. The issue is that `deserialize_db_from_string` in `django/db/backends/base/creation.py` needs to:
+
+1. Wrap the deserialization in a transaction
+2. Disable constraint checks during the operation (similar to how `loaddata` handles this)
+
+Looking at the hints, the solution needs to not only wrap in a transaction but also disable constraint checks for MySQL/InnoDB compatibility.
+
+Here's the patch:
+
+--- a/django/db/backends/base/creation.py
++++ b/django/db/backends/base/creation.py
+@@ -4,7 +4,7 @@ import time
+ from django.apps import apps
+ from django.conf import settings
+ from django.core import serializers
+-from django.db import router
++from django.db import router, transaction
+ from django.utils.six import StringIO
+ from django.utils.six.moves import input
+ 
+@@ -128,8 +128,10 @@ class BaseDatabaseCreation(object):
+         the serialize_db_to_string method.
+         """
+         data = StringIO(data)
+-        for obj in serializers.deserialize("json", data, using=self.connection.alias):
+-            obj.save()
++        with transaction.atomic(using=self.connection.alias):
++            with self.connection.constraint_checks_disabled():
++                for obj in serializers.deserialize("json", data, using=self.connection.alias):
++                    obj.save()
+ 
+     def _get_database_display_str(self, verbosity, database_name):
+         """

@@ -1,0 +1,9 @@
+{
+  "instance_id": "psf__requests-863",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on my analysis, the first patch (from 2026-01-05-10-37-54) is the simpler and more correct approach. It modifies the `__init__` method to handle lists directly when setting up hooks, rather than modifying `register_hook`. The issue specifically mentions that `Request.__init__()` wraps lists in lists, so the fix should be in `__init__`, not `register_hook`.\n\nHowever, there's a flaw in using `hasattr(v, '__iter__')` because strings are iterable. Let me create a better version:\n\n--- a/requests/models.py\n+++ b/requests/models.py\n@@ -47,7 +47,12 @@ class Request(object):\n         # Dictionary mapping (case-insensitive) parsing.\n         hooks = hooks or {}\n         for (k, v) in list(hooks.items()):\n-            self.register_hook(event=k, hook=v)\n+            if isinstance(v, (list, tuple)):\n+                # v is a list/tuple of hooks\n+                for h in v:\n+                    self.register_hook(event=k, hook=h)\n+            else:\n+                self.register_hook(event=k, hook=v)\n \n \n     def __repr__(self):",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T20:01:37.208206"
+}

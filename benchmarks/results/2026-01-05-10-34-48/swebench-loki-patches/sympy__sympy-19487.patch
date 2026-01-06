@@ -1,0 +1,33 @@
+# sympy__sympy-19487
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+The sympy repository is not in this directory. Based on the task, I'm being asked to generate a patch for the sympy/sympy repository. Since I don't have direct access to the sympy source code, I'll need to generate the patch based on my knowledge of the sympy codebase structure and the architect's analysis.
+
+Based on my knowledge of the sympy codebase, the `sign` class is in `sympy/functions/elementary/complexes.py`. The class has a structure with various `_eval_*` methods. I need to add an `_eval_rewrite_as_Abs` method.
+
+Here's the patch:
+
+```
+--- a/sympy/functions/elementary/complexes.py
++++ b/sympy/functions/elementary/complexes.py
+@@ -1,6 +1,6 @@
+ from __future__ import print_function, division
+ 
+-from sympy.core import S, Add, Mul, sympify, Symbol, Dummy, Basic
++from sympy.core import S, Add, Mul, sympify, Symbol, Dummy, Basic, Eq
+ from sympy.core.expr import Expr
+ from sympy.core.exprtools import factor_terms
+ from sympy.core.function import (Function, Derivative, ArgumentIndexError,
+@@ -388,6 +388,11 @@ class sign(Function):
+     def _eval_rewrite_as_Heaviside(self, arg):
+         from sympy.functions.special.delta_functions import Heaviside
+         return Heaviside(arg, H0=S(1)/2) * 2 - 1
++
++    def _eval_rewrite_as_Abs(self, arg, **kwargs):
++        from sympy.functions.elementary.piecewise import Piecewise
++        return Piecewise((0, Eq(arg, 0)), (arg / Abs(arg), True))
+ 
+     def _eval_simplify(self, ratio, measure):
+         return self.func(self.args[0].factor())
+```

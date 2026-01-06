@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-13146",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/sympy/core/numbers.py\n+++ b/sympy/core/numbers.py\n@@ -855,7 +855,7 @@ class Float(Number):\n         return mlib.to_str(self._mpf_, n_digits, strip_zeros=False)\n \n     def __eq__(self, other):\n-        from sympy.logic.boolalg import Boolean\n+        from sympy import S\n         try:\n             other = _sympify(other)\n         except SympifyError:\n@@ -863,10 +863,11 @@ class Float(Number):\n         if not isinstance(other, Number):\n             return False    # Float != non-Number\n         if isinstance(other, Float):\n-            return bool(mlib.feq(self._mpf_, other._mpf_))\n-        return bool(mlib.feq(self._mpf_, other._as_mpf_val(self._prec)))\n+            # Compare values using mpmath equality\n+            return self._mpf_ == other._mpf_\n+        return self._mpf_ == other._as_mpf_val(self._prec)\n \n     def __hash__(self):\n-        return hash((self._mpf_, self._prec))\n+        return hash(self._mpf_)\n \n     def epsilon_eq(self, other, epsilon=\"1e-15\"):",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T21:13:54.620846"
+}

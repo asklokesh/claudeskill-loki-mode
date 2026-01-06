@@ -1,0 +1,22 @@
+# django__django-13028
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and the issue description, I can generate the patch. The issue is in the `check_filterable` method which checks `getattr(expression, 'filterable', True)` but this incorrectly picks up model instance attributes. The fix is to check for `hasattr(expression, 'resolve_expression')` to ensure we only apply the filterable check to Expression objects.
+
+```
+--- a/django/db/models/sql/query.py
++++ b/django/db/models/sql/query.py
+@@ -1125,7 +1125,10 @@ class Query(BaseExpression):
+ 
+     def check_filterable(self, expression):
+         """Raise an error if expression cannot be used in a WHERE clause."""
+-        if not getattr(expression, 'filterable', True):
++        if (
++            hasattr(expression, 'resolve_expression') and
++            not getattr(expression, 'filterable', True)
++        ):
+             raise NotSupportedError(
+                 expression.__class__.__name__ + ' is disallowed in the filter '
+                 'clause.'
+```

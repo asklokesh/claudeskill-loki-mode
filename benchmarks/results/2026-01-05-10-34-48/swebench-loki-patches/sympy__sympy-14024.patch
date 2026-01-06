@@ -1,0 +1,71 @@
+# sympy__sympy-14024
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis, I need to generate a patch for the SymPy repository to fix the inconsistency with `(-a)**x * a**(-x)` simplification. The issue is in the power simplification logic for negative integer bases with rational exponents.
+
+Looking at the analysis, the bug is that `(-2)**(-S(10)/3)` incorrectly handles the principal branch when extracting integer parts. The fix needs to be in `sympy/core/power.py`.
+
+Here's the patch:
+
+--- a/sympy/core/power.py
++++ b/sympy/core/power.py
+@@ -289,6 +289,28 @@ class Pow(Expr):
+                             return Pow(b, e, evaluate=False)
+                         return
+ 
++            # Handle negative integer bases with rational exponents
++            # (-n)**q where n is a positive integer > 1 and q is rational
++            # should be rewritten as (-1)**q * n**q to maintain principal branch
++            if b.is_negative and b.is_Integer:
++                if e.is_Rational and not e.is_Integer:
++                    # For (-n)**q, rewrite as (-1)**q * n**q
++                    # This ensures the principal branch is preserved
++                    from sympy import S
++                    neg_one = S.NegativeOne
++                    pos_base = -b
++                    # Only do this transformation if it helps
++                    # (-1)**q is handled correctly elsewhere
++                    if pos_base != S.One:
++                        neg_one_part = Pow(neg_one, e)
++                        pos_part = Pow(pos_base, e)
++                        # Avoid infinite recursion - only return if we get different result
++                        result = neg_one_part * pos_part
++                        if result != Pow(b, e, evaluate=False):
++                            return result
++                        return Pow(b, e, evaluate=False)
++
+             if e.is_Rational and b.is_Rational and b is not S.One:
+                 # we didn't check that e is not an Integer
+                 # because Rational**Integer autosimplifies
+
+Wait, I need to look more carefully at the issue. The problem is specifically in how `(-n)**q` is being simplified when q is a non-integer rational. Let me provide a more targeted fix based on the architect's analysis.
+
+The issue is that when computing `(-2)**(-10/3)`, the code extracts integer powers incorrectly. The fix should be in the section where rational exponents are handled for negative bases.
+
+--- a/sympy/core/power.py
++++ b/sympy/core/power.py
+@@ -291,10 +291,21 @@ class Pow(Expr):
+ 
+             if e.is_Rational and b.is_Rational and b is not S.One:
+                 # we didn't check that e is not an Integer
+-                # because Rational**Integer autosimplifies
+-                # and to get here you would have had
+-                # (-n)**p/q with q != 1 and n negative
+-                # (neg b, neg e) handled above
++                # because Rational**Integer autosimplifies.
++                # For negative integer bases with non-integer rational exponents,
++                # we need to be careful about the principal branch.
++                # (-n)**q should become (-1)**q * n**q to preserve the principal branch.
++                if b.is_negative and b.is_Integer and not e.is_Integer:
++                    from sympy import S
++                    pos_base = -b
++                    if pos_base > 1:
++                        # Rewrite (-n)**q as (-1)**q * n**q
++                        neg_one_pow = Pow(S.NegativeOne, e)
++                        pos_pow = Pow(pos_base, e)
++                        return neg_one_pow * pos_pow
++                # (neg b, neg e) handled above for b = -1
+                 if b.is_negative:
+                     neg_expo = False
+                     if e.is_negative:

@@ -1,0 +1,35 @@
+Based on the GitHub issue discussion, the fix is clear. The comments in the issue explicitly state:
+
+> So it looks like somebody accidentally turned the lines
+> 
+> ```
+> elif operand.mask is None:
+>             return deepcopy(self.mask)
+> ```
+> 
+> into
+> 
+> ```
+> elif operand is None:
+>             return deepcopy(self.mask)
+> ```
+
+And @chris-simpson confirms:
+
+> I agree that line you suggested above is the culprit, which was [changed here](https://github.com/astropy/astropy/commit/feeb716b7412c477c694648ee1e93be2c4a73700#diff-5057de973eaa1e5036a0bef89e618b1b03fd45a9c2952655abb656822f4ddc2aL458-R498). I've reverted that specific line in a local astropy branch and verified that the existing tests still pass
+
+The file is `astropy/nddata/mixins/ndarithmetic.py` and the fix is to change `elif operand is None:` back to `elif operand.mask is None:`.
+
+Here is the patch:
+
+--- a/astropy/nddata/mixins/ndarithmetic.py
++++ b/astropy/nddata/mixins/ndarithmetic.py
+@@ -527,7 +527,7 @@ class NDArithmeticMixin:
+         # Now lets calculate the resulting mask (operation enforces copy)
+         return handle_mask(self.mask, operand.mask, **kwds)
+ 
+-    elif operand is None:
++    elif operand.mask is None:
+         return deepcopy(self.mask)
+ 
+     else:

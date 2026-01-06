@@ -1,0 +1,45 @@
+# sympy__sympy-13915
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis, I need to generate a patch for sympy's `mul.py` file. The issue is in the `_gather` helper function where powers are combined. Let me generate the patch based on the standard sympy repository structure:
+
+```
+--- a/sympy/core/mul.py
++++ b/sympy/core/mul.py
+@@ -162,6 +162,14 @@ def _gather(self, args):
+                 if e is S.One:
+                     new_args.append(b)
+                 elif e is not S.Zero:
++                    new_args.append(Pow(b, e))
++                elif b.is_finite is False:
++                    # If base contains infinity and exponent is zero from
++                    # cancellation (e.g., (x+zoo)/(x+zoo)), result is nan
++                    new_args.append(S.NaN)
++                elif b.has(S.ComplexInfinity, S.Infinity, S.NegativeInfinity):
++                    # Base expression contains infinity, x**0 where x has
++                    # infinity should be nan, not 1
+                     new_args.append(S.NaN)
+                 # else e is zero, so don't append (equivalent to multiplying by 1)
+         return new_args
+```
+
+However, looking at the actual sympy codebase structure, the fix should be in the `flatten` method. Let me provide a more accurate patch:
+
+--- a/sympy/core/mul.py
++++ b/sympy/core/mul.py
+@@ -182,7 +182,14 @@ class Mul(Expr, AssocOp):
+ 
+                 if e is S.One:
+                     new_args.append(b)
+-                elif e is not S.Zero:
++                elif e is S.Zero:
++                    # Check if base contains infinity - if so, return nan
++                    # instead of 1 (e.g., (x+zoo)/(x+zoo) should be nan)
++                    if b.has(S.ComplexInfinity, S.Infinity, S.NegativeInfinity):
++                        new_args.append(S.NaN)
++                    # else e is zero with finite base, equivalent to 1
++                else:
+                     new_args.append(Pow(b, e))
+ 
+         return new_args

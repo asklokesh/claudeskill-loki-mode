@@ -1,0 +1,82 @@
+# sympy__sympy-14396
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and the architect's analysis, I can generate the patch. The issue is in the `Domain.preprocess()` method which handles domain string parsing. Looking at the traceback, the code parses `QQ[...]` and `ZZ[...]` but not `RR[...]`. I'll create a patch that adds support for `RR[...]` (and `CC[...]` for completeness).
+
+```
+--- a/sympy/polys/polyoptions.py
++++ b/sympy/polys/polyoptions.py
+@@ -442,6 +442,22 @@ class Domain(with_metaclass(OptionType, Option)):
+             if ground in ['ZZ', 'QQ']:
+                 return sympy.polys.domains[ground].poly_ring(*gens)
+ 
++        r = cls._re_polynomial.match(domain)
++
++        if r is not None:
++            ground, gens = r.groups()
++
++            gens = list(map(sympify, gens.split(',')))
++
++            if ground == 'RR':
++                return sympy.polys.domains.RR.poly_ring(*gens)
++
++        r = cls._re_polynomial.match(domain)
++
++        if r is not None:
++            ground, gens = r.groups()
++
++            gens = list(map(sympify, gens.split(',')))
++
++            if ground == 'CC':
++                return sympy.polys.domains.CC.poly_ring(*gens)
++
+         r = cls._re_fraction.match(domain)
+```
+
+Wait, let me reconsider. The code likely has a regex pattern `_re_polynomial` that already matches the pattern but the condition only checks for `ZZ` or `QQ`. The fix should extend that condition. Let me provide a cleaner patch:
+
+```
+--- a/sympy/polys/polyoptions.py
++++ b/sympy/polys/polyoptions.py
+@@ -439,7 +439,13 @@ class Domain(with_metaclass(OptionType, Option)):
+ 
+             gens = list(map(sympify, gens.split(',')))
+ 
+-            if ground in ['ZZ', 'QQ']:
++            if ground in ['ZZ', 'QQ', 'RR', 'CC']:
++                return sympy.polys.domains[ground].poly_ring(*gens)
++
++        r = cls._re_fraction.match(domain)
++
++        if r is not None:
++            ground, gens = r.groups()
++
++            gens = list(map(sympify, gens.split(',')))
++
++            if ground in ['ZZ', 'QQ', 'RR', 'CC']:
+                 return sympy.polys.domains[ground].poly_ring(*gens)
+```
+
+Actually, the simplest fix based on the code structure shown in the traceback is to extend the ground domain check to include 'RR' and 'CC'. Here's the correct minimal patch:
+
+--- a/sympy/polys/polyoptions.py
++++ b/sympy/polys/polyoptions.py
+@@ -439,7 +439,7 @@ class Domain(with_metaclass(OptionType, Option)):
+ 
+             gens = list(map(sympify, gens.split(',')))
+ 
+-            if ground in ['ZZ', 'QQ']:
++            if ground in ['ZZ', 'QQ', 'RR', 'CC']:
+                 return sympy.polys.domains[ground].poly_ring(*gens)
+ 
+         r = cls._re_fraction.match(domain)
+@@ -447,7 +447,7 @@ class Domain(with_metaclass(OptionType, Option)):
+ 
+             gens = list(map(sympify, gens.split(',')))
+ 
+-            if ground in ['ZZ', 'QQ']:
++            if ground in ['ZZ', 'QQ', 'RR', 'CC']:
+                 return sympy.polys.domains[ground].frac_field(*gens)
+ 
+         r = cls._re_algebraic.match(domain)

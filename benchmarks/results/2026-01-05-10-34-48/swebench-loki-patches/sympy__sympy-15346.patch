@@ -1,0 +1,21 @@
+# sympy__sympy-15346
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/sympy/simplify/trigsimp.py
++++ b/sympy/simplify/trigsimp.py
+@@ -1128,11 +1128,11 @@ def _futrig(e, **kwargs):
+         identity,
+         TR14,  # factored powers of identities
+         TR5,  # sin-Loss power reduction
+-        TR10,  # sin-cos of sums to products
++        TR10i,  # sum of sin-cos products
+         TR11, TR6, # reduce double angles and rewrite cos pance am am/2 as 1 - 2*sin**2
++        TR10,  # sin-cos of sums to products
+         lambda x: _TR11(x, 1), # TR11's version of cos pance am am/2 = 1 - 2 sin**2
+         TR14,  # factored powers of identities
+-        TRmorrie,
+-        TR10i,  # sum of sin-cos products
++        TRmorrie,  # products of cos
+         )]
+     e = greedy(tree, objectives=[identity])(e)

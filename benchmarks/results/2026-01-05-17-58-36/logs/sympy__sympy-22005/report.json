@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-22005",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the issue description and the architect's analysis, I need to generate a patch for the sympy repository. The issue is about fixing the detection of infinite solutions in `solve_poly_system`. Let me create the patch based on the provided diff and analysis:\n\n--- a/sympy/solvers/polysys.py\n+++ b/sympy/solvers/polysys.py\n@@ -240,7 +240,9 @@ def _solve_reduced_system(system, gens, entry=False):\n \n         univariate = list(filter(_is_univariate, basis))\n \n-        if len(univariate) == 1:\n+        if len(basis) < len(gens):\n+            raise NotImplementedError(filldedent('''\n+                only zero-dimensional systems supported (finite number of solutions)'''))\n+        elif len(univariate) == 1:\n             f = univariate.pop()\n         else:\n             raise NotImplementedError(filldedent('''\n--- a/sympy/solvers/tests/test_polysys.py\n+++ b/sympy/solvers/tests/test_polysys.py\n@@ -48,6 +48,10 @@ def test_solve_poly_system():\n     raises(NotImplementedError, lambda: solve_poly_system(\n         [z, -2*x*y**2 + x + y**2*z, y**2*(-z - 4) + 2]))\n     raises(PolynomialError, lambda: solve_poly_system([1/x], x))\n+    raises(NotImplementedError, lambda: solve_poly_system(\n+        [x - 1], x, y))\n+    raises(NotImplementedError, lambda: solve_poly_system(\n+        [y - 1], x, y))\n \n \n def test_solve_biquadratic():",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T22:03:30.814748"
+}

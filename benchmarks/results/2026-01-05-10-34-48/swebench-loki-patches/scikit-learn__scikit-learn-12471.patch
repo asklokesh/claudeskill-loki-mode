@@ -1,0 +1,72 @@
+# scikit-learn__scikit-learn-12471
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+This appears to be a skill repository, not the scikit-learn repository. The issue is about scikit-learn's `OneHotEncoder`. Let me generate the patch based on my knowledge of the scikit-learn codebase and the issue description.
+
+Based on the issue analysis, the bug occurs in the `_transform` method of `OneHotEncoder` where unknown values are replaced with `cats[0]`. When the input array has a fixed-width string dtype that's smaller than `cats[0]`, truncation occurs.
+
+Here's the patch:
+
+```
+--- a/sklearn/preprocessing/_encoders.py
++++ b/sklearn/preprocessing/_encoders.py
+@@ -110,6 +110,17 @@ class _BaseEncoder(BaseEstimator, TransformerMixin):
+                 else:
+                     diff = set(Xi) - set(cats)
+                     if diff:
++                        # For handle_unknown='ignore', we need to ensure
++                        # the array can accommodate the replacement value
++                        # cats[0]. If Xi has a fixed-width string dtype
++                        # smaller than cats[0], cast to object to prevent
++                        # truncation.
++                        if (self.handle_unknown == 'ignore' and
++                                Xi.dtype.kind in ('U', 'S') and
++                                cats.dtype.kind in ('U', 'S')):
++                            if Xi.dtype.itemsize < cats[0].dtype.itemsize:
++                                Xi = Xi.astype(object)
++                                X[:, i] = Xi
+                         msg = ("Found unknown categories {0} in column {1}"
+                                " during transform".format(diff, i))
+                         if self.handle_unknown == 'error':
+@@ -117,6 +128,17 @@ class _BaseEncoder(BaseEstimator, TransformerMixin):
+                         else:
+                             # Set the problematic rows to an acceptable value and
+                             # continue `np.searchsorted` below.
++                            # For object dtype conversion to handle string length
++                            if Xi.dtype.kind in ('U', 'S'):
++                                # Check if cats[0] would be truncated
++                                try:
++                                    if len(cats[0]) > Xi.dtype.itemsize // Xi.dtype.alignment:
++                                        Xi = Xi.astype(object)
++                                        X[:, i] = Xi
++                                except (TypeError, AttributeError):
++                                    # Not a string type, no conversion needed
++                                    pass
+                             # categories[i][0] can always be used as a target
+                             # since searchsorted provides an index in [0, n_cats]
+                             Xi[~valid_mask] = cats[0]
+```
+
+Wait, let me reconsider the issue more carefully and provide a cleaner fix. The problem occurs when assigning `cats[0]` to `Xi[~valid_mask]` - if `Xi` has a fixed-width string dtype that's too small, `cats[0]` gets truncated.
+
+--- a/sklearn/preprocessing/_encoders.py
++++ b/sklearn/preprocessing/_encoders.py
+@@ -110,6 +110,14 @@ class _BaseEncoder(BaseEstimator, TransformerMixin):
+                     diff = set(Xi) - set(cats)
+                     if diff:
+                         msg = ("Found unknown categories {0} in column {1}"
+                                " during transform".format(diff, i))
+                         if self.handle_unknown == 'error':
+                             raise ValueError(msg)
+                         else:
+                             # Set the problematic rows to an acceptable value and
+                             # continue `np.searchsorted` below.
++                            # If Xi has a fixed-width string dtype, we need to
++                            # ensure it can accommodate cats[0]. Cast to object
++                            # dtype to prevent truncation of the replacement value.
++                            if Xi.dtype.kind in ('U', 'S'):
++                                Xi = Xi.astype(object)
+                             # categories[i][0] can always be used as a target
+                             # since searchsorted provides an index in [0, n_cats]
+                             Xi[~valid_mask] = cats[0]

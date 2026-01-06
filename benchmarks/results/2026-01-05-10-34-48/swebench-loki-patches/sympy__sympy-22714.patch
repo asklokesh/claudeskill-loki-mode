@@ -1,0 +1,22 @@
+# sympy__sympy-22714
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on my analysis of the issue and the previous patch attempts, let me provide the correct fix. The issue is that when `evaluate=False` is set globally, the check for imaginary coordinates fails because `im(a)` returns an unevaluated expression that is truthy, or the `is_real` property returns `None` instead of `True` for real integers.
+
+Looking at the error traceback pointing to line 153 in `sympy/geometry/point.py`, the fix needs to properly handle the case where coordinate properties can't be determined due to disabled evaluation.
+
+--- a/sympy/geometry/point.py
++++ b/sympy/geometry/point.py
+@@ -150,7 +150,10 @@ class Point(GeometryEntity):
+         coords = Tuple(*coords)
+         evaluate = kwargs.get('evaluate', global_parameters.evaluate)
+         on_morph = kwargs.get('on_morph', 'warn')
+ 
+         # check for imaginary coordinates
+-        if any(a.is_number and im(a).is_zero is False for a in coords):
++        # Use 'is False' check to properly handle unevaluated expressions
++        # when global evaluate is False. With evaluate=False, im(a).is_zero
++        # may return None instead of True for real numbers.
++        if any(a.is_number and a.is_real is False for a in coords):
+             raise ValueError('Imaginary coordinates are not permitted.')

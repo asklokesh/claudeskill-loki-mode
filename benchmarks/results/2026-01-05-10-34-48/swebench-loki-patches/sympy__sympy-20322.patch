@@ -1,0 +1,30 @@
+# sympy__sympy-20322
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/sympy/simplify/radsimp.py
++++ b/sympy/simplify/radsimp.py
+@@ -1071,6 +1071,14 @@ def fraction(expr, exact=False):
+     sympy.simplify.simplify.nsimplify
+     sympy.core.expr.Expr.as_numer_denom
+     """
++    def mul_args(expr):
++        """Yield args of Mul, recursively handling nested unevaluated Muls."""
++        for arg in Mul.make_args(expr):
++            if arg.is_Mul and arg.is_commutative:
++                yield from mul_args(arg)
++            else:
++                yield arg
++
+     from sympy.core.exprtools import factor_terms
+     from sympy.polys.polytools import factor
+ 
+@@ -1082,7 +1090,7 @@ def fraction(expr, exact=False):
+         return expr.p, expr.q
+ 
+     numer, denom = [], []
+-    for term in Mul.make_args(expr):
++    for term in mul_args(expr):
+         if term.is_commutative and (term.is_Pow or isinstance(term, exp)):
+             b, ex = term.as_base_exp()
+             if ex.is_negative:

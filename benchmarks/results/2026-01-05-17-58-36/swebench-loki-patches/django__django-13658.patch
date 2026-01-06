@@ -1,0 +1,17 @@
+# django__django-13658
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description, I need to create a patch for the Django repository that adds the `prog` parameter to the `CommandParser` instantiation in the `ManagementUtility` class. Since I don't have direct access to the Django repository in the current workspace, I'll generate the patch based on the issue description and standard Django file structure.
+
+--- a/django/core/management/__init__.py
++++ b/django/core/management/__init__.py
+@@ -335,6 +335,7 @@ class ManagementUtility:
+         # Preprocess options to extract --settings and --pythonpath.
+         # These options could affect the commands that are available, so they
+         # must be processed early.
+         parser = CommandParser(
++            prog=self.prog_name,
+             usage='%(prog)s subcommand [options] [args]',
+             add_help=False,
+             allow_abbrev=False)

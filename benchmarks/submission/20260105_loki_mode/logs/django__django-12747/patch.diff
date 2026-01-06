@@ -1,0 +1,13 @@
+--- a/django/db/models/deletion.py
++++ b/django/db/models/deletion.py
+@@ -458,7 +458,10 @@
+             for model, instances in self.data.items():
+                 query.delete_batch(instances, self.using)
+ 
+-        return sum(deleted_counter.values()), dict(deleted_counter)
++        # Filter out zero counts for consistency
++        filtered_counter = {model: count for model, count in deleted_counter.items() if count > 0}
++        
++        return sum(deleted_counter.values()), filtered_counter
+ 
+     delete.alters_data = True

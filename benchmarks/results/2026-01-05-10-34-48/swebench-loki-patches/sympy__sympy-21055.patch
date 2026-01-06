@@ -1,0 +1,53 @@
+# sympy__sympy-21055
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and architect's analysis, I need to generate a patch for the sympy repository. Since this is a patch generation task for an external repository (sympy/sympy), I'll create the patch based on the standard sympy codebase structure and the refine.py file which handles refinement of expressions under assumptions.
+
+```
+--- a/sympy/assumptions/refine.py
++++ b/sympy/assumptions/refine.py
+@@ -1,6 +1,6 @@
+ from __future__ import print_function, division
+ 
+-from sympy.core import S, Add, Expr, Basic, Mul
++from sympy.core import S, Add, Expr, Basic, Mul, pi
+ from sympy.assumptions import Q, ask
+ 
+ def refine(expr, assumptions=True):
+@@ -295,6 +295,45 @@ def refine_Abs(expr, assumptions):
+     return expr
+ 
+ 
++def refine_arg(expr, assumptions):
++    """
++    Handler for the arg function.
++
++    Examples
++    ========
++
++    >>> from sympy import Q, arg, refine, Symbol
++    >>> from sympy.core.logic import fuzzy_not
++    >>> p = Symbol('p', positive=True)
++    >>> refine(arg(p), Q.positive(p))
++    0
++    >>> n = Symbol('n', negative=True)
++    >>> refine(arg(n), Q.negative(n))
++    pi
++
++    """
++    rg = expr.args[0]
++    if ask(Q.positive(rg), assumptions):
++        return S.Zero
++    if ask(Q.negative(rg), assumptions):
++        return pi
++    return expr
++
++
+ handlers_dict = {
+     'Abs': refine_Abs,
++    'arg': refine_arg,
+     'Pow': refine_Pow,
+     'atan2': refine_atan2,
+     're': refine_re,
+```

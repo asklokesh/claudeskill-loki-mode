@@ -1,0 +1,85 @@
+# matplotlib__matplotlib-26011
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/lib/matplotlib/axes/_base.py
++++ b/lib/matplotlib/axes/_base.py
+@@ -1,4 +1,5 @@
+ from collections import OrderedDict
++import dataclasses
+ import functools
+ import itertools
+ import logging
+@@ -72,6 +73,12 @@ def _axis_method_wrapper(attr_name, method_name, *, doc_sub=None):
+         return wrapper
+ 
+ 
++@dataclasses.dataclass(frozen=True)
++class _NoRecursionMarker:
++    """Marker to prevent recursion when propagating limit changes to siblings."""
++    source_axis: object
++
++
+ class _TransformedBoundsLocator:
+     """
+     Locator following the size of another axes taking its transform into account.
+@@ -3621,15 +3628,19 @@ class _AxesBase(martist.Artist):
+                          ' minpos' if data_lim[0] <= 0 else ''),
+                         stacklevel=2)
+ 
+-        if emit:
+-            self.callbacks.process('xlim_changed', self)
+-            # Call all of the other x-axes that are shared with this one
+-            for other in self._shared_x_axes.get_siblings(self):
+-                if other is not self:
+-                    other.set_xlim(self.viewLim.intervalx,
+-                                   emit=False, auto=auto)
+-        self.stale = True
+-        return left, right
++        # Call all of the other x-axes that are shared with this one
++        if emit is not True:
++            # emit is _NoRecursionMarker(self)
++            pass
++        else:
++            for other in self._shared_x_axes.get_siblings(self):
++                if other is not self:
++                    other.set_xlim(self.viewLim.intervalx,
++                                   emit=_NoRecursionMarker(self), auto=auto)
++        if emit:
++            self.callbacks.process('xlim_changed', self)
++            self.stale = True
++            return left, right
++        return left, right
+ 
+     def get_xscale(self):
+         """
+@@ -3912,15 +3923,19 @@ class _AxesBase(martist.Artist):
+                          ' minpos' if data_lim[0] <= 0 else ''),
+                         stacklevel=2)
+ 
+-        if emit:
+-            self.callbacks.process('ylim_changed', self)
+-            # Call all of the other y-axes that are shared with this one
+-            for other in self._shared_y_axes.get_siblings(self):
+-                if other is not self:
+-                    other.set_ylim(self.viewLim.intervaly,
+-                                   emit=False, auto=auto)
+-        self.stale = True
+-        return bottom, top
++        # Call all of the other y-axes that are shared with this one
++        if emit is not True:
++            # emit is _NoRecursionMarker(self)
++            pass
++        else:
++            for other in self._shared_y_axes.get_siblings(self):
++                if other is not self:
++                    other.set_ylim(self.viewLim.intervaly,
++                                   emit=_NoRecursionMarker(self), auto=auto)
++        if emit:
++            self.callbacks.process('ylim_changed', self)
++            self.stale = True
++            return bottom, top
++        return bottom, top
+ 
+     def get_yscale(self):
+         """

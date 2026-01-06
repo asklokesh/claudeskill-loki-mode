@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-13158",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the task description, I'm being asked to generate a patch for a Django issue. This appears to be a SWE-bench style task where I need to create a unified diff patch that fixes the QuerySet.none() bug with combined queries.\n\nLet me create the patch based on the architect's analysis:\n\n--- a/django/db/models/query.py\n+++ b/django/db/models/query.py\n@@ -891,6 +891,11 @@ class QuerySet:\n         \"\"\"\n         Return an empty QuerySet.\n         \"\"\"\n+        if self.query.combinator:\n+            clone = self._chain()\n+            clone.query.set_empty()\n+            return clone\n+        \n         clone = self._chain()\n         clone.query.set_empty()\n         return clone",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:36:08.432218"
+}

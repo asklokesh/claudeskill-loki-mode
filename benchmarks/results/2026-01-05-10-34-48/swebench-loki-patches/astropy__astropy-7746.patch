@@ -1,0 +1,21 @@
+# astropy__astropy-7746
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and architect's analysis, I need to generate a patch for the astropy/wcs/wcs.py file. Since this is for a different repository (astropy/astropy), I'll create the patch based on the traceback and analysis provided in the issue.
+
+--- a/astropy/wcs/wcs.py
++++ b/astropy/wcs/wcs.py
+@@ -1220,6 +1220,12 @@ class WCS(WCSBase):
+ 
+         def _return_list_of_arrays(axes, origin):
+             xy = np.hstack([x.reshape((len(x), 1)) for x in axes])
++
++            # If the input arrays are empty, return empty arrays without
++            # calling the underlying WCSLIB function which doesn't handle ncoord=0
++            if xy.size == 0:
++                return [np.array([]) for _ in axes]
++
+             if ra_dec_order and sky == 'input':
+                 xy = self._denormalize_sky(xy)
+             output = func(xy, origin)

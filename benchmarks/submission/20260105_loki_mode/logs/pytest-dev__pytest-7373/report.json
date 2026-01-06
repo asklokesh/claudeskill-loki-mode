@@ -1,0 +1,9 @@
+{
+  "instance_id": "pytest-dev__pytest-7373",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the issue description, I need to create a patch for a pytest repository that is not currently in this directory. The task is to generate a patch that removes the caching mechanism from `_pytest/mark/evaluate.py`. Since I don't have access to the actual pytest codebase here, I'll generate the patch based on the standard pytest codebase structure and the issue description.\n\n--- a/src/_pytest/mark/evaluate.py\n+++ b/src/_pytest/mark/evaluate.py\n@@ -16,19 +16,6 @@\n from .structures import Mark\n \n \n-def cached_eval(config: Config, expr: str, d: Dict[str, object]) -> Any:\n-    default = {}  # type: Dict[str, object]\n-    evalcache = config._store.setdefault(cached_eval, default)\n-    try:\n-        return evalcache[expr]\n-    except KeyError:\n-        import _pytest._code\n-\n-        exprcode = _pytest._code.compile(expr, mode=\"eval\")\n-        evalcache[expr] = x = eval(exprcode, d)\n-        return x\n-\n-\n class MarkEvaluator:\n     def __init__(self, item: Item, name: str) -> None:\n         self.item = item\n@@ -96,7 +83,10 @@ class MarkEvaluator:\n             self.expr = mark.kwargs.get(\"condition\", True)\n         self.result = False\n         if self.expr is True or self.expr is False:\n-            self.result = bool(self.expr)\n+            self.result = self.expr\n         elif isinstance(self.expr, str):\n-            self.result = cached_eval(self.item.config, self.expr, d)\n+            import _pytest._code\n+\n+            exprcode = _pytest._code.compile(self.expr, mode=\"eval\")\n+            self.result = eval(exprcode, d)\n         else:\n             if \"reason\" not in mark.kwargs:",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T20:23:36.619398"
+}

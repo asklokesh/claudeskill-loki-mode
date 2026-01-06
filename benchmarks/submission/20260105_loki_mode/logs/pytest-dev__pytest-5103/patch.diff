@@ -1,0 +1,103 @@
+--- a/src/_pytest/assertion/rewrite.py
++++ b/src/_pytest/assertion/rewrite.py
+@@ -876,6 +876,16 @@ class AssertionRewriter(ast.NodeVisitor):
+         if isinstance(assert_.test, ast.Tuple) and len(assert_.test.elts) >= 1:
+             from _pytest.warning_types import PytestAssertRewriteWarning
+             import warnings
++
++        # Check if this is an all() or any() call with a comprehension
++        if self._is_all_any_call(assert_.test):
++            new_stmts = self._unroll_all_any(assert_)
++            if new_stmts:
++                return new_stmts
++
++        if isinstance(assert_.test, ast.Tuple) and len(assert_.test.elts) >= 1:
++            from _pytest.warning_types import PytestAssertRewriteWarning
++            import warnings
+             warnings.warn_explicit(
+                 PytestAssertRewriteWarning(
+                     "assertion is always true, perhaps remove parentheses?"
+@@ -942,6 +952,82 @@ class AssertionRewriter(ast.NodeVisitor):
+         # Clear temporary variables by setting them to None.
+         self.statements.append(ast.Assign([tmpvar], ast.NameConstant(None)))
+ 
++    def _is_all_any_call(self, node):
++        """Check if node is a call to all() or any() with a comprehension."""
++        if not isinstance(node, ast.Call):
++            return False
++        if not isinstance(node.func, ast.Name):
++            return False
++        if node.func.id not in ("all", "any"):
++            return False
++        if len(node.args) != 1:
++            return False
++        arg = node.args[0]
++        return isinstance(arg, (ast.GeneratorExp, ast.ListComp))
++
++    def _unroll_all_any(self, assert_):
++        """Transform all()/any() with comprehension into a for loop with assertions."""
++        call = assert_.test
++        func_name = call.func.id
++        comp = call.args[0]
++
++        # Extract the element, iterator, and test expression
++        if isinstance(comp, ast.GeneratorExp):
++            elt = comp.elt
++            generators = comp.generators
++        elif isinstance(comp, ast.ListComp):
++            elt = comp.elt
++            generators = comp.generators
++        else:
++            return None
++
++        # Only handle simple cases for now (single generator, no ifs)
++        if len(generators) != 1:
++            return None
++
++        generator = generators[0]
++        if generator.ifs:
++            # Handle filter conditions by wrapping in an if statement
++            conditions = generator.ifs
++        else:
++            conditions = []
++
++        target = generator.target
++        iter_node = generator.iter
++
++        # Create a new assertion for each element
++        if func_name == "all":
++            # all(expr for x in iter) -> for x in iter: assert expr
++            inner_assert = ast.Assert(test=elt, msg=assert_.msg)
++            inner_assert.lineno = assert_.lineno
++            inner_assert.col_offset = assert_.col_offset
++        else:
++            # any(expr for x in iter) -> for x in iter: if expr: break else: assert False
++            # We need a flag to track if any was true
++            flag_name = f"@py_any_found_{next(self.variable_counter)}"
++            flag_var = ast.Name(flag_name, ast.Store())
++            init_flag = ast.Assign([flag_var], ast.NameConstant(False))
++            init_flag.lineno = assert_.lineno
++
++            set_flag = ast.Assign([ast.Name(flag_name, ast.Store())], ast.NameConstant(True))
++            set_flag.lineno = assert_.lineno
++
++            if_stmt = ast.If(test=elt, body=[set_flag, ast.Break()], orelse=[])
++            if_stmt.lineno = assert_.lineno
++
++            check_flag = ast.Assert(test=ast.Name(flag_name, ast.Load()), msg=assert_.msg)
++            check_flag.lineno = assert_.lineno
++
++        if func_name == "all":
++            body = [inner_assert] if not conditions else [ast.If(test=ast.BoolOp(ast.And(), conditions) if len(conditions) > 1 else conditions[0], body=[inner_assert], orelse=[])]
++            for_loop = ast.For(target=target, iter=iter_node, body=body, orelse=[])
++            for_loop.lineno = assert_.lineno
++            return [for_loop]
++        else:
++            body = [if_stmt] if not conditions else [ast.If(test=ast.BoolOp(ast.And(), conditions) if len(conditions) > 1 else conditions[0], body=[if_stmt], orelse=[])]
++            for_loop = ast.For(target=target, iter=iter_node, body=body, orelse=[check_flag])
++            for_loop.lineno = assert_.lineno
++            return [init_flag, for_loop]
++
+     def visit_Name(self, name):
+         # Display the repr of the name if it's a local variable or
+         # _should_repr_global_name() thinks it's acceptable.

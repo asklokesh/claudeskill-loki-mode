@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-15498",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/django/views/static.py\n+++ b/django/views/static.py\n@@ -75,6 +75,8 @@ def was_modified_since(header=None, mtime=0, size=0):\n     \"\"\"\n     try:\n+        if header is None or len(header) == 0:\n+            raise ValueError\n         header_mtime = parse_http_date(header)\n         if mtime > header_mtime:\n             return True",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T19:09:10.713822"
+}

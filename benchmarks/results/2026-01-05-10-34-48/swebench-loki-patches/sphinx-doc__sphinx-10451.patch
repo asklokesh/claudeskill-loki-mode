@@ -1,0 +1,128 @@
+# sphinx-doc__sphinx-10451
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and my knowledge of the Sphinx codebase, I can generate the patch. The issue is in `sphinx/ext/autodoc/typehints.py` where the `merge_typehints()` function doesn't properly handle the asterisk prefixes when matching parameter names.
+
+```
+--- a/sphinx/ext/autodoc/typehints.py
++++ b/sphinx/ext/autodoc/typehints.py
+@@ -59,6 +59,14 @@ def merge_typehints(app: Sphinx, domain: str, objtype: str, contentnode: Element
+         return
+ 
+     signature = cast(addnodes.desc_signature, contentnode.parent[0])
++    if signature.get('_typehints_merged'):
++        return
++
++    # Mark as merged to prevent duplicate processing
++    signature['_typehints_merged'] = True
++
++    # Get annotations from the signature
++    annotations = app.env.temp_data.get('annotations', {})
+     if signature['module']:
+         fullname = '.'.join([signature['module'], signature['fullname']])
+     else:
+@@ -68,7 +76,7 @@ def merge_typehints(app: Sphinx, domain: str, objtype: str, contentnode: Element
+         return
+ 
+     for field_list in contentnode:
+-        if isinstance(field_list, nodes.field_list):
++        if isinstance(field_list, (nodes.field_list,)):
+             modify_field_list(field_list, annotations[fullname])
+             break
+     else:
+@@ -78,26 +86,39 @@ def merge_typehints(app: Sphinx, domain: str, objtype: str, contentnode: Element
+ 
+ 
+ def modify_field_list(node: nodes.field_list, annotations: Dict[str, str]) -> None:
+-    arguments: Dict[str, Dict[str, Any]] = {}
++    arguments: Dict[str, Dict[str, Any]] = {}
+     for field in cast(List[nodes.field], node):
+-        field_name = field[0].astext()
++        field_name = field[0].astext()
+         parts = re.split(' +', field_name)
+         if parts[0] == 'param':
+             if len(parts) == 2:
+                 # :param xxx:
+-                arguments[parts[1]] = {'param': field}
++                arg = parts[1]
++                # Normalize parameter name - strip leading asterisks for matching
++                arg_stripped = arg.lstrip('*')
++                if arg_stripped not in arguments:
++                    arguments[arg_stripped] = {'param': field, 'arg_name': arg}
++                else:
++                    # Prefer the starred version
++                    if arg.startswith('*'):
++                        arguments[arg_stripped] = {'param': field, 'arg_name': arg}
+             elif len(parts) == 3:
+                 # :param type xxx:
+-                arguments[parts[2]] = {'param': field, 'type': True}
++                arg = parts[2]
++                arg_stripped = arg.lstrip('*')
++                arguments[arg_stripped] = {'param': field, 'type': True, 'arg_name': arg}
+         elif parts[0] == 'type':
+-            name = parts[1]
+-            if name in arguments:
+-                arguments[name].setdefault('type', True)
++            name = parts[1].lstrip('*')
++            if name in arguments:
++                arguments[name]['type'] = True
+             else:
+-                arguments[name] = {'type': True}
++                arguments[name] = {'type': True, 'arg_name': parts[1]}
+ 
+     for name, annotation in annotations.items():
+-        if name == 'return':
++        if name == 'return':
+             continue
+ 
+-        if name in arguments:
+-            arg = arguments[name]
++        # Normalize annotation name - strip leading asterisks
++        name_stripped = name.lstrip('*')
++        if name_stripped in arguments:
++            arg = arguments[name_stripped]
+             if 'type' not in arg:
+                 field = arg['param']
+                 field[0].insert(0, nodes.Text(' (%s)' % annotation))
+@@ -105,19 +126,28 @@ def modify_field_list(node: nodes.field_list, annotations: Dict[str, str]) -> No
+                                      nodes.Text(' -- '),
+                                      nodes.Text(' (%s)' % annotation)]
+             field[0].replace_self(new_field)
+-        else:
++        elif name_stripped not in [a.lstrip('*') for a in arguments.keys()]:
++            # Only add if we don't already have this parameter
++            # Determine the display name with proper asterisk prefix
++            display_name = name
+             field = nodes.field()
+             field += nodes.field_name('', 'param ' + name)
+             field += nodes.field_body('', nodes.paragraph('', annotation))
+             node += field
+```
+
+Wait, let me provide a cleaner, more focused patch based on the specific bug described:
+
+--- a/sphinx/ext/autodoc/typehints.py
++++ b/sphinx/ext/autodoc/typehints.py
+@@ -81,10 +81,15 @@ def modify_field_list(node: nodes.field_list, annotations: Dict[str, str]) -> No
+         parts = re.split(' +', field_name)
+         if parts[0] == 'param':
+             if len(parts) == 2:
+                 # :param xxx:
+-                arguments[parts[1]] = {'param': field}
++                arg = parts[1]
++                # Normalize *args and **kwargs to args and kwargs
++                arg_normalized = arg.lstrip('*')
++                arguments[arg_normalized] = {'param': field}
+             elif len(parts) == 3:
+                 # :param type xxx:
+-                arguments[parts[2]] = {'param': field, 'type': True}
++                arg = parts[2]
++                arg_normalized = arg.lstrip('*')
++                arguments[arg_normalized] = {'param': field, 'type': True}
+         elif parts[0] == 'type':
+             name = parts[1]
++            name = name.lstrip('*')
+             if name in arguments:
+                 arguments[name].setdefault('type', True)
+             else:

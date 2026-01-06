@@ -1,0 +1,16 @@
+# django__django-15388
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/django/utils/autoreload.py
++++ b/django/utils/autoreload.py
+@@ -245,6 +245,10 @@ def template_changed(sender, file_path, **kwargs):
+         template_dirs.extend(dir.parents for dir in dirs)
+         for directory in template_dirs:
+             if directory in file_path.parents:
++                # Python files should always trigger a reload, even if they're
++                # in a template directory (e.g., when BASE_DIR is in DIRS)
++                if file_path.suffix == '.py':
++                    return None
+                 reset_loaders()
+                 return True

@@ -1,0 +1,16 @@
+I understand - this is asking me to generate a patch for a scikit-learn issue, but I'm working in the claudeskill-loki-mode repository which doesn't contain scikit-learn code. Since this is a task to generate a patch based on the architect's analysis, I should create the patch based on standard scikit-learn VotingClassifier implementation patterns.
+
+Based on the issue description and architect's analysis, I need to create a patch that fixes the VotingClassifier to properly handle None estimators when sample_weight is passed to fit(). The fix should filter out None estimators before distributing sample weights.
+
+Here's the patch:
+
+--- a/sklearn/ensemble/_voting.py
++++ b/sklearn/ensemble/_voting.py
+@@ -93,7 +93,7 @@
+             )
+ 
+         if sample_weight is not None:
+-            fit_params = {name: sample_weight for name in names}
++            fit_params = {name: sample_weight for name, est in self.estimators if est is not None}
+         else:
+             fit_params = {}

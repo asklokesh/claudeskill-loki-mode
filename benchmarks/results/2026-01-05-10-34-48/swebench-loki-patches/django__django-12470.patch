@@ -1,0 +1,62 @@
+# django__django-12470
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on my understanding of Django's ORM and the issue description, I need to generate a proper patch. The issue is that when a child model inherits from a parent with `ordering = ["-pk"]`, the descending direction is lost. This happens in the SQL compiler when resolving the "pk" field reference.
+
+The bug is in `django/db/models/sql/compiler.py` in the `get_order_by` method. When the ordering contains "pk" or "-pk" and the model uses inheritance (with a OneToOneField as pk), the code resolves the pk but doesn't preserve the descending order direction.
+
+--- a/django/db/models/sql/compiler.py
++++ b/django/db/models/sql/compiler.py
+@@ -285,7 +285,12 @@ class SQLCompiler:
+                     continue
+                 if hasattr(field, 'resolve_expression'):
+                     if isinstance(field, Value):
+                         # output_field must be resolved for constants.
+                         field = Cast(field, field.output_field)
+                     if not isinstance(field, OrderBy):
+                         field = field.asc()
+                     if not self.query.standard_ordering:
+                         field = field.copy()
+                         field.reverse_ordering()
+                     order_by.append((field, False))
+                     continue
+                 if field == '?':
+                     order_by.append((OrderBy(Random()), False))
+                     continue
+-                col, order = get_order_dir(field, asc)
++                col, order = get_order_dir(field, default_order)
+                 descending = order == 'DESC'
+                 if col in self.query.annotation_select:
+                     # Reference to expression in SELECT clause
+                     order_by.append((
+                         OrderBy(Ref(col, self.query.annotation_select[col]), descending=descending),
+                         True))
+                     continue
+                 if col in self.query.annotations:
+                     # References to an expression which is masked out of the SELECT clause
+                     order_by.append((
+                         OrderBy(self.query.annotations[col], descending=descending),
+                         False))
+                     continue
+ 
+-                order_by.extend(self.find_ordering_name(
+-                    field, self.query.get_meta(), default_order=asc,
+-                ))
++                order_by.extend(self.find_ordering_name(
++                    col, self.query.get_meta(), default_order=order,
++                ))
+
+Wait, I need to think about this more carefully. The issue is specifically about pk resolution in inherited models. Let me provide a more targeted fix based on my knowledge of Django's codebase:
+
+--- a/django/db/models/sql/compiler.py
++++ b/django/db/models/sql/compiler.py
+@@ -723,6 +723,8 @@ class SQLCompiler:
+         name, order = get_order_dir(name, default_order)
+         descending = order == 'DESC'
+         pieces = name.split(LOOKUP_SEP)
++        if pieces[-1] == 'pk':
++            pieces[-1] = opts.pk.name
+         field, targets, alias, joins, path, opts, transform_function = self._setup_joins(pieces, opts, alias)
+ 
+         # If we get to this point and the field is a relation to another model,

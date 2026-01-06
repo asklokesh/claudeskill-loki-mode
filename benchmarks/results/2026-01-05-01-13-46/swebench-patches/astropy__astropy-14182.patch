@@ -1,0 +1,49 @@
+Based on my knowledge of the astropy codebase and the error message in the issue, I can create the patch. The issue is that the RST writer class doesn't support the `header_rows` parameter that FixedWidth does. Let me create the patch based on my understanding of how these classes are structured.
+
+Looking at the error message and the issue description:
+1. `FixedWidth` supports `header_rows` parameter
+2. `RST` class inherits from `FixedWidth` (RST format is essentially a fixed-width format with specific delimiters)
+3. The RST class `__init__` doesn't accept `header_rows`
+
+The RST class in astropy is typically structured like this:
+- It inherits from FixedWidth 
+- The RST header uses `=` characters for the top/bottom lines
+- RST data is separated by `=` lines
+
+The fix would be to modify the RST class's `__init__` method to accept the `header_rows` parameter and pass it to the parent class.
+
+Based on my knowledge of astropy's ASCII module structure:
+
+```python
+# astropy/io/ascii/rst.py
+class RST(FixedWidth):
+    """RestructuredText table format"""
+    _format_name = 'rst'
+    _description = 'reStructuredText simple table'
+    data_class = SimpleRSTData
+    header_class = SimpleRSTHeader
+    
+    def __init__(self, header_rows=None):
+        super().__init__(delimiter_pad=None, bookend=False)
+        ...
+```
+
+The fix needs to:
+1. Add `header_rows` parameter to RST's `__init__`
+2. Pass it to the parent `FixedWidth.__init__`
+
+Here's the patch:
+
+--- a/astropy/io/ascii/rst.py
++++ b/astropy/io/ascii/rst.py
+@@ -57,8 +57,8 @@ class RST(FixedWidth):
+     data_class = SimpleRSTData
+     header_class = SimpleRSTHeader
+ 
+-    def __init__(self):
+-        super().__init__(delimiter_pad=None, bookend=False)
++    def __init__(self, header_rows=None):
++        super().__init__(delimiter_pad=None, bookend=False, header_rows=header_rows)
+ 
+     def write(self, lines):
+         lines = super().write(lines)

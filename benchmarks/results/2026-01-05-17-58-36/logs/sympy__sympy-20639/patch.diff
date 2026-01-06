@@ -1,0 +1,15 @@
+Based on the architect's analysis and the issue description, I need to generate a proper patch. The problem is that `exp(-1)` doesn't have the same structure as rational fractions, so the pretty printer incorrectly renders `pi**(1/E)` as a radical. Let me create the correct patch:
+
+--- a/sympy/printing/pretty/pretty.py
++++ b/sympy/printing/pretty/pretty.py
+@@ -1811,6 +1811,10 @@ def _print_Pow(self, power):
+                 bpretty.baseline = 0
+                 bpretty = bpretty**' '
+                 return bpretty
++            # Check if exponent is exp(-1) or similar - these should not be rendered as radicals
++            # exp(-1) has args=(-1,) unlike Rational(1, x) which has proper numerator/denominator
++            if expt.func.__name__ == 'exp':
++                return self._print_Pow_standard(power, b, expt)
+             n, d = fraction(expt)
+             if n is S.One and d.is_Atom and not e.is_Integer and self._settings['root_notation']:
+                 bpretty = self._print(b)

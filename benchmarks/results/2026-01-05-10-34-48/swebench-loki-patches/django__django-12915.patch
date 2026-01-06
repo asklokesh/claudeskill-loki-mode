@@ -1,0 +1,62 @@
+# django__django-12915
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and the architect's analysis, I need to generate a patch for the Django staticfiles handlers. Let me create the patch based on the traceback and standard Django patterns:
+
+```
+--- a/django/contrib/staticfiles/handlers.py
++++ b/django/contrib/staticfiles/handlers.py
+@@ -1,3 +1,4 @@
++from urllib.parse import urlparse
+ from urllib.request import url2pathname
+ 
+ from django.conf import settings
+@@ -43,6 +44,19 @@ class StaticFilesHandlerMixin:
+             return response
+         return super().get_response(request)
+ 
++    async def get_response_async(self, request):
++        """
++        Return an async response for static files or delegate to super().
++        """
++        try:
++            return await sync_to_async(self.serve, thread_sensitive=False)(request)
++        except Http404 as e:
++            return await sync_to_async(self.get_exception_response, thread_sensitive=False)(request, 404, e)
++        except Exception:
++            pass
++        if not self._should_handle(request.path):
++            return await super().get_response_async(request)
++        return await sync_to_async(self.serve, thread_sensitive=False)(request)
+ 
+ class StaticFilesHandler(StaticFilesHandlerMixin, WSGIHandler):
+     """
+```
+
+Wait, let me reconsider the implementation based on the existing `get_response` pattern more carefully:
+
+--- a/django/contrib/staticfiles/handlers.py
++++ b/django/contrib/staticfiles/handlers.py
+@@ -1,4 +1,5 @@
+ from urllib.request import url2pathname
+ 
++from asgiref.sync import sync_to_async
+ from django.conf import settings
+ from django.contrib.staticfiles import utils
+ from django.contrib.staticfiles.views import serve
+@@ -43,6 +44,14 @@ class StaticFilesHandlerMixin:
+             return response
+         return super().get_response(request)
+ 
++    async def get_response_async(self, request):
++        try:
++            return await sync_to_async(self.serve, thread_sensitive=False)(request)
++        except Http404 as e:
++            return await sync_to_async(response_for_exception, thread_sensitive=False)(request, e)
++        if not self._should_handle(request.path):
++            return await super().get_response_async(request)
++        return await sync_to_async(self.serve, thread_sensitive=False)(request)
+ 
+ class StaticFilesHandler(StaticFilesHandlerMixin, WSGIHandler):
+     """

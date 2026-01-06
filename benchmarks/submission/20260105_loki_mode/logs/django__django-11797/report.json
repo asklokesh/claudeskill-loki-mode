@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-11797",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "This is not a Django repository. Based on the context, I need to generate a patch for the Django repository file `django/db/models/lookups.py`. Let me create the patch based on the architect's analysis:\n\n--- a/django/db/models/lookups.py\n+++ b/django/db/models/lookups.py\n@@ -262,8 +262,9 @@ class Exact(FieldGetDbPrepValueMixin, BuiltinLookup):\n     def process_rhs(self, compiler, connection):\n         result = super().process_rhs(compiler, connection)\n         if self.rhs_is_direct_value():\n             return result\n-        self.rhs.clear_select_clause()\n-        self.rhs.add_fields([\"pk\"])\n+        if not getattr(self.rhs, \"has_select_fields\", True):\n+            self.rhs.clear_select_clause()\n+            self.rhs.add_fields([\"pk\"])\n         return result",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:16:22.634480"
+}

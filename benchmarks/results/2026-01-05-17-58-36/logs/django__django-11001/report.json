@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-11001",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "I see this is a different repository. Based on the issue description, I need to generate a patch for the Django repository. Let me create a patch based on the issue description and standard Django codebase structure:\n\n--- a/django/db/models/sql/compiler.py\n+++ b/django/db/models/sql/compiler.py\n@@ -314,7 +314,8 @@\n                     src = self.collapse_group_by(expr, alias)\n                     if src not in seen:\n                         seen.add(src)\n-                        without_ordering = self.ordering_parts.search(sql).group(1)\n+                        sql_oneline = ' '.join(sql.split())\n+                        without_ordering = self.ordering_parts.search(sql_oneline).group(1)\n                         params_sql = params_sql or sql\n                         if without_ordering not in seen:\n                             seen.add(without_ordering)",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:06:11.899538"
+}

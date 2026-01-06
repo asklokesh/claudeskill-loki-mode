@@ -1,0 +1,34 @@
+# matplotlib__matplotlib-22835
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and architect's analysis, I can generate the patch for this matplotlib bug. The issue is in `lib/matplotlib/artist.py` in the `format_cursor_data()` method. The fix needs to check if the norm is a `BoundaryNorm` and handle it specially since it's not invertible but has a `boundaries` attribute that can be used directly.
+
+```
+--- a/lib/matplotlib/artist.py
++++ b/lib/matplotlib/artist.py
+@@ -1273,14 +1273,20 @@ class Artist:
+         if np.ndim(data) == 0 and isinstance(self.norm, colors.Normalize):
+             # This block logically belongs to ScalarMappable, but can't be
+             # implemented in it because most ScalarMappable subclasses inherit
+             # from Artist first and from ScalarMappable second, so
+             # Artist.format_cursor_data would always have precedence over
+             # ScalarMappable.format_cursor_data.
+             n = self.cmap.N
+-            # Midpoints of neighboring color intervals.
+-            neighbors = self.norm.inverse(
+-                (int(self.norm(data) * n) + np.array([0, 1])) / n)
++            if isinstance(self.norm, colors.BoundaryNorm):
++                # BoundaryNorm is not invertible, so use boundaries directly.
++                normed = int(self.norm(data))
++                # Boundaries array has length ncolors+1, clamp index
++                idx = min(normed, len(self.norm.boundaries) - 2)
++                neighbors = self.norm.boundaries[idx:idx + 2]
++            else:
++                # Midpoints of neighboring color intervals.
++                neighbors = self.norm.inverse(
++                    (int(self.norm(data) * n) + np.array([0, 1])) / n)
+             g_sig_digits = cbook._g_sig_digits(neighbors, 0.1 / n)
+             return "[{:-#.{:d}g}]".format(data, g_sig_digits)
+         else:
+```

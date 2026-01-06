@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-13925",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on my understanding of Django's model checking system and the issue description, I'll generate the appropriate patch for the W042 check to handle inherited primary keys:\n\n--- a/django/core/checks/model_checks.py\n+++ b/django/core/checks/model_checks.py\n@@ -30,6 +30,23 @@ def _check_lazy_references(apps, **kwargs):\n     return errors\n \n \n+def _has_explicit_primary_key_in_parents(model):\n+    \"\"\"\n+    Check if any parent model in the inheritance chain has an explicitly\n+    defined primary key field.\n+    \"\"\"\n+    for parent in model.__mro__[1:]:\n+        if not issubclass(parent, models.Model):\n+            continue\n+        if parent._meta.abstract:\n+            continue\n+        # Check if parent has an explicit primary key field\n+        for field in parent._meta.local_fields:\n+            if field.primary_key:\n+                return True\n+    return False\n+\n+\n @register(Tags.models)\n def check_all_models(app_configs=None, **kwargs):\n     db_table_models = defaultdict(list)\n@@ -150,6 +167,10 @@ def _check_default_auto_field(model, **kwargs):\n         # Only complain about auto-created id fields.\n         return []\n \n+    # Don't warn if a parent model has an explicit primary key\n+    if _has_explicit_primary_key_in_parents(model):\n+        return []\n+\n     return [\n         checks.Warning(\n             f\"Auto-created primary key used when not defining a primary key type, \"",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:48:43.888300"
+}

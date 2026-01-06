@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-13551",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the architect's analysis, I need to generate a patch for the Django repository. Since this is for the django/django repository and the file doesn't exist in the current working directory, I'll generate the patch based on the standard Django structure and the issue description.\n\n--- a/django/contrib/auth/tokens.py\n+++ b/django/contrib/auth/tokens.py\n@@ -79,7 +79,10 @@ class PasswordResetTokenGenerator:\n         # Truncate microseconds so that tokens are consistent even if the\n         # database doesn't support microseconds.\n         login_timestamp = '' if user.last_login is None else user.last_login.replace(microsecond=0, tzinfo=None)\n-        return str(user.pk) + user.password + str(login_timestamp) + str(timestamp)\n+        email_field = user.get_email_field_name()\n+        email = getattr(user, email_field, '') or ''\n+        return str(user.pk) + user.password + str(login_timestamp) + str(timestamp) + email\n+\n \n     def _num_seconds(self, dt):\n         return int((dt - datetime(2001, 1, 1)).total_seconds())",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:42:53.428980"
+}

@@ -1,0 +1,29 @@
+# pytest-dev__pytest-8365
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and the architect's analysis, I'll generate the patch for the pytest tmpdir.py file. The fix needs to sanitize the username by replacing illegal Windows directory characters with underscores.
+
+```
+--- a/src/_pytest/tmpdir.py
++++ b/src/_pytest/tmpdir.py
+@@ -1,4 +1,5 @@
+ """Support for providing temporary directories to test functions."""
++import re
+ import os
+ import tempfile
+ from pathlib import Path
+@@ -81,7 +82,11 @@ class TempPathFactory:
+             from_env = os.environ.get("PYTEST_DEBUG_TEMPROOT")
+             temproot = Path(from_env or tempfile.gettempdir()).resolve()
+             user = get_user() or "unknown"
+-            rootdir = temproot.joinpath(f"pytest-of-{user}")
++            # Sanitize username to remove characters that are illegal in
++            # Windows directory names. This handles cases like domain usernames
++            # (e.g., 'contoso\john_doe') returned via SSH connections.
++            user = re.sub(r'[\\/:"*?<>|]', "_", user)
++            rootdir = temproot.joinpath(f"pytest-of-{user}")
+             rootdir.mkdir(exist_ok=True)
+             basetemp = make_numbered_dir_with_cleanup(
+                 prefix="pytest-", root=rootdir, keep=3, lock_timeout=LOCK_TIMEOUT
+```

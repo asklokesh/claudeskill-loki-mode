@@ -1,0 +1,9 @@
+{
+  "instance_id": "matplotlib__matplotlib-23314",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/lib/mpl_toolkits/mplot3d/axes3d.py\n+++ b/lib/mpl_toolkits/mplot3d/axes3d.py\n@@ -411,6 +411,8 @@ class Axes3D(Axes):\n \n     @martist.allow_rasterization\n     def draw(self, renderer):\n+        if not self.get_visible():\n+            return\n         self._unstale_viewLim()\n \n         # draw the background patch",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T19:32:00.654790"
+}

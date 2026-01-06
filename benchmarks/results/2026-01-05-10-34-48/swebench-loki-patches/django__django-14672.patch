@@ -1,0 +1,20 @@
+# django__django-14672
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description, I can generate the patch. The issue clearly states:
+1. `ForeignObjectRel.identity` uses `make_hashable` for `limit_choices_to`
+2. `ManyToManyRel.identity` extends this but doesn't wrap `self.through_fields` with `make_hashable`
+3. When `through_fields` is a list, hashing fails
+
+The fix is to wrap `self.through_fields` with `make_hashable()` in the `ManyToManyRel.identity` property:
+
+--- a/django/db/models/fields/reverse_related.py
++++ b/django/db/models/fields/reverse_related.py
+@@ -310,7 +310,7 @@ class ManyToManyRel(ForeignObjectRel):
+         return super().identity + (
+             self.through,
+-            self.through_fields,
++            make_hashable(self.through_fields),
+             self.db_constraint,
+         )

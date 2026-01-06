@@ -1,0 +1,9 @@
+{
+  "instance_id": "mwaskom__seaborn-3010",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "I can see this is the loki-mode repository, not the seaborn repository. Based on the issue description, I need to generate a patch for the seaborn repository. Since I don't have access to the actual seaborn codebase here, I'll generate the patch based on the traceback and architect's analysis provided in the issue.\n\nFrom the traceback, I can see the relevant code is in `seaborn/_stats/regression.py` at the `PolyFit._fit_predict` method around line 30. Let me generate the patch:\n\n--- a/seaborn/_stats/regression.py\n+++ b/seaborn/_stats/regression.py\n@@ -27,8 +27,16 @@ class PolyFit(Stat):\n         if not len(data):\n             xx = yy = []\n         else:\n-            p = np.polyfit(x, y, self.order)\n-            xx = np.linspace(x.min(), x.max(), self.gridsize)\n+            # Filter out missing data\n+            mask = np.isfinite(x) & np.isfinite(y)\n+            x_clean = x[mask]\n+            y_clean = y[mask]\n+            \n+            if len(x_clean) < self.order + 1:\n+                xx = yy = []\n+            else:\n+                p = np.polyfit(x_clean, y_clean, self.order)\n+                xx = np.linspace(x_clean.min(), x_clean.max(), self.gridsize)\n+                yy = np.polyval(p, xx)\n+        \n+        return pd.DataFrame(dict(x=xx, y=yy))\n-            xx = np.linspace(x.min(), x.max(), self.gridsize)\n-            yy = np.polyval(p, xx)\n-        \n-        return pd.DataFrame(dict(x=xx, y=yy))",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T19:49:41.388091"
+}

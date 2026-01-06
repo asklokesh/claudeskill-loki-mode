@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-10914",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "This appears to be a Claude skill repository, not the Django repository. Since I'm asked to generate a patch for django/django, I'll create the patch based on the architect's analysis and Django's standard file structure:\n\n--- a/django/conf/global_settings.py\n+++ b/django/conf/global_settings.py\n@@ -312,7 +312,7 @@ FILE_UPLOAD_HANDLERS = [\n ]\n \n # Maximum size, in bytes, of a request before it will be streamed to the\n # file system instead of into memory.\n FILE_UPLOAD_MAX_MEMORY_SIZE = 2621440  # i.e. 2.5 MB\n \n@@ -331,7 +331,7 @@ FILE_UPLOAD_DIRECTORY_PERMISSIONS = None\n \n # The numeric mode to set newly-uploaded files to. The value should be a mode\n # you'd pass directly to os.chmod; see\n # https://docs.python.org/library/os.html#files-and-directories.\n-FILE_UPLOAD_PERMISSIONS = None\n+FILE_UPLOAD_PERMISSIONS = 0o644\n \n # The numeric mode to assign to newly-created directories, when uploading files.\n # The value should be a mode as you'd pass to os.chmod;",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:05:13.525667"
+}

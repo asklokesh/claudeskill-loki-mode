@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-15308",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the architect's analysis, this is a SWE-bench task for the sympy/sympy repository. The repository files are not present in the current working directory. Based on the analysis provided, I can generate the patch directly:\n\n--- a/sympy/printing/latex.py\n+++ b/sympy/printing/latex.py\n@@ -1435,6 +1435,9 @@ class LatexPrinter(Printer):\n     def _print_Determinant(self, expr):\n         return r\"\\left|{%s}\\right|\" % self._print(expr.arg)\n \n+    def _print_Trace(self, expr):\n+        return r\"\\operatorname{tr}\\left(%s\\right)\" % self._print(expr.arg)\n+\n     def _print_Transpose(self, expr):\n         return r\"%s^T\" % self.parenthesize(expr.arg, PRECEDENCE['Pow'])",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T21:29:57.098342"
+}

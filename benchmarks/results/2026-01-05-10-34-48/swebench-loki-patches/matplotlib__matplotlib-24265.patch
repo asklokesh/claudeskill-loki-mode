@@ -1,0 +1,97 @@
+# matplotlib__matplotlib-24265
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/lib/matplotlib/style/core.py
++++ b/lib/matplotlib/style/core.py
+@@ -43,6 +43,32 @@ def _remove_blacklisted_style_params(d, warn=True):
+     return d
+ 
+ 
++def _apply_style_alias(name, warn=True):
++    """
++    Map deprecated seaborn style names to their new v0_8 equivalents.
++
++    Parameters
++    ----------
++    name : str
++        The style name to check for aliasing.
++    warn : bool, default: True
++        Whether to emit a deprecation warning.
++
++    Returns
++    -------
++    str
++        The aliased style name if applicable, otherwise the original name.
++    """
++    if name.startswith("seaborn-") and not name.startswith("seaborn-v0_8-"):
++        new_name = name.replace("seaborn-", "seaborn-v0_8-", 1)
++        if warn:
++            _api.warn_deprecated(
++                "3.6", message=f"The seaborn styles shipped by Matplotlib "
++                f"are deprecated since %(since)s, as they no longer "
++                f"correspond to the styles shipped by seaborn. However, "
++                f"they will remain available as '{new_name}'. Alternatively, "
++                f"directly use the seaborn API instead.")
++        return new_name
++    return name
++
++
+ def use(style):
+     """
+     Use Matplotlib style settings from a style specification.
+@@ -85,6 +111,8 @@ def use(style):
+                     style = rc_params_from_file(style, use_default_template=False)
+                 except IOError as err:
+                     raise IOError(
++                        f"{style!r} is not a valid package style, path of "
++                        f"style file, or URL ({err})") from None
+                         f"{style!r} not found in the style library and input "
+                         f"is not a valid URL or path; see `style.available` "
+                         f"for list of available styles") from err
+@@ -96,6 +124,28 @@ def use(style):
+             _apply_style(rc, warn=warn)
+ 
+ 
++@_api.caching_module_getattr
++class __getattr__:
++    library = property(lambda self: _get_library())
++
++
++class _StyleLibrary(dict):
++    """A dict subclass that provides deprecated seaborn style aliases."""
++
++    def __getitem__(self, key):
++        if key in self:
++            return super().__getitem__(key)
++        aliased_key = _apply_style_alias(key, warn=True)
++        if aliased_key != key and aliased_key in self:
++            return super().__getitem__(aliased_key)
++        raise KeyError(key)
++
++    def __contains__(self, key):
++        return (super().__contains__(key) or
++                super().__contains__(_apply_style_alias(key, warn=False)))
++
++
+ @contextlib.contextmanager
+ def context(style, after_reset=False):
+     """
+@@ -177,7 +227,7 @@ def update_nested_dict(main_dict, new_dict):
+ 
+ 
+ def read_style_directory(style_dir):
+-    """Return dictionary of styles defined in *style_dir*."""
++    """Return dictionary of styles defined in `style_dir`."""
+     styles = dict()
+     for path in Path(style_dir).glob(f"*.{STYLE_EXTENSION}"):
+         with warnings.catch_warnings(record=True) as warns:
+@@ -205,7 +255,7 @@ def update_user_library(library):
+ 
+ 
+ def _get_library():
+-    library = {}
++    library = _StyleLibrary()
+     library.update(read_style_directory(BASE_LIBRARY_PATH))
+     library.update(update_user_library(library))
+     return library

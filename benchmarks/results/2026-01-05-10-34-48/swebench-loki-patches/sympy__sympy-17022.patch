@@ -1,0 +1,40 @@
+# sympy__sympy-17022
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on my knowledge of the SymPy codebase structure and the issue described, here is the patch:
+
+```
+--- a/sympy/printing/pycode.py
++++ b/sympy/printing/pycode.py
+@@ -392,6 +392,14 @@ class NumPyPrinter(PythonCodePrinter):
+     def _print_CodegenArrayPermuteDims(self, expr):
+         return "%s(%s, %s)" % (self._module_format("numpy.transpose"), self._print(expr.expr), self._print(expr.permutation.array_form))
+ 
++    def _print_Identity(self, expr):
++        shape = expr.shape
++        if all(dim.is_Integer for dim in shape):
++            return "%s(%s)" % (self._module_format("numpy.eye"), self._print(shape[0]))
++        else:
++            raise NotImplementedError("Symbolic shape matrices cannot be compiled to NumPy. "
++                                      "Pass the matrix size as a separate argument.")
++
+ 
+ for k in NumPyPrinter._kf:
+     setattr(NumPyPrinter, '_print_%s' % k, _print_known_func)
+--- a/sympy/printing/lambdarepr.py
++++ b/sympy/printing/lambdarepr.py
+@@ -52,6 +52,12 @@ class NumExprPrinter(LambdaPrinter):
+     def _print_ImaginaryUnit(self, expr):
+         return '1j'
+ 
++    def _print_Identity(self, expr):
++        raise NotImplementedError(
++            "Identity matrix printing is not supported in LambdaPrinter. "
++            "Use NumPyPrinter by specifying modules=['numpy'] in lambdify."
++        )
++
+     def _print_seq(self, seq, delimiter=', '):
+         # simplified _print_seq taken from pretty.py
+         s = [self._print(item) for item in seq]
+```

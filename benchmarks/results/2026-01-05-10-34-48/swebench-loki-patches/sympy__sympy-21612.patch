@@ -1,0 +1,30 @@
+# sympy__sympy-21612
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+This is the claudeskill-loki-mode repository, not the sympy repository. Based on the architect's analysis, I need to generate a patch for sympy's codebase. Since this is for generating a patch to fix a bug in sympy (an external repository), I'll create the patch based on the architect's analysis and my knowledge of the sympy codebase structure:
+
+--- a/sympy/printing/str.py
++++ b/sympy/printing/str.py
+@@ -333,7 +333,7 @@ class StrPrinter(Printer):
+                 if item.exp != -1:
+                     b.append(Pow(item.base, -item.exp, evaluate=False))
+                 else:
+-                    if len(googol_numer) and isinstance(item.base, Mul):
++                    if len(googol_numer) and isinstance(item.base, (Mul, Pow)):
+                         b.append(Parenthesize(item.base, PRECEDENCE["Atom"]))
+                     else:
+                         b.append(item.base)
+--- a/sympy/printing/tests/test_str.py
++++ b/sympy/printing/tests/test_str.py
+@@ -252,6 +252,10 @@ def test_Mul():
+     assert str(Mul(x, Pow(1/y, -1, evaluate=False), evaluate=False)) == 'x/(1/y)'
+ 
+ 
++def test_Mul_Pow_parentheses():
++    assert str(Mul(Pow(x, -1, evaluate=False), Pow(Pow(y, -1, evaluate=False), -1, evaluate=False), evaluate=False)) == '1/x/(1/y)'
++
++
+ def test_Pow():
+     assert str(y**2) == "y**2"
+     assert str(y**-2) == "y**(-2)"

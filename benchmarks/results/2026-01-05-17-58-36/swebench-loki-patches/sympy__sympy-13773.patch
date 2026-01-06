@@ -1,0 +1,24 @@
+# sympy__sympy-13773
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/sympy/matrices/common.py
++++ b/sympy/matrices/common.py
+@@ -1973,10 +1973,14 @@ class MatrixArithmetic(MatrixRequired):
+             return self._eval_scalar_rmul(other)
+ 
+     @call_highest_priority('__rmatmul__')
+     def __matmul__(self, other):
+-        return self.__mul__(other)
++        other = _matrixify(other)
++        if not getattr(other, 'is_Matrix', False):
++            raise ValueError("Scalar operands are not allowed, use '*' instead")
++        return self.__mul__(other)
+ 
+     @call_highest_priority('__matmul__')
+     def __rmatmul__(self, other):
+-        return self.__rmul__(other)
++        other = _matrixify(other)
++        if not getattr(other, 'is_Matrix', False):
++            raise ValueError("Scalar operands are not allowed, use '*' instead")
++        return self.__rmul__(other)

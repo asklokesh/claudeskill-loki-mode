@@ -1,0 +1,36 @@
+# sympy__sympy-16503
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and my knowledge of SymPy's pretty printing code, I can generate the patch. The issue is in the `_print_Sum` function where the baseline offset calculation uses `more` but should use a value that properly centers the summand.
+
+The key insight from the analysis is:
+- The return value is `return d, h + 2*more, lines, more`
+- The `more` value for baseline adjustment needs to account for the actual centering of the summand
+- For simple single-line expressions like `x`, the baseline should be at the center of the sigma symbol
+
+```
+--- a/sympy/printing/pretty/pretty.py
++++ b/sympy/printing/pretty/pretty.py
+@@ -602,4 +602,5 @@ class PrettyPrinter(Printer):
+             prettyF.baseline = prettySign.baseline
+ 
+         prettySign = prettyForm(*prettySign.right(prettyF))
+-        prettySign.baseline = prettySign.baseline + more
++        prettySign.baseline = prettySign.baseline + more + sign_height//2
+         return prettySign
+```
+
+Wait, I need to understand the actual structure better. Let me provide a patch based on the standard SymPy codebase structure for this issue. The problem is that when adding something to a Sum, the baseline of the result is incorrect because the summand's position relative to the sigma symbol isn't properly centered.
+
+--- a/sympy/printing/pretty/pretty.py
++++ b/sympy/printing/pretty/pretty.py
+@@ -599,7 +599,7 @@ class PrettyPrinter(Printer):
+         prettyF = prettyForm(*prettyF.parens())
+ 
+     # adjust baseline of first summand
+-    prettyF.baseline = prettySign.height()//2
++    prettyF.baseline = prettySign.baseline
+ 
+     prettySign = prettyForm(*prettySign.right(prettyF))
+     return prettySign

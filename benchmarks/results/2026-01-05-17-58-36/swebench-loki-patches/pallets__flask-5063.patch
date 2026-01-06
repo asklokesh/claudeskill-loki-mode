@@ -1,0 +1,78 @@
+# pallets__flask-5063
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on my knowledge of Flask's codebase structure and the issue requirements, I'll generate the proper patch for the Flask repository. The patch needs to modify `src/flask/cli.py` to add subdomain/domain information to the `flask routes` command output.
+
+--- a/src/flask/cli.py
++++ b/src/flask/cli.py
+@@ -988,9 +988,9 @@ def shell_command() -> None:
+ @click.command("routes", short_help="Show the routes for the app.")
+ @click.option(
+     "--sort",
+     "-s",
+-    type=click.Choice(("endpoint", "methods", "rule", "match")),
++    type=click.Choice(("endpoint", "methods", "rule", "match", "domain")),
+     default="endpoint",
+     help=(
+         'Method to sort routes by. "match" is the order that Flask will match '
+         "routes when dispatching a request."
+@@ -1009,6 +1009,7 @@ def routes_command(sort: str, all_methods: bool) -> None:
+ 
+     rules = list(current_app.url_map.iter_rules())
++    server_name = current_app.config.get("SERVER_NAME") or ""
+ 
+     if not rules:
+         click.echo("No routes were registered.")
+@@ -1019,6 +1020,15 @@ def routes_command(sort: str, all_methods: bool) -> None:
+     if sort in ("endpoint", "rule"):
+         rules = sorted(rules, key=attrgetter(sort))
+     elif sort == "methods":
+         rules = sorted(rules, key=lambda rule: sorted(rule.methods))  # type: ignore
++    elif sort == "domain":
++        def domain_sort_key(rule: t.Any) -> t.Tuple[str, str]:
++            subdomain = rule.subdomain or ""
++            if subdomain and server_name:
++                domain = f"{subdomain}.{server_name}"
++            elif server_name:
++                domain = server_name
++            else:
++                domain = subdomain
++            return (domain, rule.rule)
++        rules = sorted(rules, key=domain_sort_key)
+ 
+     rule_methods = [
+@@ -1026,13 +1036,25 @@ def routes_command(sort: str, all_methods: bool) -> None:
+         for rule in rules
+     ]
+ 
+-    headers = ("Endpoint", "Methods", "Rule")
++    rule_domains = []
++    for rule in rules:
++        subdomain = rule.subdomain or ""
++        if subdomain and server_name:
++            domain = f"{subdomain}.{server_name}"
++        elif server_name:
++            domain = server_name
++        else:
++            domain = subdomain if subdomain else "-"
++        rule_domains.append(domain)
++
++    headers = ("Domain", "Endpoint", "Methods", "Rule")
+     widths = (
++        max(len(domain) for domain in rule_domains),
+         max(len(rule.endpoint) for rule in rules),
+         max(len(methods) for methods in rule_methods),
+         max(len(rule.rule) for rule in rules),
+     )
+     widths = tuple(max(len(h), w) for h, w in zip(headers, widths))
+-    row = "{{0:<{0}}}  {{1:<{1}}}  {{2:<{2}}}".format(*widths)
++    row = "{{0:<{0}}}  {{1:<{1}}}  {{2:<{2}}}  {{3:<{3}}}".format(*widths)
+ 
+     click.echo(row.format(*headers).strip())
+     click.echo(row.format(*("-" * width for width in widths)))
+ 
+-    for rule, methods in zip(rules, rule_methods):
+-        click.echo(row.format(rule.endpoint, methods, rule.rule).rstrip())
++    for rule, domain, methods in zip(rules, rule_domains, rule_methods):
++        click.echo(row.format(domain, rule.endpoint, methods, rule.rule).rstrip())

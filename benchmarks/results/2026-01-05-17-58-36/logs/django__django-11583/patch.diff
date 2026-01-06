@@ -1,0 +1,15 @@
+--- a/django/utils/autoreload.py
++++ b/django/utils/autoreload.py
+@@ -129,7 +129,11 @@ def iter_modules_and_files(modules, extra_files):
+             # During debugging the module's origin may not be set.
+             continue
+         path = Path(filename)
+-        results.add(path.resolve().absolute())
++        try:
++            results.add(path.resolve().absolute())
++        except ValueError:
++            # Skip paths with embedded null bytes (e.g., inaccessible samba shares)
++            continue
+     
+     for filename in extra_files:
+         results.add(Path(filename).resolve().absolute())

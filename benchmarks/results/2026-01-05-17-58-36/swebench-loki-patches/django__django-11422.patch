@@ -1,0 +1,22 @@
+# django__django-11422
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+This appears to be the Loki Mode skill repository, not a Django repository. For this task, I need to generate a patch for Django's autoreloader issue based on the architect's analysis. Let me create the patch based on the documented bug fix strategy.
+
+--- a/django/utils/autoreload.py
++++ b/django/utils/autoreload.py
+@@ -115,6 +115,13 @@ def iter_modules_and_files(modules, extra_files):
+     # iteration is to be lazy to avoid examining modules that may not be
+     # needed.
+     for module in modules:
++        # Special case for __main__ module which has __spec__ set to None
++        # when executed as a script (e.g., manage.py). We need to watch
++        # the __main__ file to detect changes to manage.py.
++        if module.__name__ == '__main__' and getattr(module, '__spec__', None) is None:
++            filename = getattr(module, '__file__', None)
++            if filename:
++                yield filename, module
+         if module.__name__ == '__main__':
+             # __main__ (usually manage.py) doesn't always have a __spec__ set.
+             # Handle this by falling back to using __file__, resolved below.

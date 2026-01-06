@@ -1,0 +1,9 @@
+{
+  "instance_id": "sphinx-doc__sphinx-8595",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the issue description and typical Sphinx autodoc implementation, I'll generate a patch that fixes the bug where an empty `__all__ = []` is ignored. The fix needs to distinguish between an undefined `__all__` and an empty `__all__` list.\n\n--- a/sphinx/ext/autodoc/__init__.py\n+++ b/sphinx/ext/autodoc/__init__.py\n@@ -1043,7 +1043,7 @@ class ModuleDocumenter(Documenter):\n             if self.options.ignore_module_all:\n                 # consider 'special-members' / 'exclude-members' only\n                 return False, list(members.values())\n-            elif __all__ is None:\n+            elif not hasattr(self.object, '__all__'):\n                 # for implicit module members, check __module__ to avoid\n                 # documenting imported objects\n                 return True, list(members.values())",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T20:58:48.985043"
+}

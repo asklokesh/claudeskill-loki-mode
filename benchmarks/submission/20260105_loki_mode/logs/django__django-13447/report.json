@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-13447",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/django/contrib/admin/sites.py\n+++ b/django/contrib/admin/sites.py\n@@ -431,7 +431,7 @@ class AdminSite:\n             )\n         return HttpResponsePermanentRedirect(path)\n \n-    def _build_app_dict(self, request, label=None):\n+    def build_app_dict(self, request, label=None):\n         \"\"\"\n         Build the app dictionary. The optional `label` parameter filters models\n         of a specific app.\n@@ -462,6 +462,7 @@ class AdminSite:\n                 info = (app_label, model._meta.model_name)\n                 model_dict = {\n                     \"name\": capfirst(model._meta.verbose_name_plural),\n+                    \"model\": model,\n                     \"object_name\": model._meta.object_name,\n                     \"perms\": perms,\n                     \"admin_url\": None,\n@@ -491,6 +492,9 @@ class AdminSite:\n \n         return app_dict\n \n+    # Kept for backward compatibility\n+    _build_app_dict = build_app_dict\n+\n     def get_app_list(self, request):\n         \"\"\"\n         Return a sorted list of all the installed apps that have been\n@@ -498,7 +502,7 @@ class AdminSite:\n         \"\"\"\n         app_dict = self._build_app_dict(request)\n \n-        # Sort the apps alphabetically.\n+        # Sort the apps alphabetically\n         app_list = sorted(app_dict.values(), key=lambda x: x[\"name\"].lower())\n \n         # Sort the models alphabetically within each app.",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:41:26.043262"
+}

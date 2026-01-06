@@ -1,0 +1,93 @@
+# sympy__sympy-15678
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and the traceback information provided, I can construct the patch. The issue shows:
+1. Line 582: `yp = solve(eq.diff(x), dydx)[0].subs(derivs)` - IndexError when solve returns empty list (happens with Eq objects)
+2. Line 574: raises ValueError for f(x) as dependent variable
+
+Let me generate the patch based on the standard SymPy `idiff` implementation:
+
+```
+--- a/sympy/geometry/util.py
++++ b/sympy/geometry/util.py
+@@ -528,7 +528,7 @@ def idiff(eq, y, x, n=1):
+     from sympy.core.symbol import Dummy
+     from sympy.core.compatibility import is_sequence
+     from sympy.core.function import Function, Derivative
+-    from sympy import solve
++    from sympy.core.relational import Eq
+ 
+     if is_sequence(y):
+         dep = set(y)
+@@ -540,6 +540,10 @@ def idiff(eq, y, x, n=1):
+     elif isinstance(y, (Derivative, Function)):
+         pass
+ 
++    # Handle Eq objects by converting to expression
++    if isinstance(eq, Eq):
++        eq = eq.lhs - eq.rhs
++
+     f = dict([(s, Function(
+         s.name)(x)) for s in eq.free_symbols if s != x and s in dep])
+     if not f:
+@@ -568,6 +572,12 @@ def idiff(eq, y, x, n=1):
+         raise ValueError("expecting x-dependent symbol(s) but got: %s" % y)
+ 
+     eq = eq.subs(f)
++
++    # Handle the case where y is a function like f(x)
++    if isinstance(y, Function):
++        f[y.func(*y.args)] = y
++        y = y.func(*y.args)
++
+     derivs = {}
+     for i in range(n):
+         yp = solve(eq.diff(x), dydx)[0].subs(derivs)
+```
+
+Wait, I need to look at this more carefully based on the traceback. Let me analyze the actual issue:
+
+1. For `Eq` objects: When `eq` is an `Eq`, calling `eq.diff(x)` doesn't work as expected, and `solve` returns an empty list.
+
+2. For `f(x)`: The validation at line 574 checks if `y` is an x-dependent symbol but doesn't handle when `y` is already a function application.
+
+Based on the architect's analysis and the error messages, here's the correct patch:
+
+--- a/sympy/geometry/util.py
++++ b/sympy/geometry/util.py
+@@ -524,6 +524,7 @@ def idiff(eq, y, x, n=1):
+     from sympy.core.symbol import Dummy
+     from sympy.core.compatibility import is_sequence
+     from sympy.core.function import Function, Derivative
++    from sympy.core.relational import Eq
+ 
+     if is_sequence(y):
+         dep = set(y)
+@@ -531,6 +532,10 @@ def idiff(eq, y, x, n=1):
+     else:
+         dep = {y}
+ 
++    # Handle Eq objects by converting to expression (lhs - rhs = 0)
++    if isinstance(eq, Eq):
++        eq = eq.lhs - eq.rhs
++
+     f = dict([(s, Function(
+         s.name)(x)) for s in eq.free_symbols if s != x and s in dep])
+     if not f:
+@@ -569,6 +574,15 @@ def idiff(eq, y, x, n=1):
+     if not f:
+         raise ValueError("expecting x-dependent symbol(s) but got: %s" % y)
+ 
++    # Handle the case where y is a function application like f(x)
++    for yi in list(dep):
++        if isinstance(yi, Function):
++            if yi.args == (x,):
++                f[yi] = yi
++            else:
++                raise ValueError("expecting %s to be a function of %s" % (yi, x))
++            dep.remove(yi)
++
+     eq = eq.subs(f)
+     derivs = {}
+     for i in range(n):

@@ -1,0 +1,47 @@
+Based on the issue description, I need to generate a patch that fixes the `deferred_to_columns` method in `django/db/models/sql/query.py`. The fix involves using the concrete model's metadata instead of the proxy model's metadata.
+
+--- a/django/db/models/sql/query.py
++++ b/django/db/models/sql/query.py
+@@ -742,7 +742,8 @@
+                 model = field.model._meta.concrete_model
+             fields.append(field)
+ 
+-        opts = cur_model._meta
++        cur_model = cur_model._meta.concrete_model
++        opts = cur_model._meta
+         if only_load:
+             # In the case of only(), only add fields to the deferred set if
+             # they are not being loaded. Fields specified by only() will
+--- a/tests/proxy_models/tests.py
++++ b/tests/proxy_models/tests.py
+@@ -1,6 +1,7 @@
+ from django.contrib.contenttypes.models import ContentType
+ from django.core import management
+ from django.db import DEFAULT_DB_ALIAS
++from django.db.models import ForeignKey, SET_NULL
+ from django.test import TestCase, TransactionTestCase, override_settings
+ 
+ from .models import (
+@@ -537,3 +538,22 @@
+         self.assertEqual(MyPerson.objects.count(), 1)
+         self.assertEqual(StatusPerson.objects.count(), 1)
+         self.assertFalse(MyPerson.objects.exists())
++
++    def test_select_related_only_with_proxy(self):
++        """
++        Test that select_related() and only() work correctly with proxy models.
++        Regression test for issue where QuerySet.only() after select_related()
++        would crash on proxy models with ValueError: 'id' is not in list.
++        """
++        from .models import Country, State
++        
++        # Create test data
++        country = Country.objects.create(name="Test Country")
++        State.objects.create(name="Test State", country=country)
++        
++        # This should not raise ValueError
++        states = list(
++            State.objects.select_related("country").only("country__name").all()
++        )
++        
++        self.assertEqual(len(states), 1)

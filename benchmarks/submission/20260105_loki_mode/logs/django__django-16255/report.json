@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-16255",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/django/contrib/sitemaps/__init__.py\n+++ b/django/contrib/sitemaps/__init__.py\n@@ -167,7 +167,7 @@ class Sitemap:\n         if not hasattr(self, \"lastmod\"):\n             return None\n         if callable(self.lastmod):\n-            try:\n-                return max([self.lastmod(item) for item in self.items()])\n-            except TypeError:\n+            try:\n+                return max([self.lastmod(item) for item in self.items()], default=None)\n+            except TypeError:\n                 return None\n         else:\n             return self.lastmod",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T19:20:43.473205"
+}

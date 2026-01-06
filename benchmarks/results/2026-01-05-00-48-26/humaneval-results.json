@@ -1,0 +1,46 @@
+{
+  "benchmark": "HumanEval",
+  "version": "1.0",
+  "timestamp": "2026-01-05T00:48:26.792878",
+  "model": "opus",
+  "timeout_per_problem": 300,
+  "total_problems": 5,
+  "status": "COMPLETED",
+  "problems": [
+    {
+      "task_id": "HumanEval/0",
+      "passed": true,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-48-26/humaneval-solutions/0.py"
+    },
+    {
+      "task_id": "HumanEval/1",
+      "passed": true,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-48-26/humaneval-solutions/1.py"
+    },
+    {
+      "task_id": "HumanEval/2",
+      "passed": true,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-48-26/humaneval-solutions/2.py"
+    },
+    {
+      "task_id": "HumanEval/3",
+      "passed": true,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-48-26/humaneval-solutions/3.py"
+    },
+    {
+      "task_id": "HumanEval/4",
+      "passed": true,
+      "error": null,
+      "solution_file": "/Users/lokesh/git/claudeskill-loki-mode/benchmarks/results/2026-01-05-00-48-26/humaneval-solutions/4.py"
+    }
+  ],
+  "passed": 5,
+  "failed": 0,
+  "errors": 0,
+  "pass_rate": 100.0,
+  "elapsed_seconds": 37.44
+}

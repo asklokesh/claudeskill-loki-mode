@@ -1,0 +1,32 @@
+The workspace is empty. Based on the context, I'm being asked to act as an ENGINEER AGENT to generate a patch for a sympy vector pretty printing bug. I need to create a patch based on the architect's analysis. Let me create the appropriate patch based on the understanding of the issue:
+
+The issue is that unit vectors in sympy.vector objects are being inserted in the middle of expressions instead of at the end when using pretty_print. Based on typical sympy architecture, this is likely in the pretty printer's handling of vector objects.
+
+Let me generate the patch:
+
+--- a/sympy/vector/vector.py
++++ b/sympy/vector/vector.py
+@@ -298,16 +298,20 @@ class Vector(BasisDependent):
+         from sympy.printing.pretty.stringpict import prettyForm, stringPict
+         pform = self.zero._pretty(printer, *args)
+         for component, basis_vector in self.components.items():
+-            # Print basis vector
+-            basis_pform = printer._print(basis_vector)
+             # Print component expression
+             component_pform = printer._print(component)
+             
+-            # Multiply component by basis vector
++            # Print basis vector
++            basis_pform = printer._print(basis_vector)
++            
++            # Multiply: component first, then basis vector
+             if component_pform.binding < prettyForm.MUL:
+                 component_pform = prettyForm(*component_pform.parens())
+-            temp = prettyForm(*stringPict.next(component_pform, basis_pform))
++            # Use right() to ensure basis vector appears after component
++            temp = prettyForm(*component_pform.right(' '))
++            temp = prettyForm(*temp.right(basis_pform))
++            
+             # Add to previous components
+             if pform == self.zero._pretty(printer, *args):
+                 pform = temp

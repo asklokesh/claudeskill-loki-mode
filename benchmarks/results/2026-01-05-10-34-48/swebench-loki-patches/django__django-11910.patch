@@ -1,0 +1,59 @@
+# django__django-11910
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on my knowledge of Django's migration autodetector and the issue described, I can generate the patch. The issue is in the `generate_renamed_fields` method in `django/db/migrations/autodetector.py`. When a field is renamed and there are ForeignKey fields referencing it via `to_field`, the autodetector generates `AlterField` operations but uses the old field name in the `to_field` parameter instead of the new name.
+
+The fix needs to update the `to_field` parameter to use the new field name when generating the `AlterField` operation for ForeignKey fields that reference a renamed field.
+
+--- a/django/db/migrations/autodetector.py
++++ b/django/db/migrations/autodetector.py
+@@ -939,6 +939,12 @@ class MigrationAutodetector:
+                             ),
+                         )
+                     )
++                    self.renamed_fields.setdefault(app_label, {}).setdefault(
++                        model_name, {}
++                    )[old_field_name] = new_field_name
++
++    def generate_altered_fields(self):
++        """Make AlterField operations, or remove FieldOperation.ADD if the field was added and changed."""
+                     # Scan and fix any to_field references
+                     for (
+                         app_label_,
+@@ -954,12 +960,9 @@ class MigrationAutodetector:
+                                 and related_field.remote_field.to_field_name == old_field_name
+                             ):
+                                 new_field = related_field.clone()
+-                                new_field.remote_field.to_field_name = new_field_name
++                                new_field.remote_field.field_name = new_field_name
+                                 self.add_operation(
+                                     app_label_,
+-                                    operations.AlterField(
+-                                        model_name=model_name_,
+-                                        name=related_field_name,
+-                                        field=new_field,
+-                                    ),
++                                    operations.RenameField(
+
+Let me reconsider the issue more carefully. The bug is that when a PrimaryKey field is renamed, the migration autodetector generates an `AlterField` operation for the ForeignKey that references it, but the `to_field` parameter in that `AlterField` still uses the old field name instead of the new name.
+
+Looking at the described behavior, the fix should ensure that when creating the `AlterField` operation for the related ForeignKey, the `to_field` should be set to the new field name, not the old one.
+
+--- a/django/db/migrations/autodetector.py
++++ b/django/db/migrations/autodetector.py
+@@ -954,12 +954,13 @@ class MigrationAutodetector:
+                                 and related_field.remote_field.to_field_name == old_field_name
+                             ):
+                                 new_field = related_field.clone()
+-                                new_field.remote_field.to_field_name = new_field_name
++                                new_field.remote_field.field_name = new_field_name
++                                new_field.remote_field.to_field_name = new_field_name
+                                 self.add_operation(
+                                     app_label_,
+                                     operations.AlterField(
+                                         model_name=model_name_,
+                                         name=related_field_name,
+                                         field=new_field,
+                                     ),
+                                 )

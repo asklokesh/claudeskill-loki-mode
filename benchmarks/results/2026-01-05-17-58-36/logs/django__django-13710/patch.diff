@@ -1,0 +1,45 @@
+Based on the issue description and the previous patch, I can now generate the complete unified diff patch. The fix needs to:
+
+1. Add a helper to detect if `verbose_name` was explicitly set on the Inline
+2. Modify the `verbose_name_plural` property to use the Inline's `verbose_name` with proper pluralization if it was explicitly set
+3. Import necessary utilities like `format_lazy`
+
+--- a/django/contrib/admin/options.py
++++ b/django/contrib/admin/options.py
+@@ -1,6 +1,7 @@
+ import copy
+ import json
+ import re
++from functools import cached_property
+ from functools import partial, update_wrapper
+ from urllib.parse import quote as urlquote
+ 
+@@ -2034,14 +2035,30 @@ class InlineModelAdmin(BaseModelAdmin):
+         if self.verbose_name is None:
+             return self.model._meta.verbose_name
+         return self.verbose_name
++    
++    @cached_property
++    def _verbose_name_set_explicitly(self):
++        """
++        Check if verbose_name was explicitly set on this class or any of its
++        ancestors (up to but not including InlineModelAdmin).
++        """
++        for cls in type(self).__mro__:
++            if cls is InlineModelAdmin:
++                break
++            if 'verbose_name' in cls.__dict__:
++                return True
++        return False
+ 
+     @property
+     def verbose_name_plural(self):
+         if self.verbose_name_plural_override is None:
++            if self._verbose_name_set_explicitly:
++                return format_lazy('{}s', self.verbose_name)
+             return self.model._meta.verbose_name_plural
+         return self.verbose_name_plural_override
+ 
+ 
+ class StackedInline(InlineModelAdmin):
+     template = "admin/edit_inline/stacked.html"

@@ -1,0 +1,23 @@
+# matplotlib__matplotlib-24334
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Since I don't have access to the actual matplotlib repository, I'll generate the patch based on my knowledge of matplotlib's codebase structure. The `set_ticks` method is in `lib/matplotlib/axis.py`.
+
+--- a/lib/matplotlib/axis.py
++++ b/lib/matplotlib/axis.py
+@@ -2024,6 +2024,14 @@ class Axis(martist.Artist):
+             labels = [t.get_text() for t in self.get_ticklabels(minor=minor)]
+             return locs, labels
+ 
++        if kwargs:
++            if labels is None:
++                raise ValueError(
++                    "kwargs (e.g., fontsize) are only valid when 'labels' is "
++                    "provided; use tick_params() to set properties without "
++                    "changing ticks."
++                )
++
+         if minor:
+             self.set_minor_locator(mticker.FixedLocator(ticks))
+             if labels is not None:

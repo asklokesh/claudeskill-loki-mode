@@ -1,0 +1,9 @@
+{
+  "instance_id": "astropy__astropy-14995",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "This appears to be the claudeskill-loki-mode repository, not the astropy repository. I need to create a patch for the astropy/astropy repository based on the architect's analysis. Let me generate the patch based on the information provided.\n\nAccording to the architect's analysis, the bug is in `astropy/nddata/mixins/ndarithmetic.py` where a line was changed from `elif operand.mask is None:` to `elif operand is None:`. I need to generate a patch that fixes this.\n\n--- a/astropy/nddata/mixins/ndarithmetic.py\n+++ b/astropy/nddata/mixins/ndarithmetic.py\n@@ -495,7 +495,7 @@\n             # Now let's see if the operand was a scalar, if so the mask is None\n             if self.mask is None:\n                 result_mask = deepcopy(operand.mask)\n-            elif operand is None:\n+            elif operand.mask is None:\n                 result_mask = deepcopy(self.mask)\n             else:\n                 result_mask = handle_mask(deepcopy(self.mask), deepcopy(operand.mask))",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:03:27.705329"
+}

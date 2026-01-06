@@ -1,0 +1,23 @@
+Based on the issue description and hints, I need to generate a patch for the Django issue. The key insight from the discussion is in the last comment:
+
+> Doesn't this fix it?
+> `if not hasattr(cls, 'get_%s_display' % self.name):`
+> `setattr(cls, 'get_%s_display' % self.name, partialmethod(cls._get_FIELD_display, field=self))`
+
+The fix is to check if the class already has a `get_FOO_display` method defined before setting it in `Field.contribute_to_class()`. This allows user-defined methods to override the default behavior.
+
+Based on the Django codebase structure and the commit mentioned (`a68ea231012434b522ce45c513d84add516afa60`), the change needs to be in `django/db/models/fields/__init__.py` in the `contribute_to_class` method.
+
+--- a/django/db/models/fields/__init__.py
++++ b/django/db/models/fields/__init__.py
+@@ -763,7 +763,8 @@ class Field(RegisterLookupMixin):
+         self.model = cls
+         cls._meta.add_field(self, private=private_only)
+         if self.choices is not None:
+-            setattr(cls, 'get_%s_display' % self.name,
+-                    partialmethod(cls._get_FIELD_display, field=self))
++            if not hasattr(cls, 'get_%s_display' % self.name):
++                setattr(cls, 'get_%s_display' % self.name,
++                        partialmethod(cls._get_FIELD_display, field=self))
+ 
+     def contribute_to_class(self, cls, name, private_only=False):

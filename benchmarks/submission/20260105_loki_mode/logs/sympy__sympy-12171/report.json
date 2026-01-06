@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-12171",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "This appears to be a Claude skill repository for Loki Mode, not the sympy/sympy repository. I need to create a patch based on the standard sympy repository structure. Let me generate the patch based on the typical sympy structure:\n\n--- a/sympy/printing/mathematica.py\n+++ b/sympy/printing/mathematica.py\n@@ -85,6 +85,14 @@ class MCodePrinter(CodePrinter):\n     def _print_Pow(self, expr):\n         PREC = precedence(expr)\n         return '%s^%s' % (self.parenthesize(expr.base, PREC),\n                          self.parenthesize(expr.exp, PREC))\n \n+    def _print_Derivative(self, expr):\n+        return \"D[%s]\" % (self.stringify(expr.args, \", \"))\n+\n+    def _print_Float(self, expr):\n+        res = str(expr)\n+        return res.replace('e', '*^')\n+\n     def _print_Mul(self, expr):\n         PREC = precedence(expr)\n         c, nc = expr.args_cnc()",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T21:06:31.128494"
+}

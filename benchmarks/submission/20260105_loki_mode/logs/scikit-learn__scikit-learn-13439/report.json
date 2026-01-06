@@ -1,0 +1,9 @@
+{
+  "instance_id": "scikit-learn__scikit-learn-13439",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Perfect! I can see the patch that was previously generated. Let me output a clean version of just the essential patch for implementing `__len__`:\n\n--- a/sklearn/pipeline.py\n+++ b/sklearn/pipeline.py\n@@ -175,6 +175,10 @@ class Pipeline(_BaseComposition):\n             return self.named_steps[ind]\n         return est\n \n+    def __len__(self):\n+        \"\"\"Returns the length of the Pipeline\"\"\"\n+        return len(self.steps)\n+\n     def _pre_transform(self, X, y=None, **fit_params):\n         fit_params_steps = self._check_fit_params(**fit_params)\n         Xt = X",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T20:32:35.988818"
+}

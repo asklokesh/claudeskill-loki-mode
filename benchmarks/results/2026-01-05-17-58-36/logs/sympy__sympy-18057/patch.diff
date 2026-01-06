@@ -1,0 +1,38 @@
+Now let me check what a more relevant patch looks like. Based on the issue description, I need to look for patches that modify `expr.py` or `sympify.py`. Let me create the patch directly based on the architect's analysis.
+
+Based on the issue description and architect's analysis, I need to:
+1. Modify `sympy/core/expr.py` to use `_sympify()` with `strict=True` in the `__eq__` method
+2. Potentially modify `sympy/core/basic.py` if it has similar logic
+
+Let me generate the patch:
+
+--- a/sympy/core/expr.py
++++ b/sympy/core/expr.py
+@@ -121,7 +121,10 @@ class Expr(Basic, EvalfMixin):
+             return S.false
+ 
+         try:
+-            other = sympify(other)
++            other = _sympify(other)
++            if other is None:
++                # Could not sympify - not a symbolic expression
++                return False
+             if not isinstance(other, Expr):
+                 return False
+         except (SympifyError, SyntaxError):
+--- a/sympy/core/relational.py
++++ b/sympy/core/relational.py
+@@ -241,7 +241,10 @@ class Equality(Relational):
+ 
+     def __new__(cls, lhs, rhs=None, **options):
+         try:
+-            lhs = _sympify(lhs)
++            lhs = _sympify(lhs)
++            if lhs is None:
++                raise TypeError("Cannot convert to symbolic expression")
++                
+             rhs = _sympify(rhs)
++            if rhs is None:
++                raise TypeError("Cannot convert to symbolic expression")
+         except SympifyError:
+             raise TypeError("Invalid comparison %s" % (lhs,))

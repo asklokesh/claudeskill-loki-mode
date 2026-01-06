@@ -1,0 +1,44 @@
+# scikit-learn__scikit-learn-13142
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+This appears to be a Claude Code skill repository, not the scikit-learn repository. For this task, I need to generate a patch for scikit-learn based on the issue description and architect's analysis. Let me create the patch based on the analysis provided.
+
+Based on the architect's analysis, the issue is in the `fit_predict()` method where it calls `_e_step()` with the last iteration's parameters instead of the best parameters. The fix is to move the `_e_step()` call to after `_set_parameters(best_params)`.
+
+--- a/sklearn/mixture/base.py
++++ b/sklearn/mixture/base.py
+@@ -180,11 +180,11 @@ class BaseMixture(DensityMixin, BaseEstimator, metaclass=ABCMeta):
+         X = _check_X(X, self.n_components, ensure_min_samples=2)
+         self._check_initial_parameters(X)
+ 
+-        # if we enable warm_start, we will have a unique initialisation
+-        do_init = not(self.warm_start and hasattr(self, 'converged_'))
+-        n_init = self.n_init if do_init else 1
+-
+         self._initialize_parameters(X, random_state)
++        
++        # if we enable warm_start, we will have a unique initialisation
++        do_init = not(self.warm_start and hasattr(self, 'converged_'))
++        n_init = self.n_init if do_init else 1
+ 
+         lower_bound = -np.infty
+         
+@@ -199,7 +199,6 @@ class BaseMixture(DensityMixin, BaseEstimator, metaclass=ABCMeta):
+                 prev_lower_bound = lower_bound
+ 
+                 log_prob_norm, log_resp = self._e_step(X)
+-                label = log_resp.argmax(axis=1)
+                 self._m_step(X, log_resp)
+                 lower_bound = self._compute_lower_bound(
+                     log_resp, log_prob_norm)
+@@ -217,6 +216,9 @@ class BaseMixture(DensityMixin, BaseEstimator, metaclass=ABCMeta):
+ 
+         self._set_parameters(best_params)
+         self.n_iter_ = best_n_iter
++        
++        # Compute labels with the best parameters
++        log_prob_norm, log_resp = self._e_step(X)
++        label = log_resp.argmax(axis=1)
+ 
+         return label

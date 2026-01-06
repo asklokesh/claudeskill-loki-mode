@@ -1,0 +1,20 @@
+# sympy__sympy-24213
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and the architect's analysis, I can generate the patch. The issue is in the `_collect_factor_and_dimension` method in `sympy/physics/units/unitsystem.py`. The fix requires using the dimension system to check if dimensions are equivalent rather than doing direct equality comparison.
+
+Here's the patch:
+
+--- a/sympy/physics/units/unitsystem.py
++++ b/sympy/physics/units/unitsystem.py
+@@ -176,7 +176,8 @@ class UnitSystem(_QuantityMapper):
+                 exp_dim = self._collect_factor_and_dimension(
+                     addend)[1]
+                 if dim != exp_dim:
+-                    raise ValueError(
++                    if not self.get_dimension_system().equivalent_dims(dim, exp_dim):
++                        raise ValueError(
+                         'Dimension of "{}" is {}, '
+                         'but it should be {}'.format(
+                             addend, exp_dim, dim))

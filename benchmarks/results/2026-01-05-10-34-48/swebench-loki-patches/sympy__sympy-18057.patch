@@ -1,0 +1,50 @@
+# sympy__sympy-18057
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and the architect's analysis, I can generate the patch. The issue is clear: the `__eq__` method in `sympy/core/expr.py` uses `sympify()` which attempts to eval reprs of unknown objects. The fix is to use `_sympify()` instead, which is a strict version that doesn't do string parsing/eval fallback.
+
+From the traceback, the relevant code is at line 124 in `sympy/core/expr.py`:
+```python
+other = sympify(other)
+```
+
+Here's the patch:
+
+```
+--- a/sympy/core/expr.py
++++ b/sympy/core/expr.py
+@@ -121,7 +121,10 @@ class Expr(Basic, EvalfMixin):
+ 
+     @sympify_return([('other', 'Expr')], NotImplemented)
+     def __eq__(self, other):
+-        other = sympify(other)
++        try:
++            other = _sympify(other)
++        except SympifyError:
++            return NotImplemented
+         if not isinstance(other, Expr):
+             return False
+         if self.is_Number and other.is_Number:
+```
+
+Wait, looking at the code more carefully - the `@sympify_return` decorator might already be handling the sympification. Let me reconsider. The decorator `@sympify_return([('other', 'Expr')], NotImplemented)` suggests it tries to convert `other` to `Expr` and returns `NotImplemented` if it fails.
+
+But the issue shows that line 124 has `other = sympify(other)` which is being called. This means either the decorator isn't working as expected, or there's additional sympify call inside.
+
+Given the traceback explicitly shows `expr.py:124: in __eq__` calling `other = sympify(other)`, I'll provide the fix:
+
+--- a/sympy/core/expr.py
++++ b/sympy/core/expr.py
+@@ -121,7 +121,10 @@ class Expr(Basic, EvalfMixin):
+ 
+     @sympify_return([('other', 'Expr')], NotImplemented)
+     def __eq__(self, other):
+-        other = sympify(other)
++        try:
++            other = _sympify(other)
++        except SympifyError:
++            return NotImplemented
+         if not isinstance(other, Expr):
+             return False
+         if self.is_Number and other.is_Number:

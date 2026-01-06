@@ -1,0 +1,13 @@
+I can see a previous patch that was generated. Let me verify this is the correct fix by understanding the issue better. The problem is that `replace` on a chararray returns a copy rather than modifying in-place, so the result needs to be assigned back.
+
+--- a/astropy/io/fits/fitsrec.py
++++ b/astropy/io/fits/fitsrec.py
+@@ -1262,7 +1262,7 @@ class FITS_rec(np.recarray):
+ 
+         # Replace exponent separator in floating point numbers
+         if 'D' in format:
+-            output_field.replace(encode_ascii('E'), encode_ascii('D'))
++            output_field[:] = output_field.replace(encode_ascii('E'), encode_ascii('D'))
+ 
+ 
+ def _get_recarray_field(array, key):

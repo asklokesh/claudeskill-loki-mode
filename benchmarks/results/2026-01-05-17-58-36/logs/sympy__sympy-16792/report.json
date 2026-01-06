@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-16792",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Let me verify the patch format is correct by examining it more closely. Based on the issue description and the patch I found, I can now generate the correct patch in unified diff format.\n\nThe issue states:\n1. When using autowrap with cython backend, array arguments that don't appear in the expression are typed as `double` instead of `double *`\n2. The problem is in codegen where argument types are determined\n3. The fix should ensure MatrixSymbol arguments preserve their dimensions even when not used in the expression\n\nLooking at the existing patch, it shows the fix is in `sympy/utilities/codegen.py` in the `Routine` class, specifically where arguments are processed. The fix adds dimension information for MatrixSymbol arguments.\n\nLet me format this correctly:\n\n--- a/sympy/utilities/codegen.py\n+++ b/sympy/utilities/codegen.py\n@@ -692,7 +692,11 @@ class Routine(object):\n                 dims = [self._get_dimensions(arg) for arg in arg.indices]\n                 new_args.append(InputArgument(arg.base, dimensions=dims))\n             elif isinstance(arg, (IndexedBase, MatrixSymbol)):\n-                new_args.append(InputArgument(arg))\n+                dims = None\n+                if isinstance(arg, MatrixSymbol):\n+                    dims = [arg.shape[0], arg.shape[1]]\n+                new_args.append(InputArgument(arg, dimensions=dims))\n             elif isinstance(arg, Symbol):\n                 new_args.append(InputArgument(arg))\n             elif isinstance(arg, Function):",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T21:35:46.732730"
+}

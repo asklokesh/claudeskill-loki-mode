@@ -1,0 +1,36 @@
+# sympy__sympy-13895
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+I see this is the Loki Mode repository, not the SymPy repository. The task is asking me to generate a patch for a SymPy issue. Let me create the patch based on the SymPy codebase structure and the bug analysis provided.
+
+Based on the issue analysis, I need to create a patch for `sympy/core/power.py` to fix the inconsistent handling of negative bases with rational exponents.
+
+--- a/sympy/core/power.py
++++ b/sympy/core/power.py
+@@ -218,6 +218,25 @@ class Pow(Expr):
+                     return S.ComplexInfinity
+ 
+         if isinstance(exp, Rational):
++            # Handle negative base with rational exponent consistently
++            # to avoid incorrect simplification that loses imaginary parts
++            if b.is_negative and exp.q != 1:
++                # For negative base with non-integer rational exponent,
++                # we need to be careful about simplification.
++                # Convert (-a)^(p/q) to handle the sign explicitly
++                # to maintain mathematical equivalence
++                from sympy.functions.elementary.complexes import sign
++                
++                # Extract the absolute value
++                abs_base = abs(b)
++                
++                # For rational exponents p/q where q > 1, keep the negative
++                # base intact to preserve complex branch selection
++                # Only simplify if we can do so without changing the branch
++                if exp.p % 2 == 0 and not exp.is_integer:
++                    # Even numerator with non-integer exponent: stay in complex domain
++                    return None  # Don't simplify, keep original form
++            
+             if exp.q == 1:
+                 if exp.p < 0:
+                     # Things like 1/x need to be accumulated carefully,

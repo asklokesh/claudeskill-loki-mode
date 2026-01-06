@@ -1,0 +1,49 @@
+# django__django-11039
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/django/core/management/commands/sqlmigrate.py
++++ b/django/core/management/commands/sqlmigrate.py
+@@ -76,7 +76,7 @@ class Command(BaseCommand):
+         plan = [(executor.loader.graph.nodes[target], options['backwards'])]
+ 
+         # Show begin/end around output for atomic migrations, if the database
+-        # supports transactional DDL.
+-        self.output_transaction = migration.atomic
++        # supports transactional DDL.
++        self.output_transaction = migration.atomic and connection.features.can_rollback_ddl
+ 
+         # Render the SQL to a string
+--- a/tests/migrations/test_commands.py
++++ b/tests/migrations/test_commands.py
+@@ -8,7 +8,7 @@ from django.apps import apps
+ from django.core.management import CommandError, call_command
+ from django.db import ConnectionHandler, DatabaseError, connection, models
+ from django.db.backends.base.schema import BaseDatabaseSchemaEditor
+-from django.db.migrations.exceptions import InconsistentMigrationHistory
++from django.db.migrations.exceptions import InconsistentMigrationHistory
+ from django.db.migrations.recorder import MigrationRecorder
+ from django.test import TestCase, override_settings, skipUnlessDBFeature
+ from django.test.utils import captured_stdout
+@@ -1422,6 +1422,21 @@ class MigrateTests(MigrationTestBase):
+             call_command("sqlmigrate", "migrations", "0001", stdout=out)
+             self.assertNotIn("BEGIN;", out.getvalue())
+             self.assertNotIn("COMMIT;", out.getvalue())
++
++    @override_settings(MIGRATION_MODULES={"migrations": "migrations.test_migrations"})
++    def test_sqlmigrate_for_non_transactional_ddl(self):
++        """
++        Transaction wrappers aren't shown for databases that don't support
++        transactional DDL.
++        """
++        out = io.StringIO()
++        with mock.patch.object(
++            connection.features, 'can_rollback_ddl', False
++        ):
++            call_command("sqlmigrate", "migrations", "0001", stdout=out)
++        output = out.getvalue()
++        self.assertNotIn("BEGIN;", output)
++        self.assertNotIn("COMMIT;", output)
+ 
+     @override_settings(
+         INSTALLED_APPS=[

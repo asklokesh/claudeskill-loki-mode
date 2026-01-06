@@ -1,0 +1,46 @@
+# sympy__sympy-23191
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on my knowledge of SymPy's codebase and the issue description, I'll generate the patch for the `_print_BasisDependent` method in `sympy/printing/pretty/pretty.py`. The bug is that when printing vector expressions with multiline scalar coefficients, the unit vector is incorrectly positioned in the middle of the expression instead of being properly aligned at the baseline/center.
+
+--- a/sympy/printing/pretty/pretty.py
++++ b/sympy/printing/pretty/pretty.py
+@@ -2411,7 +2411,7 @@ def _print_BasisDependent(self, expr):
+ 
+         for i, term in enumerate(expr.separate().items()):
+             vec = term[0]
+-            pform = self._print(term[1])
++            scal = term[1]
+             if pform_vec is None:
+                 # No vector parts have been treated yet
+                 # This case will require calling the function
+@@ -2420,14 +2420,22 @@ def _print_BasisDependent(self, expr):
+                 # again later.
+                 pform_vec = self._print(vec)
+ 
+-            # Check if the previous term needs an addition sign
+-            if o1[i] is not None and o1[i] != 0 and \
+-                    not pform.startswith(('-', 'N')) and \
+-                    (not pform.startswith(' ') or not pform[1].startswith('-')):
+-                pform = prettyForm(*pform.left(' + '))
++            # Get the pretty form of the scalar
++            pform = self._print(scal)
++            # Get the pretty form of the unit vector
++            pform_unit = self._print(vec)
++            
++            # Combine scalar and unit vector using right() to properly
++            # handle multiline expressions - this keeps the unit vector
++            # at the baseline/center of the scalar expression
++            pform = prettyForm(*pform.right(' ', pform_unit))
+ 
+-            # Append the unit vector
+-            pform = prettyForm(*pform.right(self._print(vec)))
++            # Check if this term needs an addition sign before it
++            if o1[i] is not None and o1[i] != 0:
++                s = pform.s
++                if not s.startswith('-') and not s.startswith(' -'):
++                    pform = prettyForm(*pform.left(' + '))
+ 
+             if pform_vec is None:
+                 pform_vec = pform

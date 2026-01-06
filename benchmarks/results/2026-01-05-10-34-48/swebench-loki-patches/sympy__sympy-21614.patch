@@ -1,0 +1,17 @@
+# sympy__sympy-21614
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/sympy/core/function.py
++++ b/sympy/core/function.py
+@@ -1288,6 +1288,10 @@ class Derivative(Expr):
+     def _eval_derivative(self, v):
+         return self.func(*self._eval_derivative_n_times(self.expr, 1, v), evaluate=False)
+ 
++    @property
++    def kind(self):
++        return self.expr.kind
++
+     def doit(self, **hints):
+         """Evaluate objects that are not evaluated by default. This includes nested
+         Derivative calls, such as ``Derivative(Derivative(f(x), x), x)``.

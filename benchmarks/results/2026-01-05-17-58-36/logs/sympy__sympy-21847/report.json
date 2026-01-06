@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-21847",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Perfect! I can see the exact fix needed. The patch shows that on lines 130 and 142 of `sympy/polys/monomials.py`, we need to change `max(powers.values())` to `sum(powers.values())` when checking against `min_degree`. This aligns with the architect's analysis. Now let me output the patch:\n\n--- a/sympy/polys/monomials.py\n+++ b/sympy/polys/monomials.py\n@@ -127,7 +127,7 @@ def itermonomials(variables, max_degrees, min_degrees=None):\n                 for variable in item:\n                     if variable != 1:\n                         powers[variable] += 1\n-                if max(powers.values()) >= min_degree:\n+                if sum(powers.values()) >= min_degree:\n                     monomials_list_comm.append(Mul(*item))\n             yield from set(monomials_list_comm)\n         else:\n@@ -139,7 +139,7 @@ def itermonomials(variables, max_degrees, min_degrees=None):\n                 for variable in item:\n                     if variable != 1:\n                         powers[variable] += 1\n-                if max(powers.values()) >= min_degree:\n+                if sum(powers.values()) >= min_degree:\n                     monomials_list_non_comm.append(Mul(*item))\n             yield from set(monomials_list_non_comm)\n     else:",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T22:02:56.920927"
+}

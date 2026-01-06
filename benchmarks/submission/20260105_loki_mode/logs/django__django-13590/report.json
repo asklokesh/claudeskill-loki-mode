@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-13590",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the issue description and the existing patch I found, I can generate the correct patch. The issue states that the constructor is being passed an iterator instead of unpacked arguments, which causes named tuples to fail. The fix requires using `*` to unpack the iterator.\n\n--- a/django/db/models/sql/query.py\n+++ b/django/db/models/sql/query.py\n@@ -1076,7 +1076,7 @@ class Query(BaseExpression):\n                 self.resolve_lookup_value(sub_value, can_reuse, allow_joins),\n             )\n             type_ = type(value)\n-            if hasattr(value, '_make'):\n+            if hasattr(type_, '_make'):\n                 return type_._make(resolved_values)\n-            return type_(resolved_values)\n+            return type_(*resolved_values)\n         elif isinstance(value, range):",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:43:34.705200"
+}

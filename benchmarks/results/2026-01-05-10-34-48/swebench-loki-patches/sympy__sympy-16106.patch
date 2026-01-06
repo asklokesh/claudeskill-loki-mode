@@ -1,0 +1,61 @@
+# sympy__sympy-16106
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and the error traceback provided in the issue, I can generate the patch to fix the MathML printer for `Indexed` and `IndexedBase` objects. The traceback shows the file structure and the issue is clear - we need to add `_print_Indexed` and `_print_IndexedBase` methods to both printer classes.
+
+```
+--- a/sympy/printing/mathml.py
++++ b/sympy/printing/mathml.py
+@@ -194,6 +194,22 @@ class MathMLContentPrinter(MathMLPrinterBase):
+         x.appendChild(self._print(e.exp))
+         return x
+ 
++    def _print_Indexed(self, e):
++        x = self.dom.createElement('apply')
++        x_selector = self.dom.createElement('selector')
++        x.appendChild(x_selector)
++        x.appendChild(self._print(e.base))
++        for index in e.indices:
++            x.appendChild(self._print(index))
++        return x
++
++    def _print_IndexedBase(self, e):
++        return self._print(e.label)
++
++    def _print_Idx(self, e):
++        return self._print(e.label)
++
+     def _print_Number(self, e):
+         x = self.dom.createElement(self.mathml_tag(e))
+         x.appendChild(self.dom.createTextNode(str(e)))
+@@ -469,6 +485,26 @@ class MathMLPresentationPrinter(MathMLPrinterBase):
+         x.appendChild(self._print(e.exp))
+         return x
+ 
++    def _print_Indexed(self, e):
++        x = self.dom.createElement('msub')
++        x.appendChild(self._print(e.base))
++        if len(e.indices) == 1:
++            x.appendChild(self._print(e.indices[0]))
++        else:
++            mrow = self.dom.createElement('mrow')
++            for i, index in enumerate(e.indices):
++                mrow.appendChild(self._print(index))
++                if i < len(e.indices) - 1:
++                    mo = self.dom.createElement('mo')
++                    mo.appendChild(self.dom.createTextNode(','))
++                    mrow.appendChild(mo)
++            x.appendChild(mrow)
++        return x
++
++    def _print_IndexedBase(self, e):
++        return self._print(e.label)
++
++    def _print_Idx(self, e):
++        return self._print(e.label)
++
+     def _print_Number(self, e):
+         x = self.dom.createElement(self.mathml_tag(e))
+         x.appendChild(self.dom.createTextNode(str(e)))
+```

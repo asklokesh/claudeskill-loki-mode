@@ -1,0 +1,15 @@
+# sympy__sympy-15308
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/sympy/printing/latex.py
++++ b/sympy/printing/latex.py
+@@ -1438,6 +1438,10 @@ def _print_Determinant(self, expr):
+         mat_delim_backup = self._settings['mat_delim']
+         self._settings['mat_delim'] = ''
+         result = r'\left|{%s}\right|' % self._print(expr.arg)
+         self._settings['mat_delim'] = mat_delim_backup
+         return result
++
++    def _print_Trace(self, expr):
++        return r'\operatorname{tr}\left(%s \right)' % self._print(expr.arg)

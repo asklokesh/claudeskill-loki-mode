@@ -1,0 +1,25 @@
+# sympy__sympy-12454
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+This is a benchmark task generating a patch for an external repository (sympy/sympy). Based on the issue and the architect's analysis, I can generate the patch directly:
+
+```
+--- a/sympy/matrices/matrices.py
++++ b/sympy/matrices/matrices.py
+@@ -1109,13 +1109,13 @@ class MatrixProperties(MatrixRequired):
+     @property
+     def is_upper(self):
+         return all(self[i, j].is_zero
+                    for i in range(1, self.rows)
+-                   for j in range(i))
++                   for j in range(min(i, self.cols)))
+ 
+     @property
+     def is_lower(self):
+         return all(self[i, j].is_zero
+-                   for i in range(self.rows - 1)
+-                   for j in range(i + 1, self.cols))
++                   for i in range(min(self.rows, self.cols) - 1)
++                   for j in range(i + 1, self.cols))
+```

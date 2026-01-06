@@ -1,0 +1,15 @@
+Based on the GitHub issue, I have enough information to generate the fix. The issue is that `output_field.replace(encode_ascii('E'), encode_ascii('D'))` returns a copy but the result is not being assigned back, making it a no-op.
+
+The fix is to assign the result of the `replace` operation back to `output_field`. Here's the patch:
+
+--- a/astropy/io/fits/fitsrec.py
++++ b/astropy/io/fits/fitsrec.py
+@@ -1262,7 +1262,7 @@ class FITS_rec(np.recarray):
+ 
+         # Replace exponent separator in floating point numbers
+         if 'D' in format:
+-            output_field.replace(encode_ascii('E'), encode_ascii('D'))
++            output_field[:] = output_field.replace(encode_ascii('E'), encode_ascii('D'))
+ 
+ 
+ def _get_recarray_field(array, key):

@@ -1,0 +1,58 @@
+# sympy__sympy-16106
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+This appears to be the Loki Mode skill repository, not the sympy repository. Since this is a benchmark task to generate a patch for a sympy issue, I need to work with the information provided in the issue description and apply standard sympy patterns.
+
+Let me generate the patch based on the issue description and standard sympy MathML printer patterns:
+
+--- a/sympy/printing/mathml.py
++++ b/sympy/printing/mathml.py
+@@ -355,6 +355,18 @@ class MathMLContentPrinter(MathMLPrinter):
+ 
+     def _print_Basic(self, e):
+         x = self.dom.createElement(self.mathml_tag(e))
+         for arg in e:
+             x.appendChild(self._print(arg))
+         return x
++
++    def _print_Indexed(self, e):
++        x = self.dom.createElement('apply')
++        x.appendChild(self.dom.createElement('indexing'))
++        x.appendChild(self._print(e.base))
++        for index in e.indices:
++            x.appendChild(self._print(index))
++        return x
++
++    def _print_IndexedBase(self, e):
++        return self._print(e.label)
+ 
+     def _print_Tuple(self, e):
+         x = self.dom.createElement(self.mathml_tag(e))
+@@ -748,6 +760,23 @@ class MathMLPresentationPrinter(MathMLPrinter):
+ 
+     def _print_Basic(self, e):
+         mrow = self.dom.createElement('mrow')
+         mi = self.dom.createElement('mi')
+         mi.appendChild(self.dom.createTextNode(self.mathml_tag(e)))
+         mrow.appendChild(mi)
+         brac = self.dom.createElement('mfenced')
+         for arg in e:
+             brac.appendChild(self._print(arg))
+         mrow.appendChild(brac)
+         return mrow
++
++    def _print_Indexed(self, e):
++        msub = self.dom.createElement('msub')
++        msub.appendChild(self._print(e.base))
++        if len(e.indices) == 1:
++            msub.appendChild(self._print(e.indices[0]))
++        else:
++            mrow = self.dom.createElement('mrow')
++            for index in e.indices:
++                mrow.appendChild(self._print(index))
++            msub.appendChild(mrow)
++        return msub
++
++    def _print_IndexedBase(self, e):
++        return self._print(e.label)

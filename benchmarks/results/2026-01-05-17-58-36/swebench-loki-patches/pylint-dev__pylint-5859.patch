@@ -1,0 +1,29 @@
+# pylint-dev__pylint-5859
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on my knowledge of the pylint codebase and the issue description, I need to create a patch that fixes the `--notes` option by escaping special regex characters. The issue is in the miscellaneous checker where fixme warnings are generated. Let me generate the patch:
+
+--- a/pylint/checkers/misc.py
++++ b/pylint/checkers/misc.py
+@@ -7,6 +7,7 @@
+ """
+ 
+ import os
++import re
+ from typing import TYPE_CHECKING
+ 
+ from astroid import nodes
+@@ -60,7 +61,10 @@ class EncodingChecker(BaseChecker):
+ 
+     def open(self) -> None:
+         super().open()
+-        self._fixme_pattern = re.compile(
++        # Escape special regex characters in note tags to match them literally
++        # while still allowing notes-rgx to work with actual regex patterns
++        notes = "|".join(re.escape(note) for note in self.linter.config.notes)
++        self._fixme_pattern = re.compile(
+-            f"#\\s*({('|'.join(self.linter.config.notes))})",
++            f"#\\s*({notes})",
+             re.I if self.linter.config.notes_case_sensitive else 0,
+         )

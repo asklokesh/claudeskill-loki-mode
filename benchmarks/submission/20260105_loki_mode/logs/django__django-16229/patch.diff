@@ -1,0 +1,11 @@
+--- a/django/forms/models.py
++++ b/django/forms/models.py
+@@ -91,6 +91,9 @@ def fields_for_model(
+             continue
+         kwargs = {}
++        # Fields with callable defaults should not show hidden initial.
++        if f.has_default() and callable(f.default):
++            kwargs["show_hidden_initial"] = False
+         if widgets and f.name in widgets:
+             kwargs["widget"] = widgets[f.name]
+         if localized_fields == ALL_FIELDS or (

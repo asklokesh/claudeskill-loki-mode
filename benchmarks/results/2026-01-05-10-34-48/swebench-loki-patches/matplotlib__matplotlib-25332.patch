@@ -1,0 +1,43 @@
+# matplotlib__matplotlib-25332
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/lib/matplotlib/figure.py
++++ b/lib/matplotlib/figure.py
+@@ -3202,6 +3202,18 @@ class Figure(FigureBase):
+ 
+     def __getstate__(self):
+         state = super().__getstate__()
++
++        # Convert weak references in _align_label_groups to strong references
++        # for pickling, filtering out any dead references
++        if '_align_label_groups' in state:
++            align_label_groups = state['_align_label_groups']
++            state['_align_label_groups'] = {
++                key: [ref() for ref in grouper.get_siblings(ref())
++                      if ref() is not None]
++                for key, grouper in align_label_groups.items()
++                for ref in grouper._mapping.keys()
++            }
++
+         # The canvas cannot currently be pickled, but this has the benefit
+         # of meaning that a figure can be detached from one canvas, and
+         # re-attached to another.
+@@ -3218,6 +3230,17 @@ class Figure(FigureBase):
+         # re-attached to another.
+         self._set_artist_props(self.patch)
+         self.set_canvas(FigureCanvasBase(self))
++
++        # Restore _align_label_groups from strong references back to Grouper
++        # with weak references
++        if '_align_label_groups' in state:
++            from matplotlib.cbook import Grouper
++            align_label_groups = {'x': Grouper(), 'y': Grouper()}
++            for key, groups in state.get('_align_label_groups', {}).items():
++                if groups:
++                    align_label_groups[key].join(*groups)
++            self._align_label_groups = align_label_groups
++
+         self.stale = True
+ 
+     def add_axobserver(self, func):

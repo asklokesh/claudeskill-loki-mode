@@ -1,0 +1,15 @@
+# sympy__sympy-14774
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/sympy/printing/latex.py
++++ b/sympy/printing/latex.py
+@@ -740,7 +740,7 @@ class LatexPrinter(Printer):
+             exp = r"^{%s}" % self._print(exp)
+ 
+         if inv_trig_style == "full":
+-            inv_trig_table = ["asin", "acos", "atan", "acot"]
++            inv_trig_table = ["asin", "acos", "atan", "acsc", "asec", "acot"]
+ 
+         if inv_trig_style in ("full", "power") and \
+                 func in inv_trig_table:

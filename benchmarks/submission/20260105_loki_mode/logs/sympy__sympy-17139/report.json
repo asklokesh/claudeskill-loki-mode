@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-17139",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the issue description, this is a SWE-bench task where I need to generate a patch for a sympy repository issue. The repository files are not in this directory - I'm being asked to generate a patch based on the architect's analysis.\n\nAccording to the issue and the architect's analysis:\n- The bug is in `sympy/simplify/fu.py` at line 504\n- The problem is `if (rv.exp < 0) == True:` where `rv.exp` is `I` (imaginary unit)\n- The fix is to check if the exponent is real before comparing\n\nLet me generate the appropriate patch:\n\n--- a/sympy/simplify/fu.py\n+++ b/sympy/simplify/fu.py\n@@ -501,7 +501,7 @@\n             if rv.func is C:\n                 if isinstance(rv, C):\n                     return rv\n-                if (rv.exp < 0) == True:\n+                if rv.exp.is_real and (rv.exp < 0) == True:\n                     return rv\n                 if (rv.exp > max) == True:\n                     return rv",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T21:38:44.259320"
+}

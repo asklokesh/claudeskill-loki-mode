@@ -1,0 +1,21 @@
+This appears to be a Claude skill repository, not the Django repository. Since I'm asked to generate a patch for django/django, I'll create the patch based on the architect's analysis and Django's standard file structure:
+
+--- a/django/conf/global_settings.py
++++ b/django/conf/global_settings.py
+@@ -312,7 +312,7 @@ FILE_UPLOAD_HANDLERS = [
+ ]
+ 
+ # Maximum size, in bytes, of a request before it will be streamed to the
+ # file system instead of into memory.
+ FILE_UPLOAD_MAX_MEMORY_SIZE = 2621440  # i.e. 2.5 MB
+ 
+@@ -331,7 +331,7 @@ FILE_UPLOAD_DIRECTORY_PERMISSIONS = None
+ 
+ # The numeric mode to set newly-uploaded files to. The value should be a mode
+ # you'd pass directly to os.chmod; see
+ # https://docs.python.org/library/os.html#files-and-directories.
+-FILE_UPLOAD_PERMISSIONS = None
++FILE_UPLOAD_PERMISSIONS = 0o644
+ 
+ # The numeric mode to assign to newly-created directories, when uploading files.
+ # The value should be a mode as you'd pass to os.chmod;

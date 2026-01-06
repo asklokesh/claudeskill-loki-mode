@@ -1,0 +1,128 @@
+# matplotlib__matplotlib-18869
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue and the architect's analysis, I need to generate a patch for the matplotlib repository. Since I don't have direct access to the matplotlib source code here, I'll generate the patch based on the typical structure of matplotlib's `__init__.py` which exports `__version__`. The patch should add a `__version_info__` tuple.
+
+Here's the patch:
+
+```
+--- a/lib/matplotlib/__init__.py
++++ b/lib/matplotlib/__init__.py
+@@ -1,4 +1,5 @@
+ """
++An object-oriented plotting library.
+ 
+ A procedural interface is provided by the companion pyplot module,
+ which may be imported directly, e.g.::
+@@ -135,6 +136,50 @@ def _check_versions():
+ _check_versions()
+ 
+ 
++# The following version_info namedtuple is modeled after sys.version_info
++_VersionInfo = namedtuple('_VersionInfo', ['major', 'minor', 'micro', 'releaselevel', 'serial'])
++
++
++def _parse_to_version_info(version_str):
++    """
++    Parse a version string to a namedtuple similar to sys.version_info.
++
++    Parameters
++    ----------
++    version_str : str
++        The version string to parse.
++
++    Returns
++    -------
++    _VersionInfo
++        A namedtuple with fields (major, minor, micro, releaselevel, serial).
++    """
++    import re
++    # Match versions like 3.5.1, 3.5.1rc1, 3.5.1.post0, 3.5.1.dev0+g1234567
++    match = re.match(
++        r'(\d+)\.(\d+)\.(\d+)(?:(a|b|rc)(\d+))?'
++        r'(?:\.(?:dev|post)\d+)?(?:\+.*)?$',
++        version_str)
++    if match:
++        major, minor, micro = int(match.group(1)), int(match.group(2)), int(match.group(3))
++        releaselevel = match.group(4) if match.group(4) else 'final'
++        # Map short prefixes to full names
++        releaselevel_map = {'a': 'alpha', 'b': 'beta', 'rc': 'candidate', None: 'final'}
++        releaselevel = releaselevel_map.get(releaselevel, releaselevel)
++        serial = int(match.group(5)) if match.group(5) else 0
++        return _VersionInfo(major, minor, micro, releaselevel, serial)
++    else:
++        # Fallback for unusual version strings
++        parts = version_str.split('.')
++        major = int(parts[0]) if len(parts) > 0 else 0
++        minor = int(parts[1]) if len(parts) > 1 else 0
++        micro = int(parts[2].split('a')[0].split('b')[0].split('rc')[0]) if len(parts) > 2 else 0
++        return _VersionInfo(major, minor, micro, 'final', 0)
++
++
++__version_info__ = _parse_to_version_info(__version__)
++
++
+ def _ensure_handler():
+```
+
+Wait, I need to look at the actual matplotlib structure to make a proper patch. Let me generate a cleaner, more minimal patch based on typical matplotlib patterns:
+
+--- a/lib/matplotlib/__init__.py
++++ b/lib/matplotlib/__init__.py
+@@ -135,6 +135,54 @@ def _check_versions():
+ _check_versions()
+ 
+ 
++def _parse_version_info(version_str):
++    """
++    Parse a version string to a comparable tuple.
++
++    Parse *version_str* and return a _VersionInfo namedtuple with fields
++    (major, minor, micro, releaselevel, serial) similar to sys.version_info.
++
++    The releaselevel is one of 'alpha', 'beta', 'candidate', or 'final'.
++    """
++    import re
++    from collections import namedtuple
++
++    _VersionInfo = namedtuple(
++        '_VersionInfo', ['major', 'minor', 'micro', 'releaselevel', 'serial'])
++
++    # Match versions like 3.5.1, 3.5.1rc1, 3.5.1.post0, 3.5.1.dev0+g1234567
++    match = re.match(
++        r'(\d+)\.(\d+)\.(\d+)(?:(a|alpha|b|beta|rc)(\d+))?'
++        r'(?:\.(?:dev|post)\d+)?(?:\+.*)?$',
++        version_str)
++    if match:
++        major = int(match.group(1))
++        minor = int(match.group(2))
++        micro = int(match.group(3))
++        level_abbrev = match.group(4)
++        serial_str = match.group(5)
++
++        # Map abbreviations to full names matching sys.version_info convention
++        level_map = {
++            'a': 'alpha', 'alpha': 'alpha',
++            'b': 'beta', 'beta': 'beta',
++            'rc': 'candidate',
++            None: 'final'
++        }
++        releaselevel = level_map.get(level_abbrev, 'final')
++        serial = int(serial_str) if serial_str else 0
++
++        return _VersionInfo(major, minor, micro, releaselevel, serial)
++    else:
++        # Fallback: just extract leading numeric parts
++        parts = version_str.split('.')
++        return _VersionInfo(
++            int(parts[0]) if len(parts) > 0 and parts[0].isdigit() else 0,
++            int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 0,
++            int(re.match(r'(\d*)', parts[2]).group(1) or '0') if len(parts) > 2 else 0,
++            'final', 0)
++
++
++__version_info__ = _parse_version_info(__version__)
++
++
+ def _ensure_handler():

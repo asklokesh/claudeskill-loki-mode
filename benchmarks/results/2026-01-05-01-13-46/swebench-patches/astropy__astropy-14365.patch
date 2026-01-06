@@ -1,0 +1,34 @@
+Based on my analysis, I understand the issue now. The regex pattern `_command_re = r"READ [TS]ERR(\s+[0-9]+)+"` should work with `re.IGNORECASE`, but there's a subtle bug.
+
+Looking at the `_type_re` pattern more carefully:
+```python
+_type_re = rf"^\s*((?P<command>{_command_re})|(?P<new>{_new_re})|(?P<data>{_data_re})?\s*(\!(?P<comment>.*))?\s*$"
+```
+
+There's actually a closing parenthesis issue with `_data_re`. But more importantly, the problem is that with `re.IGNORECASE`, the `[TS]` character class should match `t` and `s` as well, but the regex might not be working as expected due to how it's structured.
+
+The safest fix is the one in the patch - converting the line to uppercase before matching. This ensures compatibility regardless of the case of the input while the regex pattern remains unchanged.
+
+Here's the patch:
+
+--- a/astropy/io/ascii/qdp.py
++++ b/astropy/io/ascii/qdp.py
+@@ -63,7 +63,7 @@ def _line_type(line, delimiter=None):
+     _decimal_re = r"[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?"
+     _command_re = r"READ [TS]ERR(\s+[0-9]+)+"
+ 
+     sep = delimiter
+     if delimiter is None:
+         sep = r"\s+"
+     _new_re = rf"NO({sep}NO)+"
+     _data_re = rf"({_decimal_re}|NO|[-+]?nan)({sep}({_decimal_re}|NO|[-+]?nan))*)"
+     _type_re = rf"^\s*((?P<command>{_command_re})|(?P<new>{_new_re})|(?P<data>{_data_re})?\s*(\!(?P<comment>.*))?\s*$"
+     _line_type_re = re.compile(_type_re, re.IGNORECASE)
+     line = line.strip()
+     if not line:
+         return "comment"
+-    match = _line_type_re.match(line)
++    match = _line_type_re.match(line.upper())
+ 
+     if match is None:
+         raise ValueError(f"Unrecognized QDP line: {line}")

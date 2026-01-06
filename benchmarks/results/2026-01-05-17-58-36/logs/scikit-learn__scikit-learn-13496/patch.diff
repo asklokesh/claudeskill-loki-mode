@@ -1,0 +1,68 @@
+I understand this is a SWE-bench task where I need to generate a patch for the scikit-learn repository. The repository files don't exist in the current working directory - I'm being asked to generate the patch based on the issue description and architect's analysis. Let me create the appropriate patch based on the standard scikit-learn codebase structure.
+
+--- a/sklearn/ensemble/_iforest.py
++++ b/sklearn/ensemble/_iforest.py
+@@ -101,6 +101,11 @@ class IsolationForest(OutlierMixin, BaseBagging):
+         The number of jobs to run in parallel for both `fit` and `predict`.
+         ``None`` means 1 unless in a :obj:`joblib.parallel_backend` context.
+         ``-1`` means using all processors. See :term:`Glossary <n_jobs>` for more details.
++
++    warm_start : bool, default=False
++        When set to ``True``, reuse the solution of the previous call to fit
++        and add more estimators to the ensemble, otherwise, just fit a whole
++        new forest. See :term:`the Glossary <warm_start>`.
+ 
+     verbose : int, default=0
+         Controls the verbosity of the tree building process.
+@@ -155,6 +160,7 @@ class IsolationForest(OutlierMixin, BaseBagging):
+         contamination="auto",
+         max_features=1.0,
+         bootstrap=False,
++        warm_start=False,
+         n_jobs=None,
+         random_state=None,
+         verbose=0,
+@@ -171,6 +177,7 @@ class IsolationForest(OutlierMixin, BaseBagging):
+             n_jobs=n_jobs,
+             random_state=random_state,
+             verbose=verbose,
++            warm_start=warm_start,
+         )
+ 
+         self.contamination = contamination
+--- a/sklearn/ensemble/tests/test_iforest.py
++++ b/sklearn/ensemble/tests/test_iforest.py
+@@ -355,3 +355,33 @@ def test_score_samples_with_same_n_samples_as_fit():
+     clf.fit(X_train)
+     score_train = clf.score_samples(X_train)
+     assert score_train.shape == (n_samples,)
++
++
++def test_iforest_warm_start():
++    """Test if warm_start parameter works correctly for IsolationForest."""
++    rng = check_random_state(0)
++    X = rng.randn(100, 10)
++
++    # Train initial model with 5 estimators
++    clf = IsolationForest(n_estimators=5, warm_start=True, random_state=0)
++    clf.fit(X)
++    assert len(clf.estimators_) == 5
++
++    # Add 5 more estimators using warm_start
++    clf.n_estimators = 10
++    clf.fit(X)
++    assert len(clf.estimators_) == 10
++
++    # Verify warm_start=False replaces the forest
++    clf_no_warm = IsolationForest(n_estimators=5, warm_start=False, random_state=0)
++    clf_no_warm.fit(X)
++    first_estimators = clf_no_warm.estimators_
++    clf_no_warm.n_estimators = 10
++    clf_no_warm.fit(X)
++    # All estimators should be replaced, so first 5 should be different
++    assert len(clf_no_warm.estimators_) == 10
++    for i in range(5):
++        # Check that estimators are different objects (new fit)
++        assert (
++            first_estimators[i] is not clf_no_warm.estimators_[i]
++        )

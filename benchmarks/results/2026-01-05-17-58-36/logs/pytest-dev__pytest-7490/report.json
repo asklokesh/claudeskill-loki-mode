@@ -1,0 +1,9 @@
+{
+  "instance_id": "pytest-dev__pytest-7490",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "I understand now. This is a task to generate a patch for the pytest repository issue, but I'm in a different repository. Based on the issue description and the architect's analysis, I need to generate a patch that would fix the pytest issue where dynamically adding xfail markers no longer works in pytest 6.0.\n\nLet me create the appropriate patch based on the analysis:\n\n--- a/src/_pytest/skipping.py\n+++ b/src/_pytest/skipping.py\n@@ -259,6 +259,16 @@ def pytest_runtest_makereport(item: Item, call: CallInfo[None]):\n     elif call.when == \"call\":\n         outcome = \"passed\"\n         rep = call.excinfo\n+        # Check for dynamically added xfail markers\n+        xfailed = item._store.get(xfailed_key, None)\n+        if xfailed is None:\n+            # Re-evaluate xfail markers in case they were added dynamically\n+            evalxfail = _evalxfail(item)\n+            if evalxfail.wasvalid() and evalxfail.istrue():\n+                xfailed = evalxfail\n+                item._store[xfailed_key] = xfailed\n+        \n+        # Apply xfail logic if marker is present\n         if xfailed:\n             if call.excinfo:\n                 outcome = \"skipped\"",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T20:24:46.868016"
+}

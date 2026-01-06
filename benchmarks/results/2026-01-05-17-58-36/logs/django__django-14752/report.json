@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-14752",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the context, I understand this is a SWE-bench task where I need to generate a patch for a Django repository issue. The issue is about refactoring `AutocompleteJsonView` to support extra fields. However, the Django source code is not in the current repository - this appears to be a Loki Mode skill repository for running benchmarks.\n\nFor SWE-bench tasks, I need to generate the patch based on the issue description and architect's analysis. Let me create the patch for the Django `AutocompleteJsonView`:\n\n--- a/django/contrib/admin/views/autocomplete.py\n+++ b/django/contrib/admin/views/autocomplete.py\n@@ -25,11 +25,16 @@\n             raise PermissionDenied\n \n         self.object_list = self.get_queryset()\n         context = self.get_context_data()\n         return JsonResponse({\n-            'results': [\n-                {'id': str(getattr(obj, to_field_name)), 'text': str(obj)}\n-                for obj in context['object_list']\n-            ],\n+            'results': [\n+                self.serialize_result(obj, to_field_name)\n+                for obj in context['object_list']\n+            ],\n             'pagination': {'more': context['page_obj'].has_next()},\n         })\n+\n+    def serialize_result(self, obj, to_field_name):\n+        \"\"\"Convert an object to a dictionary for the autocomplete response.\"\"\"\n+        return {'id': str(getattr(obj, to_field_name)), 'text': str(obj)}",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:59:51.432192"
+}

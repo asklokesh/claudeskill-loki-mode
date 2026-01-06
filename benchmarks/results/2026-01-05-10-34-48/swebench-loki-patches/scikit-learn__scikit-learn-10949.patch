@@ -1,0 +1,77 @@
+# scikit-learn__scikit-learn-10949
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+This is a skill repository, not the scikit-learn repository. I need to generate a patch based on my knowledge of the scikit-learn codebase. Let me create the patch based on the architect's analysis and my understanding of the `check_array` function in scikit-learn.
+
+```
+--- a/sklearn/utils/validation.py
++++ b/sklearn/utils/validation.py
+@@ -396,6 +396,14 @@ def check_array(array, accept_sparse=False, accept_large_sparse=True,
+     # store reference to original array to check if copy is needed when
+     # function returns
+     array_orig = array
++    
++    # store the dtypes of pandas objects before converting to ndarray
++    # this is necessary for warn_on_dtype to work properly
++    dtype_orig = None
++    if hasattr(array, 'dtypes') and hasattr(array.dtypes, '__array__'):
++        # DataFrame: get dtypes from all columns
++        dtype_orig = np.array(array.dtypes)
++    elif hasattr(array, 'dtype'):
++        dtype_orig = array.dtype
+ 
+     # store whether originally we wanted numeric dtype
+     dtype_numeric = isinstance(dtype, str) and dtype == "numeric"
+@@ -431,10 +439,6 @@ def check_array(array, accept_sparse=False, accept_large_sparse=True,
+             # If input is scalar raise error
+             raise ValueError(
+                 "Expected 2D array, got scalar array instead:\narray={}.\n"
+-    dtype_orig = getattr(array, "dtype", None)
+-    if not hasattr(dtype_orig, 'kind'):
+-        # not a data type (e.g. a column named dtype in a determine
+-        dtype_orig = None
+ 
+     # check if the object contains several dtypes (typically a determine
+     if hasattr(array, "dtypes") and hasattr(array.dtypes, '__array__'):
+```
+
+Wait, I need to look at the actual scikit-learn validation.py file to generate a proper patch. Let me search for the relevant code patterns online or use my knowledge of the codebase structure.
+
+Based on the issue and architect's analysis, the problem is that `dtype_orig` is captured too late in the `check_array` function - after the DataFrame has already been converted to a numpy array. The fix needs to capture the original dtype before conversion.
+
+--- a/sklearn/utils/validation.py
++++ b/sklearn/utils/validation.py
+@@ -396,6 +396,17 @@ def check_array(array, accept_sparse=False, accept_large_sparse=True,
+     # store reference to original array to check if copy is needed when
+     # function returns
+     array_orig = array
++    
++    # store the dtypes of DataFrame/Series before conversion to ndarray
++    # so that warn_on_dtype can check the original dtype
++    dtype_orig = None
++    if hasattr(array, "dtypes") and hasattr(array.dtypes, '__array__'):
++        # DataFrame - check all column dtypes
++        dtypes_orig = np.array(array.dtypes)
++        if all(dtype_orig == dtypes_orig[0] for dtype_orig in dtypes_orig):
++            dtype_orig = dtypes_orig[0]
++    elif hasattr(array, "dtype"):
++        dtype_orig = array.dtype
+ 
+     # store whether originally we wanted numeric dtype
+     dtype_numeric = isinstance(dtype, str) and dtype == "numeric"
+@@ -431,11 +442,12 @@ def check_array(array, accept_sparse=False, accept_large_sparse=True,
+             # If input is scalar raise error
+             raise ValueError(
+                 "Expected 2D array, got scalar array instead:\narray={}.\n"
+-    dtype_orig = getattr(array, "dtype", None)
+-    if not hasattr(dtype_orig, 'kind'):
+-        # not a data type (e.g. a column named dtype in a DataFrame)
+-        dtype_orig = None
+-
++    # only set dtype_orig from ndarray if we didn't already get it from DataFrame
++    if dtype_orig is None:
++        dtype_orig = getattr(array, "dtype", None)
++        if not hasattr(dtype_orig, 'kind'):
++            # not a data type (e.g. a column named dtype in a DataFrame)
++            dtype_orig = None

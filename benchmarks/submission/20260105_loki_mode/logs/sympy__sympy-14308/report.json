@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-14308",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on my analysis of the existing patches and the issue description, I can now generate the proper patch. The issue shows that:\n\n1. The vector `e.j` is being printed twice (duplicated)\n2. The baseline alignment is incorrect\n\nThe fix needs to:\n1. Properly separate the scalar coefficient from the basis vector\n2. Ensure the basis vector is centered with respect to multiline scalar expressions\n\n--- a/sympy/printing/pretty/pretty.py\n+++ b/sympy/printing/pretty/pretty.py\n@@ -2356,9 +2356,17 @@ class PrettyPrinter(Printer):\n             inneritems.sort(key = lambda x: x[0].__str__())\n             for k, v in inneritems:\n                 #Build the pretty form for the coefficient\n-                pform = self._print(v)\n-                vec_str = self._print(k)\n-                pform = prettyForm(*pform.right(' ', vec_str))\n+                if v == 1:\n+                    pform = self._print(k)\n+                else:\n+                    pform = self._print(v)\n+                    # Parenthesize if needed\n+                    if v.is_Add or _coeff_isneg(v):\n+                        pform = prettyForm(*pform.parens())\n+                    # Print the basis vector and center it with the scalar\n+                    vec_pform = self._print(k)\n+                    vec_pform.baseline = pform.baseline\n+                    pform = prettyForm(*pform.right(' ', vec_pform))\n                 o1.append(pform)\n \n         #Omit printing of the 0 vector",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T21:24:21.419051"
+}

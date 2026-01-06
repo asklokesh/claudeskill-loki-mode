@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-15061",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/django/forms/widgets.py\n+++ b/django/forms/widgets.py\n@@ -851,4 +851,4 @@ class MultiWidget(Widget):\n \n     def id_for_label(self, id_, index='0'):\n         if index == '0':\n-            return f'{id_}_{index}'\n+            return ''\n         return ''",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T19:04:27.978747"
+}

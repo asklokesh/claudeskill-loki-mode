@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-15678",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/sympy/geometry/util.py\n+++ b/sympy/geometry/util.py\n@@ -530,6 +530,7 @@ def idiff(eq, y, x, n=1):\n     sympy.core.function.diff: explicitly differentiates wrt symbols\n \n     \"\"\"\n+    from sympy.core.relational import Eq\n     if is_sequence(y):\n         dep = set(y)\n         y = y[0]\n@@ -537,12 +538,20 @@ def idiff(eq, y, x, n=1):\n         dep = {y}\n         y = y\n \n-    if not y.has(x):\n-        raise ValueError(\"expecting x-dependent symbol(s) but got: %s\" % y)\n+    # Convert Eq to expression lhs - rhs\n+    if isinstance(eq, Eq):\n+        eq = eq.lhs - eq.rhs\n \n-    f = dict([(s, Function(\n-        s.name)(x)) for s in eq.free_symbols if s != x and s in dep])\n-    dydx = Function('dydx')(x)\n+    if isinstance(y, Symbol):\n+        if not y.has(x):\n+            raise ValueError(\"expecting x-dependent symbol(s) but got: %s\" % y)\n+        f = dict([(s, Function(s.name)(x)) for s in eq.free_symbols\n+                  if s != x and s in dep])\n+    else:\n+        # y is a function like f(x)\n+        f = {y: y}\n+\n+    dydx = Function('dydx')(x)\n     eq = eq.subs(f)\n     derivs = {}\n     for i in range(n):",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T21:32:37.909453"
+}

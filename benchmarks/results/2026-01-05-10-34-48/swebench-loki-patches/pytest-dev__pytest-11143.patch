@@ -1,0 +1,15 @@
+# pytest-dev__pytest-11143
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/src/_pytest/assertion/rewrite.py
++++ b/src/_pytest/assertion/rewrite.py
+@@ -757,7 +757,7 @@ class AssertionRewriter(ast.NodeVisitor):
+         return not isinstance(node, ast.Expr)
+ 
+     def is_rewrite_disabled(self, docstring: str) -> bool:
+-        return "PYTEST_DONT_REWRITE" in docstring
++        return isinstance(docstring, str) and "PYTEST_DONT_REWRITE" in docstring
+ 
+     def variable(self) -> str:
+         name = "@py_assert" + str(self.variable_counter)

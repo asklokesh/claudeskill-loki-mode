@@ -1,0 +1,68 @@
+# scikit-learn__scikit-learn-14092
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue and architect's analysis, I need to generate a patch for the scikit-learn repository. Since the repository isn't locally available, I'll create the patch based on the issue description and standard scikit-learn code patterns for the `check_scalar` function and NCA parameter validation.
+
+```
+--- a/sklearn/utils/validation.py
++++ b/sklearn/utils/validation.py
+@@ -23,6 +23,7 @@ from ..exceptions import DataConversionWarning
+ from ..exceptions import NotFittedError
+ from ._isfortran import _is_contiguous
+ from .fixes import _object_dtype_isnan
++import numbers
+ 
+ FLOAT_DTYPES = (np.float64, np.float32, np.float16)
+ 
+@@ -1048,8 +1049,8 @@ def check_scalar(x, name, target_type, min_val=None, max_val=None):
+     TypeError
+         If the value's type does not match the expected type.
+     """
+-    if not isinstance(x, target_type):
++    if target_type is numbers.Integral and isinstance(x, bool):
++        raise TypeError('`{}` must be an instance of {}, not {}.'
++                        .format(name, target_type, type(x)))
++    if not isinstance(x, target_type):
+         raise TypeError('`{}` must be an instance of {}, not {}.'
+                         .format(name, target_type, type(x)))
+ 
+--- a/sklearn/neighbors/neighborhood_components_analysis.py
++++ b/sklearn/neighbors/neighborhood_components_analysis.py
+@@ -21,6 +21,7 @@ from ..utils.validation import check_is_fitted, check_array, check_X_y
+ from ..utils.validation import check_scalar
+ from ..exceptions import ConvergenceWarning
+ from ..base import BaseEstimator, TransformerMixin
++import numbers
+ 
+ 
+ class NeighborhoodComponentsAnalysis(BaseEstimator, TransformerMixin):
+@@ -295,13 +296,13 @@ class NeighborhoodComponentsAnalysis(BaseEstimator, TransformerMixin):
+ 
+         # Check the preferred dimensionality of the projected space
+         if self.n_components is not None:
+-            check_scalar(self.n_components, 'n_components', int, 1)
++            check_scalar(self.n_components, 'n_components', numbers.Integral, 1)
+ 
+             if self.n_components > X.shape[1]:
+                 raise ValueError('The preferred dimensionality of the '
+                                  'projected space `n_components` ({}) cannot '
+                                  'be greater than the given data '
+                                  'dimensionality ({})!'
+                                  .format(self.n_components, X.shape[1]))
+ 
+         # If warm_start is enabled, check that the inputs are consistent
+@@ -323,10 +324,10 @@ class NeighborhoodComponentsAnalysis(BaseEstimator, TransformerMixin):
+                                      .format(self.init.shape[-1], X.shape[1]))
+ 
+         # Check the given Tolerance
+-        check_scalar(self.tol, 'tol', float, 0.)
++        check_scalar(self.tol, 'tol', numbers.Real, 0.)
+ 
+         # Check the number of iterations
+-        check_scalar(self.max_iter, 'max_iter', int, 1)
++        check_scalar(self.max_iter, 'max_iter', numbers.Integral, 1)
+ 
+         if self.callback is not None:
+             if not callable(self.callback):
+```

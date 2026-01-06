@@ -1,0 +1,9 @@
+{
+  "instance_id": "mwaskom__seaborn-3190",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the architect's analysis and the standard seaborn repository structure, I can generate the patch. The issue is that boolean data is being treated as continuous when it should be categorical. The fix needs to detect boolean dtype and handle it appropriately in the scale setup logic.\n\n--- a/seaborn/_core/scales.py\n+++ b/seaborn/_core/scales.py\n@@ -346,6 +346,11 @@ class ContinuousBase(Scale):\n         \n         vmin, vmax = np.nanmin(data), np.nanmax(data)\n         \n+        # Convert boolean to int for continuous scaling\n+        if np.issubdtype(data.dtype, np.bool_):\n+            data = data.astype(int)\n+            vmin, vmax = int(vmin), int(vmax)\n+        \n         if axis is None:\n             forward, inverse = vmap.copy(), vmap.copy()\n         else:",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T19:50:38.828293"
+}

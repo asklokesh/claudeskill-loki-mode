@@ -1,0 +1,16 @@
+# astropy__astropy-12907
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/astropy/modeling/separable.py
++++ b/astropy/modeling/separable.py
+@@ -242,7 +242,7 @@
+ 
+ def _cstack(left, right):
+     """Compute the separability of two models stacked with ``&``."""
+-    sepleft = np.eye(left.n_inputs)
+-    sepright = np.eye(right.n_inputs)
++    sepleft = _separable(left)
++    sepright = _separable(right)
+     return np.block([[sepleft, np.zeros((left.n_outputs, right.n_inputs))],
+                      [np.zeros((right.n_outputs, left.n_inputs)), sepright]])

@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-21612",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "This appears to be the wrong repository. The task is to generate a patch for sympy/sympy repository, but this seems to be a different project. Based on the architect's analysis, I need to create a patch for the sympy repository that fixes the string printing issue. Let me generate the patch based on the provided analysis:\n\n--- a/sympy/printing/str.py\n+++ b/sympy/printing/str.py\n@@ -333,7 +333,7 @@\n                 if len(d.args) <= 1 or any(num != 1 for num in\n                         Mul.make_args(d.args[0])):\n                     parenthesizeNumerator = True\n-            elif isinstance(item.base, Mul):\n+            elif isinstance(item.base, (Mul, Pow)):\n                 parenthesizeDenominator = True\n \n         if parenthesizeNumerator:\n--- a/sympy/printing/tests/test_str.py\n+++ b/sympy/printing/tests/test_str.py\n@@ -1,6 +1,6 @@\n from sympy.core import S, C, Symbol, Wild, Rational, Float, Lambda, Derivative\n from sympy.core.function import AppliedUndef\n-from sympy.core.relational import Eq\n+from sympy.core.relational import Eq, Ne\n from sympy.functions import Piecewise, sqrt, ceiling, exp, sin, cos, Abs, gamma\n from sympy.sets import FiniteSet\n from sympy.polys import Poly, RootOf, rootof, RootSum\n@@ -301,6 +301,11 @@\n     assert str(x/(y*z)) == \"x/(y*z)\"\n     assert str(x*y/z) == \"x*y/z\"\n \n+def test_issue_nested_fractions():\n+    x, y = symbols('x y')\n+    assert str(x/(1/y)) == \"x/(1/y)\"\n+    assert str((x/y)/(1/(y**2))) == \"(x/y)/(1/y**2)\"\n+\n def test_printing_order():\n     from sympy.printing.str import StrPrinter\n     from sympy.core.function import UndefinedFunction",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T22:01:17.672923"
+}

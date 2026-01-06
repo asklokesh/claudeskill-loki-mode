@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-21171",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the issue description, this appears to be a SWE-bench task for the sympy/sympy repository. Since I'm being asked to generate a patch for a repository that's not in the current working directory, I need to create the patch based on the issue description and architect's analysis.\n\nThe issue is clear: `_print_SingularityFunction` in the LaTeX printer doesn't accept an `exp` keyword argument, but `_print_Pow` tries to pass one when a SingularityFunction is raised to a power.\n\nLet me generate the patch based on the standard sympy codebase structure:\n\n--- a/sympy/printing/latex.py\n+++ b/sympy/printing/latex.py\n@@ -2316,8 +2316,11 @@ class LatexPrinter(Printer):\n     def _print_FallingFactorial(self, expr, exp=None):\n         return self._print_function_power(expr, exp)\n \n-    def _print_SingularityFunction(self, expr):\n-        shift = self._print(expr.args[0] - expr.args[1])\n+    def _print_SingularityFunction(self, expr, exp=None):\n+        tex = r\"{\\left\\langle %s \\right\\rangle}^{%s}\" % (\n+            self._print(expr.args[0] - expr.args[1]),\n+            self._print(expr.args[2]))\n+        if exp is not None:\n+            tex = r\"{%s}^{%s}\" % (tex, exp)\n+        return tex\n-        power = self._print(expr.args[2])\n-        tex = r\"{\\left\\langle %s \\right\\rangle}^{%s}\" % (shift, power)\n-        return tex",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T21:59:06.036929"
+}

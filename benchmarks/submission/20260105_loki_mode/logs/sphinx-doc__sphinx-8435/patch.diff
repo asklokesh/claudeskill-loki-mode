@@ -1,0 +1,50 @@
+Based on my analysis of the task and the repository structure, I understand that I'm being asked to generate a patch for the Sphinx issue sphinx-doc__sphinx-8435. The Explore agent provided comprehensive information about where the bug is and how to fix it.
+
+The issue is that `autodoc_type_aliases` is not being applied to module-level variables (DataDocumenter) and class attributes (AttributeDocumenter) because they're using `getattr(self.parent, '__annotations__', {})` instead of calling `get_type_hints()` with the type aliases configuration.
+
+Here's the patch:
+
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -1695,13 +1695,17 @@ class DataDocumenter(ModuleLevelDocumenter):
+     def add_directive_header(self, sig: str) -> None:
+         super().add_directive_header(sig)
+         sourcename = self.get_sourcename()
++
++        # obtain type annotation for this data with type alias support
++        try:
++            annotations = get_type_hints(self.parent, None, self.config.autodoc_type_aliases)
++        except Exception:
++            annotations = {}
++
+         if self.options.annotation is SUPPRESS:
+             pass
+         elif self.options.annotation:
+             self.add_line('   :annotation: ' + self.options.annotation, sourcename)
+         else:
+-            # obtain annotation for this data
+-            annotations = getattr(self.parent, '__annotations__', {})
+             if self.objpath[-1] in annotations:
+                 objrepr = stringify_typehint(annotations.get(self.objpath[-1]))
+                 self.add_line('   :type: ' + objrepr, sourcename)
+@@ -1857,13 +1861,17 @@ class AttributeDocumenter(DocstringStripSignatureMixin, ClassLevelDocumenter):
+     def add_directive_header(self, sig: str) -> None:
+         super().add_directive_header(sig)
+         sourcename = self.get_sourcename()
++
++        # obtain type annotation for this attribute with type alias support
++        try:
++            annotations = get_type_hints(self.parent, None, self.config.autodoc_type_aliases)
++        except Exception:
++            annotations = {}
++
+         if self.options.annotation is SUPPRESS:
+             pass
+         elif self.options.annotation:
+             self.add_line('   :annotation: ' + self.options.annotation, sourcename)
+         else:
+-            # obtain annotation for this attribute
+-            annotations = getattr(self.parent, '__annotations__', {})
+             if self.objpath[-1] in annotations:
+                 objrepr = stringify_typehint(annotations.get(self.objpath[-1]))
+                 self.add_line('   :type: ' + objrepr, sourcename)

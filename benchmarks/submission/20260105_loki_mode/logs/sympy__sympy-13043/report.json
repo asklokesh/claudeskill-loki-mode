@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-13043",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the architect's analysis, I can generate the patch directly since the issue description is clear:\n\n--- a/sympy/integrals/intpoly.py\n+++ b/sympy/integrals/intpoly.py\n@@ -1,6 +1,7 @@\n from __future__ import print_function, division\n \n from sympy.core import S, diff, Expr, Symbol\n+from sympy.core.compatibility import default_sort_key\n from sympy.geometry import Polygon, Point\n from sympy.polys.polytools import LC, gcd_list, degree_list\n from sympy.simplify.simplify import nsimplify\n@@ -538,7 +539,7 @@ def decompose(expr, separate=False):\n             poly_dict[monom] = poly_dict.get(monom, S.Zero) + coeff\n \n     if separate:\n-        return list(poly_dict.values())\n+        return sorted(poly_dict.values(), key=default_sort_key)\n     else:\n         return poly_dict",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T21:12:00.836039"
+}

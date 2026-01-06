@@ -1,0 +1,142 @@
+Based on the GitHub issue description and the comments (particularly the PR link https://github.com/django/django/pull/11010), I have enough context to create the fix. The issue is in `django/forms/widgets.py` where the `Media.merge` method processes lists sequentially, creating false ordering constraints.
+
+Here is the patch that fixes the issue by implementing a proper graph-based merge algorithm:
+
+--- a/django/forms/widgets.py
++++ b/django/forms/widgets.py
+@@ -61,39 +61,52 @@ class Media:
+                 return self._css_lists[0]
+             return self._css_lists[0]
+         return self.merge(*self._css_lists)
+ 
+     @property
+     def _js(self):
+-        js = self._js_lists[0]
+-        # filter(None, ...) avoids calling merge() with empty lists.
+-        for obj in filter(None, self._js_lists[1:]):
+-            js = self.merge(js, obj)
+-        return js
++        return self.merge(*self._js_lists)
+ 
+     def render(self):
+         return mark_safe('\n'.join(chain.from_iterable(getattr(self, 'render_' + name)() for name in MEDIA_TYPES)))
+ 
+     def render_js(self):
+         return [
+             format_html(
+                 '<script type="text/javascript" src="{}"></script>',
+                 self.absolute_path(path)
+             ) for path in self._js
+         ]
+ 
+     def render_css(self):
+         # To keep rendering order consistent, we can't just iterate over items().
+         # We need to sort the keys, and iterate over the sorted list.
+         media = sorted(self._css)
+         return chain.from_iterable([
+             format_html(
+                 '<link href="{}" type="text/css" media="{}" rel="stylesheet">',
+                 self.absolute_path(path), medium
+             ) for path in self._css[medium]
+         ] for medium in media)
+ 
+     def absolute_path(self, path):
+         """
+         Given a relative or absolute path to a static asset, return an absolute
+         path. An absolute path will be returned unchanged while a relative path
+         will be passed to django.templatetags.static.static().
+         """
+         if path.startswith(('http://', 'https://', '/')):
+             return path
+         return static(path)
+ 
+     def __getitem__(self, name):
+         """Return a Media object that only contains media of the given type."""
+         if name in MEDIA_TYPES:
+             return Media(**{str(name): getattr(self, '_' + name)})
+         raise KeyError('Unknown media type "%s"' % name)
+ 
+     @staticmethod
+-    def merge(list_1, list_2):
++    def merge(*lists):
+         """
+-        Merge two lists while trying to keep the relative order of the elements.
+-        Warn if the lists have the same two elements in a different relative
+-        order.
++        Merge lists while trying to keep the relative order of the elements.
++        Warn if the lists have the same elements in a different relative order.
+ 
+         For static assets it can be important to have them included in the DOM
+         in a certain order. In JavaScript you may not be able to reference a
+         global or in CSS you might want to override a style.
+         """
+-        # Start with a copy of list_1.
+-        merged_list = list(list_1)
+-        for list_2_item in list_2:
+-            if list_2_item in merged_list:
+-                # If the item from list_2 is in merged_list, it needs to be
+-                # removed from its current position and added in sorted order.
+-                merged_list.remove(list_2_item)
+-            merged_list.append(list_2_item)
+-
+-        # Now check that the relative order of the items in merged_list
+-        # matches that of list_1 and list_2.
+-        merged_list_index = {item: i for i, item in enumerate(merged_list)}
+-        for list_1_index, list_1_item in enumerate(list_1[:-1]):
+-            for list_1_item_2 in list_1[list_1_index + 1:]:
+-                if merged_list_index[list_1_item] > merged_list_index[list_1_item_2]:
+-                    warnings.warn(
+-                        'Detected duplicate Media files in an opposite order:\n'
+-                        '%s\n%s' % (list_1_item, list_1_item_2),
+-                        MediaOrderConflictWarning,
+-                    )
+-        for list_2_index, list_2_item in enumerate(list_2[:-1]):
+-            for list_2_item_2 in list_2[list_2_index + 1:]:
+-                if merged_list_index[list_2_item] > merged_list_index[list_2_item_2]:
+-                    warnings.warn(
+-                        'Detected duplicate Media files in an opposite order:\n'
+-                        '%s\n%s' % (list_2_item, list_2_item_2),
+-                        MediaOrderConflictWarning,
+-                    )
+-        return merged_list
++        dependency_graph = {}
++        all_items = []
++        for list_ in filter(None, lists):
++            head = None
++            for item in list_:
++                if item in dependency_graph:
++                    # The item already exists. Only add the new dependency.
++                    if head is not None and head not in dependency_graph[item]:
++                        dependency_graph[item].append(head)
++                else:
++                    # A new item, add it to the graph.
++                    dependency_graph[item] = [head] if head is not None else []
++                    all_items.append(item)
++                head = item
++        
++        result = []
++        while all_items:
++            # Find an item with no dependencies remaining (not in result)
++            for item in all_items:
++                dependencies = [d for d in dependency_graph[item] if d not in result]
++                if not dependencies:
++                    result.append(item)
++                    all_items.remove(item)
++                    break
++            else:
++                # No item without dependencies found - there's a cycle.
++                # Warn and just add the first item to break the cycle.
++                item = all_items[0]
++                dependencies = [d for d in dependency_graph[item] if d not in result]
++                warnings.warn(
++                    'Detected duplicate Media files in an opposite order:\n'
++                    '%s\n%s' % (dependencies[0], item),
++                    MediaOrderConflictWarning,
++                )
++                result.append(item)
++                all_items.remove(item)
++        
++        return result
+ 
+     def __add__(self, other):
+         combined = Media()

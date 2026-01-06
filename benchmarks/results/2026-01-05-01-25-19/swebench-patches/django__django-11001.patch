@@ -1,0 +1,30 @@
+Based on my knowledge of this Django issue (which is a well-documented bug), I can provide the fix. The issue is in `django/db/models/sql/compiler.py`:
+
+1. The `ordering_parts` regex is defined as `re.compile(r'(.*)\s(ASC|DESC)(.*)', re.MULTILINE | re.DOTALL)`
+2. However, the issue is that when the regex matches multiline SQL, the `$` (or the way the regex captures) only gets the last line, not the full SQL
+
+The fix suggested in the issue is to normalize newlines before doing the regex search. Looking at the Django source code history and the PR mentioned, the fix involves modifying how the SQL is processed before being matched against the `ordering_parts` regex.
+
+Here's the patch:
+
+--- a/django/db/models/sql/compiler.py
++++ b/django/db/models/sql/compiler.py
+@@ -24,7 +24,7 @@ class SQLCompiler:
+     # Multiline flags is needed to match against sql with newlines
+     # In the SQL statement, the weights are surrounded by parentheses.
+     # The final clause within the parentheses should be numeric.
+-    ordering_parts = re.compile(r'(.*)\s(ASC|DESC)(.*)')
++    ordering_parts = re.compile(r'(.*)\s(ASC|DESC)(.*)', re.MULTILINE | re.DOTALL)
+ 
+     def __init__(self, query, connection, using):
+         self.query = query
+@@ -358,7 +358,8 @@ class SQLCompiler:
+                 continue
+ 
+             if order_by:
+-                without_ordering = self.ordering_parts.search(sql).group(1)
++                sql_oneline = ' '.join(sql.split())
++                without_ordering = self.ordering_parts.search(sql_oneline).group(1)
+                 params_hash = make_hashable(params)
+                 if (without_ordering, params_hash) in seen:
+                     continue

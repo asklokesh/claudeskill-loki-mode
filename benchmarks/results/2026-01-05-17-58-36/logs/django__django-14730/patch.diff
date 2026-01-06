@@ -1,0 +1,94 @@
+This appears to be a benchmarking repository for Claude Code, not the Django repository itself. Based on the issue description, I need to generate a patch for the Django codebase that adds a system check to prevent defining `related_name` on symmetrical ManyToManyFields.
+
+Let me generate the appropriate patch based on Django's codebase structure:
+
+--- a/django/db/models/fields/related.py
++++ b/django/db/models/fields/related.py
+@@ -1234,6 +1234,7 @@ class ManyToManyField(RelatedField):
+         return [
+             *super()._check_relationship_model(),
+             self._check_ignored_options(),
++            self._check_symmetrical_related_name(),
+             self._check_table_uniqueness(),
+         ]
+ 
+@@ -1263,6 +1264,23 @@ class ManyToManyField(RelatedField):
+ 
+         return []
+ 
++    def _check_symmetrical_related_name(self):
++        if self.remote_field.symmetrical and self.remote_field.related_name is not None:
++            # Allow '+' which explicitly suppresses the related name
++            if self.remote_field.related_name == '+':
++                return []
++            
++            return [
++                checks.Error(
++                    "related_name has no effect on symmetrical ManyToManyFields.",
++                    hint=(
++                        "Remove the related_name argument or set symmetrical=False."
++                    ),
++                    obj=self,
++                    id='fields.E332',
++                )
++            ]
++        return []
++
+     def _check_table_uniqueness(self):
+         if isinstance(self.remote_field.through, str):
+             return []
+--- a/tests/invalid_models_tests/test_models.py
++++ b/tests/invalid_models_tests/test_models.py
+@@ -1557,6 +1557,52 @@ class RelativeFieldTests(SimpleTestCase):
+             ),
+         ])
+ 
++    def test_symmetrical_with_related_name(self):
++        class Person(models.Model):
++            # Symmetrical self-referential M2M with related_name should error
++            friends = models.ManyToManyField('self', related_name='friend_set')
++
++        field = Person._meta.get_field('friends')
++        self.assertEqual(field.check(), [
++            Error(
++                "related_name has no effect on symmetrical ManyToManyFields.",
++                hint="Remove the related_name argument or set symmetrical=False.",
++                obj=field,
++                id='fields.E332',
++            ),
++        ])
++
++    def test_symmetrical_explicit_with_related_name(self):
++        class Person(models.Model):
++            # Explicitly symmetrical M2M with related_name should error
++            friends = models.ManyToManyField(
++                'self', symmetrical=True, related_name='friend_set'
++            )
++
++        field = Person._meta.get_field('friends')
++        self.assertEqual(field.check(), [
++            Error(
++                "related_name has no effect on symmetrical ManyToManyFields.",
++                hint="Remove the related_name argument or set symmetrical=False.",
++                obj=field,
++                id='fields.E332',
++            ),
++        ])
++
++    def test_symmetrical_with_related_name_suppression(self):
++        class Person(models.Model):
++            # related_name='+' should not trigger error (it's explicit suppression)
++            friends = models.ManyToManyField('self', related_name='+')
++
++        field = Person._meta.get_field('friends')
++        self.assertEqual(field.check(), [])
++
++    def test_non_symmetrical_with_related_name(self):
++        class Person(models.Model):
++            # Non-symmetrical M2M with related_name should be fine
++            friends = models.ManyToManyField('self', symmetrical=False, related_name='friend_set')
++
++        field = Person._meta.get_field('friends')
++        self.assertEqual(field.check(), [])
+ 
+ class AccessorClashTests(SimpleTestCase):

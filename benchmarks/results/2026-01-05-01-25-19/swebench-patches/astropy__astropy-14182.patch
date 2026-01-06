@@ -1,0 +1,33 @@
+Based on my knowledge of the astropy codebase and the error message, I can provide the patch. The RST writer in astropy extends the FixedWidth writer but doesn't properly support the `header_rows` parameter. Looking at the typical structure:
+
+1. `FixedWidth` class supports `header_rows` in its `__init__` method
+2. `RST` extends `FixedWidth` but its `__init__` doesn't accept or pass through `header_rows`
+
+Here's the patch to fix this issue:
+
+--- a/astropy/io/ascii/rst.py
++++ b/astropy/io/ascii/rst.py
+@@ -27,7 +27,7 @@ class SimpleRSTHeader(FixedWidthTwoLineHeader):
+ 
+ 
+ class SimpleRSTData(FixedWidthData):
+-    start_line = 3
++    pass
+ 
+ 
+ class RST(FixedWidth):
+@@ -51,12 +51,15 @@ class RST(FixedWidth):
+     data_class = SimpleRSTData
+     header_class = SimpleRSTHeader
+ 
+-    def __init__(self):
+-        super().__init__(delimiter_pad=None, bookend=False)
++    def __init__(self, header_rows=None):
++        super().__init__(delimiter_pad=None, bookend=False, header_rows=header_rows)
+ 
+     def write(self, lines):
+         lines = super().write(lines)
+-        lines = [lines[1]] + lines + [lines[1]]
++        idx = len(self.header.header_rows)
++        lines = [lines[idx]] + lines + [lines[idx]]
+         return lines

@@ -1,0 +1,36 @@
+# pytest-dev__pytest-9359
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on my knowledge of the pytest codebase and the issue description, I can generate the correct patch. The issue is in `src/_pytest/_code/source.py` in the `getstatementrange_ast` function. The problem is that when finding the statement range, the function needs to use the `end_lineno` attribute of the current statement (available in Python 3.8+) instead of just looking at where the next statement begins.
+
+--- a/src/_pytest/_code/source.py
++++ b/src/_pytest/_code/source.py
+@@ -119,6 +119,7 @@ def getstatementrange_ast(
+     assertion.
+     """
+     import ast
++    import sys
+ 
+     content = "\n".join(source)
+     try:
+@@ -141,6 +142,19 @@ def getstatementrange_ast(
+             break
+     if start is None:
+         raise AssertionError("no starting statement found")
++
++    # In Python 3.8+, AST nodes have end_lineno attribute.
++    # Use it to limit the statement range to the actual end of the statement,
++    # rather than the start of the next statement (which may incorrectly
++    # include decorator lines that visually follow the assert).
++    if sys.version_info >= (3, 8) and hasattr(start, "end_lineno") and start.end_lineno is not None:
++        end = start.end_lineno
++        # Ensure we don't go beyond the source length
++        if end > len(source):
++            end = len(source)
++        # Return early with the precise range based on end_lineno
++        return lineno, end
++
+     # Iterate over remaining statements to find the end of the current one.
+     for node in ast_iter:
+         if isinstance(node, _STATEMENTS):

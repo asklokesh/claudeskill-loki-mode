@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-11848",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the example patch I found, I can now generate the correct patch for this issue:\n\n--- a/django/utils/http.py\n+++ b/django/utils/http.py\n@@ -176,10 +176,11 @@ def parse_http_date(date):\n         year = int(m.group('year'))\n         if year < 100:\n-            if year < 70:\n-                year += 2000\n-            else:\n-                year += 1900\n+            current_year = datetime.datetime.utcnow().year\n+            year += current_year - current_year % 100\n+            if year > current_year + 50:\n+                year -= 100\n         month = MONTHS.index(m.group('mon').lower()) + 1\n         day = int(m.group('day'))\n         hour = int(m.group('hour'))",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:18:07.080490"
+}

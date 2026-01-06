@@ -1,0 +1,27 @@
+# django__django-11797
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and my knowledge of Django's ORM, I can generate the patch. The issue is in the `Exact.process_rhs()` method which unconditionally clears the select clause and adds 'pk' field, overriding any explicit `.values()` selection including the GROUP BY clause.
+
+Looking at the `In.process_rhs()` method in Django as a reference, it has a check `if not getattr(self.rhs, 'has_select_fields', True)` before modifying the select clause. The `Exact.process_rhs()` method should have the same check.
+
+Here is the patch:
+
+```
+--- a/django/db/models/lookups.py
++++ b/django/db/models/lookups.py
+@@ -263,9 +263,10 @@ class Exact(FieldGetDbPrepValueIterableMixin, BuiltinLookup):
+     def process_rhs(self, compiler, connection):
+         from django.db.models.sql import Query
+         if isinstance(self.rhs, Query):
+-            if self.rhs.has_limit_one():
+-                self.rhs.clear_select_clause()
+-                self.rhs.add_fields(['pk'])
++            if self.rhs.has_limit_one():
++                if not getattr(self.rhs, 'has_select_fields', True):
++                    self.rhs.clear_select_clause()
++                    self.rhs.add_fields(['pk'])
+         return super().process_rhs(compiler, connection)
+ 
+```

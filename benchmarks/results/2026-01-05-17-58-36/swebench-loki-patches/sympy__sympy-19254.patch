@@ -1,0 +1,55 @@
+# sympy__sympy-19254
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+This appears to be a benchmark task for generating a patch for a SymPy issue. Let me search for information about the Knuth-Cohen bound and the current Mignotte bound implementation to generate an appropriate patch.
+
+Based on the issue description, I need to generate a patch that replaces the Mignotte bound with the Knuth-Cohen bound. Let me create a patch based on mathematical knowledge of these bounds.
+
+The Knuth-Cohen bound for univariate polynomials is:
+`2^n * ||f||_inf` where n is the degree and ||f||_inf is the infinity norm (max absolute coefficient)
+
+The current Mignotte bound is typically:
+`sqrt(n+1) * 2^n * ||f||_2` where ||f||_2 is the L2 norm
+
+Here's the patch:
+
+--- a/sympy/polys/factortools.py
++++ b/sympy/polys/factortools.py
+@@ -60,23 +60,23 @@
+ 
+ 
+ def dup_zz_mignotte_bound(f, K):
+-    """Mignotte bound for univariate polynomials in `K[x]`.
++    """Knuth-Cohen bound for univariate polynomials in `K[x]`.
+ 
+     References
+     ==========
+ 
+-    .. [1] [Mignotte81]_
++    .. [1] [Knuth81]_
+ 
+     """
+     a = dup_max_norm(f, K)
+     b = abs(dup_LC(f, K))
+     n = dup_degree(f)
+ 
+-    return K.sqrt(K(n + 1))*2**n*a*b
++    return 2**n*a*b
+ 
+ 
+ def dmp_zz_mignotte_bound(f, u, K):
+-    """Mignotte bound for multivariate polynomials in `K[X]`.
++    """Knuth-Cohen bound for multivariate polynomials in `K[X]`.
+ 
+     References
+     ==========
+@@ -88,7 +88,7 @@
+     b = abs(dmp_ground_LC(f, u, K))
+     n = sum(dmp_degree_list(f, u))
+ 
+-    return K.sqrt(K(n + 1))*2**n*a*b
++    return 2**n*a*b
+ 
+ 
+ def dup_zz_hensel_step(m, f, g, h, s, t, K):

@@ -1,0 +1,40 @@
+Based on the problem statement and hints provided, I can understand the issue:
+
+1. **The Problem**: When using persistent SQLite test databases with `TEST["NAME"]` configuration, the `admin_views.test_multidb` test fails with "database is locked" error.
+
+2. **Root Cause**: The `test_db_signature()` method in `django/db/backends/sqlite3/creation.py` is not including `TEST["NAME"]` in its signature. This means when multiple databases are configured with different `TEST["NAME"]` values, they might be treated as having the same signature, causing SQLite locking issues when the test runner tries to use the same database file for different test database configurations.
+
+3. **The Fix**: The `test_db_signature()` method needs to include the `TEST["NAME"]` setting in addition to the regular `NAME` setting when generating the database signature.
+
+Looking at the hints:
+- The hint mentions that using `NAME` works but `TEST["NAME"]` doesn't
+- PR #11678 contains the fix
+- We need to modify `test_db_signature()` in the SQLite backend
+
+The standard pattern for `test_db_signature()` in Django database backends returns a tuple identifying the test database uniquely. For SQLite, this should include the test database name from `TEST["NAME"]` when it's set.
+
+Here is the patch:
+
+--- a/django/db/backends/sqlite3/creation.py
++++ b/django/db/backends/sqlite3/creation.py
+@@ -51,7 +51,16 @@ class DatabaseCreation(BaseDatabaseCreation):
+         return test_database_name
+ 
+     def test_db_signature(self):
+-        """
+-        Return a tuple that uniquely identifies a test database.
+-        """
+-        return (self.connection.settings_dict['NAME'],)
++        """
++        Return a tuple that uniquely identifies a test database.
++
++        This takes into account the special test settings in
++        settings_dict['TEST'].
++        """
++        test_database_name = self._get_test_db_name()
++        sig = [self.connection.settings_dict['NAME']]
++        if self.connection.settings_dict['NAME'] != test_database_name:
++            sig.append(test_database_name)
++        if self.connection.settings_dict['TEST']['MIGRATE'] is False:
++            sig.append('nomigrations')
++        return tuple(sig)

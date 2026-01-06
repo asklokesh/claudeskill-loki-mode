@@ -1,0 +1,9 @@
+{
+  "instance_id": "matplotlib__matplotlib-23987",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the task description, I need to generate a patch for the matplotlib bug. The architect has identified that the issue is in `lib/matplotlib/figure.py` around lines 2428-2431, where `subplots_adjust()` needs to check if the layout engine is enabled, not just present.\n\nSince this is a patch generation task for a matplotlib issue, I'll create the patch based on the typical matplotlib codebase structure and the architect's analysis:\n\n--- a/lib/matplotlib/figure.py\n+++ b/lib/matplotlib/figure.py\n@@ -2428,7 +2428,7 @@\n         \"\"\"\n-        if self.get_layout_engine() is not None:\n+        if self.get_layout_engine() is not None and self.get_layout_engine().active:\n             _api.warn_external(\n                 \"This figure was using a layout engine that is \"\n                 \"incompatible with subplots_adjust and/or tight_layout; \"",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T19:36:00.100536"
+}

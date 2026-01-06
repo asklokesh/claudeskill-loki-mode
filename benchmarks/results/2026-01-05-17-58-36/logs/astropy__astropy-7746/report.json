@@ -1,0 +1,9 @@
+{
+  "instance_id": "astropy__astropy-7746",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the issue description and architect's analysis, I need to generate a patch for the astropy/wcs/wcs.py file. Since this is a SWE-bench style issue, I should create the patch based on the analysis provided. Let me construct the proper patch:\n\n--- a/astropy/wcs/wcs.py\n+++ b/astropy/wcs/wcs.py\n@@ -1220,6 +1220,14 @@\n         def _return_list_of_arrays(axes, origin):\n             if isinstance(axes, np.ndarray) and axes.size == 0:\n                 return []\n+            \n+            # Handle empty input arrays/lists\n+            if isinstance(axes, np.ndarray):\n+                if axes.shape[0] == 0:\n+                    return [np.array([]) for _ in range(self.naxis)]\n+            elif hasattr(axes, '__len__') and len(axes) > 0:\n+                if all(hasattr(ax, '__len__') and len(ax) == 0 for ax in axes):\n+                    return [np.array([]) for _ in range(len(axes))]\n \n             xy = np.asarray(axes)\n             if ra_dec_order and sky == 'input':",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:04:39.068115"
+}

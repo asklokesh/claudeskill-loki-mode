@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-13971",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the architect's analysis, I need to create a patch for the sympy repository. The issue is in the `_print_SeqFormula` method in `sympy/printing/latex.py`. According to the analysis, the brackets need to be unescaped (remove backslashes before `[` and `]`).\n\nLet me generate the patch based on the architect's analysis:\n\n--- a/sympy/printing/latex.py\n+++ b/sympy/printing/latex.py\n@@ -1714,7 +1714,7 @@\n             printset = (r'\\ldots', S.Dots)\n \n         return (r\", %s\" % self._print(printset[0])).join([\n-            r\"\\left\\[%s\\right\\]\" % self._print(el) for el in expr\n+            r\"\\left[%s\\right]\" % self._print(el) for el in expr\n         ])\n \n     _print_SeqPer = _print_SeqFormula",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T21:21:31.385355"
+}

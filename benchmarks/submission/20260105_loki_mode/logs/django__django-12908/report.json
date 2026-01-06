@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-12908",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the architect's analysis and my knowledge of Django's codebase structure, I'll generate the patch. The issue states that `distinct()` should raise `NotSupportedError` on union querysets, following the pattern of other unsupported operations.\n\n--- a/django/db/models/query.py\n+++ b/django/db/models/query.py\n@@ -1410,6 +1410,11 @@\n         Return a new QuerySet instance that will select only distinct results.\n         \"\"\"\n         self._not_support_combined_queries(\"distinct\")\n+        if self.query.combinator:\n+            raise NotSupportedError(\n+                \"Calling distinct() after %s() is not supported.\"\n+                % self.query.combinator\n+            )\n         assert not self.query.is_sliced, \\\n             \"Cannot create distinct fields once a slice has been taken.\"\n         obj = self._chain()",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:33:00.720995"
+}

@@ -1,0 +1,86 @@
+# django__django-16820
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on my knowledge of Django's migration system and the issue described, I can generate the patch. The issue is that when squashing migrations that transition from `Meta.index_together` to `Meta.indexes`, the optimizer doesn't recognize that `AlterIndexTogether` operations can be reduced with `AddIndex` operations when they create equivalent indexes.
+
+The fix needs to add a `reduce` method to handle the case where `AlterIndexTogether` is followed by `AddIndex` operations that add the same indexes, allowing the `index_together` operations to be eliminated.
+
+```
+--- a/django/db/migrations/operations/models.py
++++ b/django/db/migrations/operations/models.py
+@@ -539,6 +539,36 @@ class AlterIndexTogether(AlterTogetherOptionOperation):
+     def __init__(self, name, index_together):
+         super().__init__(name, index_together)
+ 
++    def reduce(self, operation, app_label):
++        if isinstance(operation, AlterIndexTogether) and self.name_lower == operation.name_lower:
++            return [operation]
++        elif isinstance(operation, AddIndex) and self.name_lower == operation.model_name_lower:
++            # Check if this AddIndex creates an index equivalent to one in index_together
++            if self.option_value:
++                for fields in self.option_value:
++                    # Check if the AddIndex is for the same fields as an index_together entry
++                    if (
++                        operation.index.fields == list(fields)
++                        and not operation.index.name
++                        or operation.index.name.startswith(f"{self.name_lower}_")
++                    ):
++                        # Remove this entry from index_together since it's being added via AddIndex
++                        new_index_together = set(self.option_value) - {fields}
++                        if new_index_together:
++                            return [
++                                AlterIndexTogether(self.name, new_index_together),
++                                operation,
++                            ]
++                        else:
++                            # All index_together entries converted, eliminate AlterIndexTogether
++                            return [operation]
++            return super().reduce(operation, app_label)
++        return super().reduce(operation, app_label)
++
+ 
+ class AlterOrderWithRespectTo(ModelOptionOperation):
+     """Represent a change with the order_with_respect_to option."""
+```
+
+Wait, let me reconsider the approach. The issue is more nuanced - the optimizer needs to recognize the pattern where:
+1. `AlterIndexTogether` sets some indexes via `index_together`
+2. Later migrations add equivalent `AddIndex` operations  
+3. Finally `AlterIndexTogether` clears `index_together` (sets to empty)
+
+The squashed migration should only contain the `AddIndex` operations, not any `AlterIndexTogether` operations.
+
+Here's the correct patch:
+
+--- a/django/db/migrations/operations/models.py
++++ b/django/db/migrations/operations/models.py
+@@ -539,6 +539,29 @@ class AlterIndexTogether(AlterTogetherOptionOperation):
+     def __init__(self, name, index_together):
+         super().__init__(name, index_together)
+ 
++    def reduce(self, operation, app_label):
++        if isinstance(operation, AlterIndexTogether) and self.name_lower == operation.name_lower:
++            return [operation]
++        elif isinstance(operation, AddIndex) and self.name_lower == operation.model_name_lower:
++            if self.option_value:
++                # Check if AddIndex covers any index_together entry
++                for fields in self.option_value:
++                    if list(fields) == list(operation.index.fields) and not getattr(
++                        operation.index, "condition", None
++                    ):
++                        # This AddIndex replaces an index_together entry
++                        new_index_together = set(self.option_value) - {fields}
++                        if new_index_together:
++                            return [
++                                AlterIndexTogether(self.name, new_index_together),
++                                operation,
++                            ]
++                        else:
++                            return [operation]
++            return super().reduce(operation, app_label)
++        return super().reduce(operation, app_label)
++
+ 
+ class AlterOrderWithRespectTo(ModelOptionOperation):
+     """Represent a change with the order_with_respect_to option."""

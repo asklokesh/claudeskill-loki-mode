@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-14997",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/django/db/models/expressions.py\n+++ b/django/db/models/expressions.py\n@@ -1147,7 +1147,7 @@ class Col(Expression):\n         return self.__class__(self.alias, self.target, self.output_field)\n \n     def rename_table_references(self, old_table, new_table):\n-        if self.alias == old_table:\n+        if self.alias is not None and self.alias == old_table:\n             self.alias = new_table\n \n     def get_group_by_cols(self):",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T19:02:35.156100"
+}

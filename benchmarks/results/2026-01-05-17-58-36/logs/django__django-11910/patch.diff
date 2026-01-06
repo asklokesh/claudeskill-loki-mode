@@ -1,0 +1,29 @@
+I see this is the Loki Mode skill repository, not a Django repository. The task is asking me to generate a patch for a Django issue. Let me create the patch based on the architect's analysis:
+
+--- a/django/db/migrations/autodetector.py
++++ b/django/db/migrations/autodetector.py
+@@ -1025,6 +1025,23 @@ class MigrationAutodetector:
+                     model_name, new_field_name, new_field,
+                 )
+                 continue
++            # Skip generating AlterField for ForeignKey/OneToOneField when only
++            # the to_field parameter changed due to a renamed field
++            if new_field.remote_field and getattr(new_field.remote_field, 'field_name', None):
++                related_model_key = (
++                    new_field.remote_field.model._meta.app_label,
++                    new_field.remote_field.model._meta.object_name.lower(),
++                )
++                related_field_name = new_field.remote_field.field_name
++                if related_model_key in self.renamed_fields:
++                    for old_name, new_name in self.renamed_fields[related_model_key]:
++                        if related_field_name == old_name:
++                            # The to_field points to a renamed field; the RenameField
++                            # operation already handles this, so skip generating
++                            # an AlterField with the old field name
++                            continue
++                if old_field.remote_field and old_field.remote_field.field_name != new_field.remote_field.field_name:
++                    # If to_field explicitly changed (not due to rename), generate AlterField
++                    pass
+             self.add_operation(
+                 app_label,
+                 operations.AlterField(

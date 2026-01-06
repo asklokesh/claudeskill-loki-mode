@@ -1,0 +1,321 @@
+# django__django-11019
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/django/forms/widgets.py
++++ b/django/forms/widgets.py
+@@ -1,4 +1,5 @@
+ import copy
++from collections import defaultdict
+ from itertools import chain
+ 
+ from django.conf import settings
+@@ -61,39 +62,67 @@ class Media:
+             return self._css
+ 
+     @staticmethod
+-    def merge(list_1, list_2):
++    def merge(*lists):
+         """
+-        Merge two lists while trying to keep the relative order of the elements.
+-        Warn if the lists have the same two elements in a different relative
+-        order.
++        Merge multiple lists while trying to keep the relative order of the
++        elements. Warn if the lists have the same elements in different
++        relative orders.
+ 
+         For static assets it can be important to have them included in the DOM
+         in a certain order. In JavaScript you may not be able to reference a
+         global or in CSS you might want to override a style.
+         """
+-        # Start with a copy of list_1.
+-        combined_list = list(list_1)
+-        last_insert_index = len(list_1)
+-        # Walk list_2 in reverse, inserting each element into combined_list if
+-        # it doesn't already exist.
+-        for path in reversed(list_2):
+-            try:
+-                # Does path already exist in the list?
+-                index = combined_list.index(path)
+-            except ValueError:
+-                # Add path to combined_list since it doesn't exist.
+-                combined_list.insert(last_insert_index, path)
+-            else:
+-                if index > last_insert_index:
+-                    warnings.warn(
+-                        'Detected duplicate Media files in an opposite order:\n'
+-                        '%s\n%s' % (combined_list[last_insert_index], combined_list[index]),
+-                        MediaOrderConflictWarning,
++        # Build a dependency graph from all lists.
++        # If item A appears before item B in a list, then A should come before B.
++        dependency_graph = defaultdict(set)  # Maps item -> set of items that must come after it
++        all_items = []
++        seen = set()
++
++        for lst in lists:
++            for i, item in enumerate(lst):
++                if item not in seen:
++                    all_items.append(item)
++                    seen.add(item)
++                # Add edges: all items that come after this one in this list
++                for later_item in lst[i + 1:]:
++                    if later_item != item:
++                        dependency_graph[item].add(later_item)
++
++        # Check for conflicts (cycles) in the dependency graph
++        # A conflict exists if item A must come before B and B must come before A
++        for item, successors in dependency_graph.items():
++            for successor in successors:
++                if item in dependency_graph.get(successor, set()):
++                    warnings.warn(
++                        'Detected duplicate Media files in an opposite order:\n'
++                        '%s\n%s' % (item, successor),
++                        MediaOrderConflictWarning,
+                     )
+-                # path already exists in the list. Update last_insert_index so
+-                # that the following elements are inserted in front of this one.
+-                last_insert_index = index
++                    break
++
++        # Perform a stable topological sort
++        result = []
++        result_set = set()
++
++        def add_with_dependencies(item):
++            if item in result_set:
++                return
++            # Find all items that must come before this one (items that have this
++            # item in their successors set) that we haven't added yet
++            for potential_dep in all_items:
++                if potential_dep not in result_set and item in dependency_graph.get(potential_dep, set()):
++                    add_with_dependencies(potential_dep)
++            if item not in result_set:
++                result.append(item)
++                result_set.add(item)
++
++        for item in all_items:
++            add_with_dependencies(item)
++
+         return combined_list
+ 
+     def __add__(self, other):
+@@ -108,7 +137,7 @@ class Media:
+                 combined_css[medium] = list(other._css_lists[medium])
+             else:
+                 combined_css[medium] = (
+-                    self._css_lists.get(medium, []) + other._css_lists.get(medium, [])
++                    [self._css_lists.get(medium, []), other._css_lists.get(medium, [])]
+                 )
+         return Media(
+             css={
+@@ -116,7 +145,7 @@ class Media:
+                 for medium in combined_css
+             },
+             js=(
+-                self._js_lists + other._js_lists
++                [self._js_lists, other._js_lists]
+             ),
+         )
+ 
+@@ -134,13 +163,30 @@ class Media:
+     @property
+     def _js(self):
+         js = []
+-        for js_list in self._js_lists:
+-            js = self.merge(js, js_list)
++        flat_lists = self._flatten_lists(self._js_lists)
++        if flat_lists:
++            js = self.merge(*flat_lists)
+         return js
+ 
+     @property
+     def _css(self):
+-        return {medium: self.merge(*lists) for medium, lists in self._css_lists.items()}
++        css = {}
++        for medium, lists in self._css_lists.items():
++            flat_lists = self._flatten_lists(lists)
++            if flat_lists:
++                css[medium] = self.merge(*flat_lists)
++            else:
++                css[medium] = []
++        return css
++
++    @staticmethod
++    def _flatten_lists(lists):
++        """Recursively flatten nested lists into a list of lists."""
++        result = []
++        for item in lists:
++            if item and isinstance(item, list) and item and isinstance(item[0], list):
++                result.extend(Media._flatten_lists(item))
++            elif item:
++                result.append(item)
++        return result
+ 
+     def __repr__(self):
+         return 'Media(css=%r, js=%r)' % (self._css, self._js)
+@@ -148,10 +194,10 @@ class Media:
+ 
+ def media_property(cls):
+     def _media(self):
+-        # Get the media property of the superclass, if it exists
+-        sup_cls = super(cls, self)
+-        try:
+-            base = sup_cls.media
++        # Get the media property of the superclass, if it exists
++        sup_cls = super(cls, self)
++        try:
++            base = sup_cls.media
+         except AttributeError:
+             base = Media()
+ 
+--- a/django/forms/widgets.py
++++ b/django/forms/widgets.py
+@@ -61,39 +62,67 @@ class Media:
+             return self._css
+ 
+     @staticmethod
+-    def merge(list_1, list_2):
++    def merge(*lists):
+         """
+-        Merge two lists while trying to keep the relative order of the elements.
+-        Warn if the lists have the same two elements in a different relative
+-        order.
++        Merge multiple lists while trying to keep the relative order of the
++        elements. Warn if the lists have the same elements in different
++        relative orders.
+ 
+         For static assets it can be important to have them included in the DOM
+         in a certain order. In JavaScript you may not be able to reference a
+         global or in CSS you might want to override a style.
+         """
+-        # Start with a copy of list_1.
+-        combined_list = list(list_1)
+-        last_insert_index = len(list_1)
+-        # Walk list_2 in reverse, inserting each element into combined_list if
+-        # it doesn't already exist.
+-        for path in reversed(list_2):
+-            try:
+-                # Does path already exist in the list?
+-                index = combined_list.index(path)
+-            except ValueError:
+-                # Add path to combined_list since it doesn't exist.
+-                combined_list.insert(last_insert_index, path)
+-            else:
+-                if index > last_insert_index:
+-                    warnings.warn(
+-                        'Detected duplicate Media files in an opposite order:\n'
+-                        '%s\n%s' % (combined_list[last_insert_index], combined_list[index]),
+-                        MediaOrderConflictWarning,
++        # Build a dependency graph from all lists.
++        # If item A appears before item B in a list, then A should come before B.
++        dependency_graph = defaultdict(set)  # Maps item -> set of items that must come after it
++        all_items = []
++        seen = set()
++
++        for lst in lists:
++            for i, item in enumerate(lst):
++                if item not in seen:
++                    all_items.append(item)
++                    seen.add(item)
++                # Add edges: all items that come after this one in this list
++                for later_item in lst[i + 1:]:
++                    if later_item != item:
++                        dependency_graph[item].add(later_item)
++
++        # Check for conflicts (cycles) in the dependency graph
++        # A conflict exists if item A must come before B and B must come before A
++        warned = set()
++        for item, successors in dependency_graph.items():
++            for successor in successors:
++                if item in dependency_graph.get(successor, set()):
++                    pair = tuple(sorted([item, successor]))
++                    if pair not in warned:
++                        warned.add(pair)
++                        warnings.warn(
++                            'Detected duplicate Media files in an opposite order:\n'
++                            '%s\n%s' % (item, successor),
++                            MediaOrderConflictWarning,
++                        )
++
++        # Perform a stable topological sort
++        result = []
++        result_set = set()
++
++        def add_with_dependencies(item):
++            if item in result_set:
++                return
++            # Find all items that must come before this one (items that have this
++            # item in their successors set) that we haven't added yet
++            for potential_dep in all_items:
++                if potential_dep not in result_set and item in dependency_graph.get(potential_dep, set()):
++                    add_with_dependencies(potential_dep)
++            if item not in result_set:
++                result.append(item)
++                result_set.add(item)
++
++        for item in all_items:
++            add_with_dependencies(item)
++
++        return result
+-                    )
+-                # path already exists in the list. Update last_insert_index so
+-                # that the following elements are inserted in front of this one.
+-                last_insert_index = index
+-        return combined_list
+ 
+     def __add__(self, other):
+         combined_css = {}
+@@ -107,7 +136,7 @@ class Media:
+                 combined_css[medium] = list(other._css_lists[medium])
+             else:
+                 combined_css[medium] = (
+-                    self._css_lists.get(medium, []) + other._css_lists.get(medium, [])
++                    [self._css_lists.get(medium, []), other._css_lists.get(medium, [])]
+                 )
+         return Media(
+             css={
+@@ -115,7 +144,7 @@ class Media:
+                 for medium in combined_css
+             },
+             js=(
+-                self._js_lists + other._js_lists
++                [self._js_lists, other._js_lists]
+             ),
+         )
+ 
+@@ -133,13 +162,30 @@ class Media:
+     @property
+     def _js(self):
+         js = []
+-        for js_list in self._js_lists:
+-            js = self.merge(js, js_list)
++        flat_lists = self._flatten_lists(self._js_lists)
++        if flat_lists:
++            js = self.merge(*flat_lists)
+         return js
+ 
+     @property
+     def _css(self):
+-        return {medium: self.merge(*lists) for medium, lists in self._css_lists.items()}
++        css = {}
++        for medium, lists in self._css_lists.items():
++            flat_lists = self._flatten_lists(lists)
++            if flat_lists:
++                css[medium] = self.merge(*flat_lists)
++            else:
++                css[medium] = []
++        return css
++
++    @staticmethod
++    def _flatten_lists(lists):
++        """Recursively flatten nested lists into a list of lists."""
++        result = []
++        for item in lists:
++            if item and isinstance(item, list) and item and isinstance(item[0], list):
++                result.extend(Media._flatten_lists(item))
++            elif item:
++                result.append(item)
++        return result
+ 
+     def __repr__(self):
+         return 'Media(css=%r, js=%r)' % (self._css, self._js)

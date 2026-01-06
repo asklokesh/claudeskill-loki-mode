@@ -1,0 +1,11 @@
+--- a/requests/utils.py
++++ b/requests/utils.py
+@@ -555,7 +555,7 @@ def stream_decode_response_unicode(iterator, r):
+     """Stream decodes an iterator."""
+ 
+     if r.encoding is None:
+-        yield from iterator
++        r.encoding = r.apparent_encoding
+         return
+ 
+     decoder = codecs.getincrementaldecoder(r.encoding)(errors="replace")

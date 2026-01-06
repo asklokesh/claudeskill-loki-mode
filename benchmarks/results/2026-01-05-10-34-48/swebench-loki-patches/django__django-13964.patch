@@ -1,0 +1,21 @@
+# django__django-13964
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis, I need to generate a patch for the Django repository. The issue is in `django/db/models/base.py` in the `_prepare_related_fields_for_save()` method. Let me create the patch based on the analysis:
+
+```
+--- a/django/db/models/base.py
++++ b/django/db/models/base.py
+@@ -933,7 +933,7 @@ class Model(metaclass=ModelBase):
+                 # If the related instance wasn't saved yet, we will get None
+                 # in getattr above, and we need to grab the PK from the
+                 # related object once it's saved.
+-                if getattr(self, field.attname) is None:
++                if getattr(self, field.attname) in field.empty_values:
+                     # The related object hasn't been saved yet, so save it first.
+                     if obj._state.adding:
+                         obj.save()
+```
+
+This patch changes the condition from checking only for `None` to checking against `field.empty_values`, which includes empty strings and other empty values. This ensures that when a child object (like Product) is assigned to a parent (like Order) with an empty primary key, and the PK is set after assignment, the parent's foreign key field will be refreshed from the related object's actual PK value when saved.

@@ -1,0 +1,20 @@
+# scikit-learn__scikit-learn-10508
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and the issue description, I can generate the patch. The issue is in the `transform` method of `LabelEncoder` class. When an empty list is passed, numpy converts it to `dtype=float64`, which causes a type casting error when `np.searchsorted` tries to compare it with string classes.
+
+Here is the patch:
+
+--- a/sklearn/preprocessing/label.py
++++ b/sklearn/preprocessing/label.py
+@@ -126,6 +126,9 @@ class LabelEncoder(BaseEstimator, TransformerMixin):
+         y : array of shape [n_samples]
+         """
+         check_is_fitted(self, 'classes_')
++        y = column_or_1d(y, warn=True)
++        if len(y) == 0:
++            return np.array([], dtype=int)
+-        y = column_or_1d(y, warn=True)
+         diff = np.setdiff1d(y, self.classes_)
+         if len(diff):

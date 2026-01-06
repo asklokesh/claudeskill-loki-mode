@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-12700",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Let me create the patch based on the standard Django implementation pattern. From the issue description and architect's analysis, I understand that the `cleanse_setting()` method needs to handle lists and tuples recursively.\n\n--- a/django/views/debug.py\n+++ b/django/views/debug.py\n@@ -91,8 +91,19 @@ class SafeExceptionReporterFilter:\n             return cleansed_substitute\n         else:\n             if isinstance(value, dict):\n                 cleansed = {k: self.cleanse_setting(k, v) for k, v in value.items()}\n+            elif isinstance(value, list):\n+                cleansed = [self.cleanse_setting('', item) for item in value]\n+            elif isinstance(value, tuple):\n+                cleansed = tuple(self.cleanse_setting('', item) for item in value)\n             else:\n                 cleansed = value\n         return cleansed\n \n     def get_safe_settings(self):",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:30:17.428718"
+}

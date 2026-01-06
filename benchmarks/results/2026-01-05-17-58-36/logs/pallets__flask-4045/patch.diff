@@ -1,0 +1,15 @@
+Based on the architectural analysis and Flask's structure, here is the patch:
+
+--- a/src/flask/blueprints.py
++++ b/src/flask/blueprints.py
+@@ -158,6 +158,10 @@ class Blueprint(Scaffold):
+         self.name = name
+         self.url_prefix = url_prefix
+         self.subdomain = subdomain
++        
++        if "." in name:
++            raise ValueError("Blueprint names cannot contain dots ('.').")
++        
+         self.deferred_functions: t.List[DeferredSetupFunction] = []
+ 
+         if url_defaults is None:

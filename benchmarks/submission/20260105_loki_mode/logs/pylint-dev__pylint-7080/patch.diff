@@ -1,0 +1,13 @@
+Based on the architect's analysis and the issue description, I need to generate a patch that fixes the path normalization issue when using `--recursive=y`. The fix should normalize paths before matching against `ignore-paths` patterns. Here's the patch:
+
+--- a/pylint/lint/pylinter.py
++++ b/pylint/lint/pylinter.py
+@@ -597,6 +597,8 @@ class PyLinter:
+             )
+ 
+         for root, _, files in os.walk(os.path.normpath(filepath)):
++            # Normalize root path to ensure consistent matching with ignore-paths patterns
++            root = os.path.normpath(root)
+             if any(fnmatch.fnmatch(root, pattern) for pattern in self.config.ignore_patterns):
+                 continue
+             if any(

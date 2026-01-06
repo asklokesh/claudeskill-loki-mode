@@ -1,0 +1,39 @@
+# scikit-learn__scikit-learn-25638
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+The issue described is about supporting nullable pandas dtypes in `unique_labels`. Based on my understanding of the problem and common patterns in sklearn, I need to generate a patch that:
+
+1. Detects pandas nullable dtypes before numpy conversion
+2. Converts them to their appropriate numpy dtype using pandas' `.to_numpy()` method
+
+Let me create the patch based on standard sklearn patterns for handling pandas data:
+
+--- a/sklearn/utils/multiclass.py
++++ b/sklearn/utils/multiclass.py
+@@ -44,6 +44,25 @@ def unique_labels(*ys):
+     if not ys:
+         raise ValueError("No argument has been passed.")
+     # Check that we don't mix label format
++    
++    # Convert pandas nullable dtypes to numpy arrays with proper dtype
++    ys_converted = []
++    for y in ys:
++        if hasattr(y, 'dtype') and hasattr(y.dtype, 'name'):
++            # Handle pandas nullable integer dtypes (Int8, Int16, Int32, Int64)
++            if hasattr(y.dtype, 'numpy_dtype'):
++                # This is a pandas ExtensionDtype with a numpy_dtype attribute
++                y = y.to_numpy(dtype=y.dtype.numpy_dtype, na_value=np.nan)
++            elif str(y.dtype) in ['Int8', 'Int16', 'Int32', 'Int64', 
++                                   'UInt8', 'UInt16', 'UInt32', 'UInt64',
++                                   'Float32', 'Float64', 'boolean']:
++                # Fallback for pandas nullable dtypes
++                if str(y.dtype) == 'boolean':
++                    y = y.to_numpy(dtype='bool', na_value=False)
++                else:
++                    y = y.to_numpy(dtype=str(y.dtype).lower(), na_value=np.nan)
++        ys_converted.append(y)
++    ys = ys_converted
+ 
+     ys_types = set(type_of_target(x) for x in ys)
+     if ys_types == {"binary", "multiclass"}:

@@ -1,0 +1,34 @@
+# sympy__sympy-18835
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and the architect's analysis, I need to generate a patch for the `uniq` function in `sympy/utilities/iterables.py`. The issue describes that the function is at lines 2109-2124 and needs to check for size changes during iteration.
+
+Let me generate the patch based on the typical implementation of `uniq` and the fix requirements:
+
+```
+--- a/sympy/utilities/iterables.py
++++ b/sympy/utilities/iterables.py
+@@ -2106,6 +2106,7 @@ def uniq(seq, result=None):
+     >>> list(uniq([[1], [2, 1], [1]]))
+     [[1], [2, 1]]
+     """
++    initial_len = len(seq) if hasattr(seq, '__len__') else None
+     try:
+         seen = set()
+         result = result or []
+@@ -2113,6 +2114,9 @@ def uniq(seq, result=None):
+             if s not in seen:
+                 seen.add(s)
+                 yield s
++            if initial_len is not None and len(seq) != initial_len:
++                raise RuntimeError("dictionary changed size during iteration")
+     except TypeError:
+         if s not in result:
+             result.append(s)
+             yield s
++        if initial_len is not None and len(seq) != initial_len:
++            raise RuntimeError("dictionary changed size during iteration")
+         for s in uniq(seq, result):
+             yield s
+```

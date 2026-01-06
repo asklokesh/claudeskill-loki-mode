@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-18057",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Now let me check what a more relevant patch looks like. Based on the issue description, I need to look for patches that modify `expr.py` or `sympify.py`. Let me create the patch directly based on the architect's analysis.\n\nBased on the issue description and architect's analysis, I need to:\n1. Modify `sympy/core/expr.py` to use `_sympify()` with `strict=True` in the `__eq__` method\n2. Potentially modify `sympy/core/basic.py` if it has similar logic\n\nLet me generate the patch:\n\n--- a/sympy/core/expr.py\n+++ b/sympy/core/expr.py\n@@ -121,7 +121,10 @@ class Expr(Basic, EvalfMixin):\n             return S.false\n \n         try:\n-            other = sympify(other)\n+            other = _sympify(other)\n+            if other is None:\n+                # Could not sympify - not a symbolic expression\n+                return False\n             if not isinstance(other, Expr):\n                 return False\n         except (SympifyError, SyntaxError):\n--- a/sympy/core/relational.py\n+++ b/sympy/core/relational.py\n@@ -241,7 +241,10 @@ class Equality(Relational):\n \n     def __new__(cls, lhs, rhs=None, **options):\n         try:\n-            lhs = _sympify(lhs)\n+            lhs = _sympify(lhs)\n+            if lhs is None:\n+                raise TypeError(\"Cannot convert to symbolic expression\")\n+                \n             rhs = _sympify(rhs)\n+            if rhs is None:\n+                raise TypeError(\"Cannot convert to symbolic expression\")\n         except SympifyError:\n             raise TypeError(\"Invalid comparison %s\" % (lhs,))",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T21:41:47.434514"
+}

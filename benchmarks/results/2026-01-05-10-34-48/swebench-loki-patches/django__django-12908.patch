@@ -1,0 +1,21 @@
+# django__django-12908
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+I need to generate the patch based on my knowledge of Django's codebase. Let me create the patch for the `distinct()` method in Django's query.py file:
+
+```
+--- a/django/db/models/query.py
++++ b/django/db/models/query.py
+@@ -1166,6 +1166,10 @@ class QuerySet:
+         Return a new QuerySet instance that will select only distinct results.
+         """
+         assert not self.query.is_sliced, "Cannot call distinct() after slicing."
++        if self.query.combinator:
++            raise NotSupportedError(
++                'Calling distinct() after %s() is not supported.' % self.query.combinator
++            )
+         clone = self._clone()
+         clone.query.add_distinct_fields(*field_names)
+         return clone
+```

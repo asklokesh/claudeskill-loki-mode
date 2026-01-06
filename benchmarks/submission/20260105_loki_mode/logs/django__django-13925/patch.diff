@@ -1,0 +1,39 @@
+Based on my understanding of Django's model checking system and the issue description, I'll generate the appropriate patch for the W042 check to handle inherited primary keys:
+
+--- a/django/core/checks/model_checks.py
++++ b/django/core/checks/model_checks.py
+@@ -30,6 +30,23 @@ def _check_lazy_references(apps, **kwargs):
+     return errors
+ 
+ 
++def _has_explicit_primary_key_in_parents(model):
++    """
++    Check if any parent model in the inheritance chain has an explicitly
++    defined primary key field.
++    """
++    for parent in model.__mro__[1:]:
++        if not issubclass(parent, models.Model):
++            continue
++        if parent._meta.abstract:
++            continue
++        # Check if parent has an explicit primary key field
++        for field in parent._meta.local_fields:
++            if field.primary_key:
++                return True
++    return False
++
++
+ @register(Tags.models)
+ def check_all_models(app_configs=None, **kwargs):
+     db_table_models = defaultdict(list)
+@@ -150,6 +167,10 @@ def _check_default_auto_field(model, **kwargs):
+         # Only complain about auto-created id fields.
+         return []
+ 
++    # Don't warn if a parent model has an explicit primary key
++    if _has_explicit_primary_key_in_parents(model):
++        return []
++
+     return [
+         checks.Warning(
+             f"Auto-created primary key used when not defining a primary key type, "

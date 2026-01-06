@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-16041",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the architect's analysis, I need to generate a patch for the Django formsets.py file. Since the repository is django/django and the file should be at django/forms/formsets.py, I'll create the patch based on the standard Django codebase structure and the architect's analysis.\n\nThe issue is in the `empty_form` property where `empty_permitted=True` is passed explicitly while `form_kwargs` may already contain it, causing a \"multiple values for keyword argument\" error.\n\nThe fix is to build the kwargs dictionary by first unpacking `get_form_kwargs(None)`, then explicitly setting the required keys to override any conflicts.\n\n--- a/django/forms/formsets.py\n+++ b/django/forms/formsets.py\n@@ -257,12 +257,14 @@\n     @property\n     def empty_form(self):\n         form = self.form(\n-            auto_id=self.auto_id,\n-            prefix=self.add_prefix(\"__prefix__\"),\n-            empty_permitted=True,\n-            use_required_attribute=False,\n-            **self.get_form_kwargs(None),\n-            renderer=self.renderer,\n+            **{\n+                **self.get_form_kwargs(None),\n+                \"auto_id\": self.auto_id,\n+                \"prefix\": self.add_prefix(\"__prefix__\"),\n+                \"empty_permitted\": True,\n+                \"use_required_attribute\": False,\n+                \"renderer\": self.renderer,\n+            }\n         )\n         self.add_fields(form, None)\n         return form",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T19:18:38.216295"
+}

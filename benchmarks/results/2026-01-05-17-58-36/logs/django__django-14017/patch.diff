@@ -1,0 +1,40 @@
+Based on the issue description, I need to generate a patch for Django's query_utils.py file. Since this is a synthetic task for generating a patch, I'll create the patch based on the Django source code structure described in the issue and architect's analysis.
+
+--- a/django/db/models/query_utils.py
++++ b/django/db/models/query_utils.py
+@@ -91,6 +91,12 @@ class Q(tree.Node):
+     def __and__(self, other):
+         return self._combine(other, self.AND)
+ 
++    def __rand__(self, other):
++        return self._combine(other, self.AND)
++
++    def __ror__(self, other):
++        return self._combine(other, self.OR)
++
+     def __invert__(self):
+         return self._new_instance(
+             self.__class__,
+@@ -70,7 +76,7 @@ class Q(tree.Node):
+ 
+     def _combine(self, other, conn):
+         if not isinstance(other, Q):
+-            raise TypeError(other)
++            other = Q(other) if isinstance(other, Expression) else Q._handle_combinable(other)
+ 
+         # If the other Q() is empty, ignore it and just use `self`.
+         if not other:
+@@ -87,6 +93,14 @@ class Q(tree.Node):
+             obj.add(self, conn)
+         return obj
+ 
++    @staticmethod
++    def _handle_combinable(other):
++        from django.db.models.expressions import Combinable
++        if isinstance(other, Combinable):
++            return Q(other)
++        else:
++            raise TypeError(other)
++
+     def __or__(self, other):
+         return self._combine(other, self.OR)

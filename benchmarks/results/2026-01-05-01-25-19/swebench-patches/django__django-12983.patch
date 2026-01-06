@@ -1,0 +1,22 @@
+Based on the issue description, I need to create a patch for Django's `slugify` function in `django/utils/text.py`. The issue is that `slugify()` doesn't strip leading/trailing dashes and underscores.
+
+Looking at the problem:
+- Input: `"___This is a test ---"`
+- Current output: `___this-is-a-test-`
+- Expected output: `this-is-a-test`
+
+The fix should strip leading and trailing dashes and underscores from the slugified result. Based on the hint about not converting all underscores to dashes, the fix should only strip them at the beginning and end, not convert them throughout.
+
+Here's the patch:
+
+--- a/django/utils/text.py
++++ b/django/utils/text.py
+@@ -393,6 +393,8 @@ def slugify(value, allow_unicode=False):
+         value = unicodedata.normalize('NFKC', value)
+     value = re.sub(r'[^\w\s-]', '', value.lower())
+     return re.sub(r'[-\s]+', '-', value).strip('-')
++    value = re.sub(r'[^\w\s-]', '', value.lower())
++    return re.sub(r'[-\s]+', '-', value).strip('-_')
+
+
+ @keep_lazy_text

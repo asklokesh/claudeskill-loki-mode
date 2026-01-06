@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-14672",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "I need to understand the context better. This is the Loki Mode skill repository, and I'm being asked to generate a patch for a Django issue. Based on the architect's analysis, I need to create a patch that adds `make_hashable()` to the `through_fields` in the `ManyToManyRel.identity` property.\n\nLet me generate the patch based on the Django source code structure and the issue description:\n\n--- a/django/db/models/fields/reverse_related.py\n+++ b/django/db/models/fields/reverse_related.py\n@@ -7,7 +7,7 @@ from django.db.models import Q\n from django.utils.functional import cached_property\n from django.utils.hashable import make_hashable\n \n-from . import Field\n+from . import Field\n \n \n class ForeignObjectRel:\n@@ -313,7 +313,7 @@ class ManyToManyRel(ForeignObjectRel):\n             self.related_model,\n             self.related_query_name(),\n             make_hashable(self.limit_choices_to),\n-            self.through_fields,\n+            make_hashable(self.through_fields),\n             self.symmetrical,\n             self.db_constraint,\n         )",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:58:28.877954"
+}

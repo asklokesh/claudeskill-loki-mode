@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-13230",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the architect's analysis and the Django syndication framework structure, I'll generate the patch for adding `item_comments` support:\n\n--- a/django/contrib/syndication/views.py\n+++ b/django/contrib/syndication/views.py\n@@ -120,6 +120,11 @@ class Feed:\n         \"\"\"\n         return self._get_dynamic_attr(\"item_enclosures\", item)\n \n+    def item_comments(self, item):\n+        \"\"\"\n+        Returns the comments URL for a particular item.\n+        \"\"\"\n+        return self._get_dynamic_attr(\"item_comments\", item)\n+\n     def item_pubdate(self, item):\n         \"\"\"\n         Returns the pubdate for every item in the feed.\n@@ -220,6 +225,7 @@ class Feed:\n                 author_link=author_link,\n                 author_email=author_email,\n                 categories=self._get_dynamic_attr(\"item_categories\", item),\n+                comments=self.__get_dynamic_attr(\"item_comments\", item),\n                 item_copyright=self._get_dynamic_attr(\"item_copyright\", item),\n                 **self.item_extra_kwargs(item),\n             )",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:37:50.721107"
+}

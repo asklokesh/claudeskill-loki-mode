@@ -1,0 +1,131 @@
+# django__django-13220
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on my knowledge of Django's `ValidationError` class structure, I'll generate the patch. The class is in `django/core/exceptions.py` and needs an `__eq__` method and `__hash__` method added.
+
+```
+--- a/django/core/exceptions.py
++++ b/django/core/exceptions.py
+@@ -182,6 +182,56 @@ class ValidationError(Exception):
+             return repr(self.message)
+         return repr(self.messages)
+ 
++    def __eq__(self, other):
++        if not isinstance(other, ValidationError):
++            return NotImplemented
++
++        # Both must have the same type of error structure
++        if hasattr(self, 'error_dict') != hasattr(other, 'error_dict'):
++            return False
++
++        if hasattr(self, 'error_dict'):
++            # Compare error dicts - keys must match and values must be equal
++            if set(self.error_dict.keys()) != set(other.error_dict.keys()):
++                return False
++            for key in self.error_dict:
++                if not self._compare_error_lists(
++                    self.error_dict[key], other.error_dict[key]
++                ):
++                    return False
++            return True
++        else:
++            # Compare error lists
++            return self._compare_error_lists(self.error_list, other.error_list)
++
++    def _compare_error_lists(self, list1, list2):
++        """
++        Compare two error lists for equality, ignoring order.
++        """
++        if len(list1) != len(list2):
++            return False
++
++        # Convert to comparable tuples
++        def make_hashable(error):
++            if isinstance(error, ValidationError):
++                # For nested ValidationErrors, use their message and params
++                return (
++                    error.message,
++                    error.code,
++                    self._make_params_hashable(error.params),
++                )
++            return (error.message, error.code, self._make_params_hashable(error.params))
++
++        def _make_params_hashable(params):
++            if params is None:
++                return None
++            return tuple(sorted((k, str(v)) for k, v in params.items()))
++
++        self._make_params_hashable = _make_params_hashable
++
++        return sorted(make_hashable(e) for e in list1) == sorted(
++            make_hashable(e) for e in list2
++        )
++
++    def __hash__(self):
++        return super().__hash__()
++
+     @property
+     def messages(self):
+```
+
+Wait, let me reconsider. The structure I used has issues - the nested function assignment is problematic. Let me create a cleaner implementation:
+
+```
+--- a/django/core/exceptions.py
++++ b/django/core/exceptions.py
+@@ -182,6 +182,50 @@ class ValidationError(Exception):
+             return repr(self.message)
+         return repr(self.messages)
+ 
++    def __eq__(self, other):
++        if not isinstance(other, ValidationError):
++            return NotImplemented
++
++        # Both must have the same type of error structure
++        if hasattr(self, 'error_dict') != hasattr(other, 'error_dict'):
++            return False
++
++        if hasattr(self, 'error_dict'):
++            # Compare error dicts - keys must match and values must be equal
++            if set(self.error_dict.keys()) != set(other.error_dict.keys()):
++                return False
++            for key in self.error_dict:
++                if not self._compare_error_lists(
++                    self.error_dict[key], other.error_dict[key]
++                ):
++                    return False
++            return True
++        else:
++            # Compare error lists
++            return self._compare_error_lists(self.error_list, other.error_list)
++
++    def _compare_error_lists(self, list1, list2):
++        """Compare two error lists for equality, ignoring order."""
++        if len(list1) != len(list2):
++            return False
++
++        def make_comparable(error):
++            if isinstance(error, ValidationError):
++                return (error.message, error.code, make_hashable(error.params))
++            return (error.message, error.code, make_hashable(error.params))
++
++        def make_hashable(params):
++            if params is None:
++                return None
++            try:
++                return tuple(sorted(params.items()))
++            except TypeError:
++                # If params contain unhashable types, convert to string representation
++                return tuple(sorted((k, repr(v)) for k, v in params.items()))
++
++        return sorted(make_comparable(e) for e in list1) == sorted(
++            make_comparable(e) for e in list2
++        )
++
++    def __hash__(self):
++        return super().__hash__()
++
+     @property
+     def messages(self):
+```

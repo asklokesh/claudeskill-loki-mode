@@ -1,0 +1,17 @@
+# matplotlib__matplotlib-23563
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description, this appears to be a SWE-bench task where I need to create a patch for the matplotlib repository. The issue states the file is at `lib/mpl_toolkits/mplot3d/art3d.py`. Since this is a patch generation task for matplotlib, I'll create the patch based on the architect's analysis.
+
+The bug is that when `set_data_3d()` fails due to a broadcast error, `_verts3d` is never initialized, causing an `AttributeError` when `draw()` tries to access it. The fix is to initialize `_verts3d` in the `__init__` method of `Line3D`.
+
+--- a/lib/mpl_toolkits/mplot3d/art3d.py
++++ b/lib/mpl_toolkits/mplot3d/art3d.py
+@@ -169,6 +169,7 @@ class Line3D(lines.Line2D):
+     def __init__(self, xs, ys, zs, *args, **kwargs):
+         super().__init__([], [], *args, **kwargs)
++        self._verts3d = ([], [], [])
+         self.set_data_3d(xs, ys, zs)
+ 
+     def set_data_3d(self, xs, ys, zs):

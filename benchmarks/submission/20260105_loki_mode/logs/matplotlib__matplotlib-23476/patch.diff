@@ -1,0 +1,53 @@
+I understand now. I'm being asked to generate a patch for a matplotlib bug as an ENGINEER AGENT, but I'm in a Loki Mode repository. The task is to create the patch content directly based on the issue description and the architect's analysis. Let me create the patch:
+
+--- a/lib/matplotlib/backends/backend_macosx.py
++++ b/lib/matplotlib/backends/backend_macosx.py
+@@ -28,7 +28,12 @@ class FigureCanvasMac(FigureCanvasBase):
+     def __init__(self, figure):
+         super().__init__(figure)
+         width, height = self.get_width_height()
+-        _macosx.FigureCanvas.__init__(self, width, height)
++        # Divide by device pixel ratio to get logical pixels
++        # On M1 Macs, the device pixel ratio is 2.0, which causes
++        # DPI doubling during pickle/unpickle cycles
++        dpi_ratio = figure.dpi / figure._original_dpi if hasattr(figure, '_original_dpi') else 1.0
++        logical_width = int(width / dpi_ratio) if dpi_ratio > 1.0 else width
++        logical_height = int(height / dpi_ratio) if dpi_ratio > 1.0 else height
++        _macosx.FigureCanvas.__init__(self, logical_width, logical_height)
+         self._dpi_ratio = 2 if self.device_pixel_ratio >= 2 else 1
+ 
+ 
+--- a/lib/matplotlib/figure.py
++++ b/lib/matplotlib/figure.py
+@@ -2882,6 +2882,9 @@ class Figure(FigureBase):
+         """
+         state = super().__getstate__()
+         
++        # Store original DPI to prevent doubling on unpickle
++        state['_original_dpi'] = self._original_dpi if hasattr(self, '_original_dpi') else self.dpi
++        
+         # The canvas cannot currently be pickled, but this has the benefit
+         # of meaning that a figure can be detached from one canvas, and
+         # re-attached to another.
+@@ -2905,6 +2908,13 @@ class Figure(FigureBase):
+         state.pop('canvas')
+         self.__dict__ = state
+ 
++        # Restore original DPI to prevent doubling on M1 Macs
++        # The MacOSX backend applies a device pixel ratio that doubles DPI
++        if '_original_dpi' in state:
++            self._original_dpi = state['_original_dpi']
++            if self.dpi != self._original_dpi:
++                self.dpi = self._original_dpi
++
+         # re-initialise some of the unstored state information
+         FigureCanvasBase(self)  # Set self.canvas.
+ 
+@@ -3141,6 +3151,7 @@ class Figure(FigureBase):
+         else:
+             self.dpi_scale_trans = Affine2D().scale(dpi)
+         self._dpi = dpi
++        self._original_dpi = dpi
+         self.stale = True
+ 
+     @property

@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-13768",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "I see this is the Loki Mode skill repository, not the Django repository. As the ENGINEER AGENT for a SWE-bench task, I need to generate a patch based on the described issue without having the actual Django codebase available. Let me generate the patch based on the standard Django dispatcher.py implementation:\n\n--- a/django/dispatch/dispatcher.py\n+++ b/django/dispatch/dispatcher.py\n@@ -1,3 +1,4 @@\n+import logging\n import threading\n import warnings\n import weakref\n@@ -5,6 +6,9 @@ import weakref\n from django.utils.inspect import func_accepts_kwargs\n \n \n+logger = logging.getLogger('django.dispatch')\n+\n+\n def _make_id(target):\n     if hasattr(target, '__func__'):\n         return (id(target.__self__), id(target.__func__))\n@@ -217,6 +221,11 @@ class Signal:\n                 response = receiver(signal=self, sender=sender, **named)\n             except Exception as err:\n                 responses.append((receiver, err))\n+                logger.exception(\n+                    'Error calling %s in Signal.send_robust() (%s)',\n+                    receiver.__qualname__ if hasattr(receiver, '__qualname__') else receiver,\n+                    err,\n+                )\n             else:\n                 responses.append((receiver, response))\n         return responses",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T18:48:11.646080"
+}

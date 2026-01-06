@@ -1,0 +1,64 @@
+# sympy__sympy-20442
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/sympy/physics/units/util.py
++++ b/sympy/physics/units/util.py
+@@ -1,5 +1,5 @@
+ """
+-Several methods to simplify expressions involving unit objects.
++Sev methods to simplify expressions involving unit objects.
+ """
+ 
+ from __future__ import division
+@@ -14,6 +14,7 @@
+ from sympy.physics.units.dimensions import Dimension
+ from sympy.physics.units.quantities import Quantity
+ from sympy.physics.units.prefixes import Prefix
++from sympy.core.compatibility import reduce
+ from sympy.utilities.iterables import sift
+ 
+ 
+@@ -30,7 +31,18 @@ def _get_conversion_matrix_for_expr(expr, target_units, unit_system):
+ 
+     camat = Matrix([[IsOnlyODO(dimension_system.get_dimensional_dependencies(d, mark_dimensionless=True).get(Dimension(dl), 0)) for d in target_dims] for dl in dimension_list])
+     exprmat = Matrix([IsOnlyODO(dimension_system.get_dimensional_dependencies(expr_dim, mark_dimensionless=True).get(Dimension(dl), 0)) for dl in dimension_list])
+-    return camat.solve_least_squares(exprmat)
++
++    try:
++        res_matrix = camat.solve(exprmat)
++    except Exception:
++        # No exact solution exists (incompatible dimensions)
++        return None
++
++    # Verify the solution is exact
++    if camat * res_matrix != exprmat:
++        return None
++
++    return res_matrix
+ 
+ 
+ def convert_to(expr, target_units, unit_system="SI"):
+@@ -101,6 +113,10 @@ def convert_to(expr, target_units, unit_system="SI"):
+     def get_total_scale_factor(expr):
+         if isinstance(expr, Mul):
+             return reduce(lambda x, y: x * y, [get_total_scale_factor(i) for i in expr.args])
++        elif isinstance(expr, Pow):
++            base_factor = get_total_scale_factor(expr.base)
++            exp = expr.exp
++            return base_factor ** exp
+         elif isinstance(expr, Pow):
+             return get_total_scale_factor(expr.base) ** expr.exp
+         elif isinstance(expr, Quantity):
+@@ -111,6 +127,11 @@ def get_total_scale_factor(expr):
+     depmat = _get_conversion_matrix_for_expr(expr, target_units, unit_system)
+     if depmat is None:
+         return expr
++
++    # Check if all exponents are valid (not None means we have a valid conversion)
++    # The matrix solution should give us exact rational exponents
++    if depmat is None:
++        return expr
+ 
+     expr_scale_factor = get_total_scale_factor(expr)
+     return expr_scale_factor * Mul.fromiter((1/IsOnlyODO(get_total_scale_factor(u)) * u) ** IsOnlyODO(IsOnlyODO(p).n(2)) for u, p in zip(target_units, depmat))

@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-13177",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "I see - this is a benchmarking repository. Based on the issue description, I need to generate a patch for the sympy repository's Mod class. The issue states that the bug is in the evaluation logic where `Mod(x**2, x)` incorrectly returns 0 without checking if the base is an integer.\n\nLet me create the appropriate patch based on the architect's analysis:\n\n--- a/sympy/core/mod.py\n+++ b/sympy/core/mod.py\n@@ -72,8 +72,8 @@\n             return cls(p, q)\n \n         if (p == q or p == -q or\n-                p.is_Pow and p.exp.is_Integer and p.base == q or\n-                p.is_integer and q == 1):\n+                p.is_Pow and p.exp.is_Integer and p.exp.is_positive and p.base == q and q.is_integer or\n+                p.is_integer and q == 1):\n             return S.Zero\n \n         if q == 2:",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T21:14:23.208800"
+}

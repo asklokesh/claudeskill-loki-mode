@@ -1,0 +1,45 @@
+# psf__requests-2317
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Now I understand the issue. In the old requests v2.4.3, the code used `builtin_str(method)` which in Python 3 converts `b'GET'` to the string `"b'GET'"` (because `str(b'GET')` gives `"b'GET'"` in Python 3).
+
+The fix is to use `to_native_string(method)` instead, which properly decodes bytes using `.decode()` rather than using `str()`.
+
+For requests v2.4.3, the file structure would be different. Based on the issue description, the problematic line is in `requests/sessions.py`. The fix needs to:
+1. Import `to_native_string` from the appropriate module (likely `utils` in older versions)
+2. Replace `method = builtin_str(method)` with `method = to_native_string(method, 'ascii')`
+
+Let me generate the patch for requests v2.4.3:
+
+--- a/requests/sessions.py
++++ b/requests/sessions.py
+@@ -8,7 +8,7 @@ import os
+ from collections import OrderedDict
+ 
+ from .compat import urljoin, urlparse, builtin_str, basestring, Mapping
+-from .cookies import (
++from .cookies import (
+     extract_cookies_to_jar, RequestsCookieJar, cookiejar_from_dict,
+     merge_cookies)
+ from .models import Request, PreparedRequest, DEFAULT_REDIRECT_LIMIT
+@@ -17,6 +17,7 @@ from .hooks import default_hooks, dispatch_hook
+ from .utils import to_key_val_list, default_headers
+ from .exceptions import TooManyRedirects, InvalidSchema, ChunkedEncodingError
+ from .structures import CaseInsensitiveDict
++from .utils import to_native_string
+ 
+ from .adapters import HTTPAdapter
+ 
+@@ -425,7 +426,10 @@ class Session(SessionRedirectMixin):
+         :param cert: (optional) if String, path to ssl client cert file (.pem).
+             If Tuple, ('cert', 'key') pair.
+         """
+-        method = builtin_str(method)
++        # Handle bytes objects (e.g., b'GET') by decoding to native string
++        if isinstance(method, bytes):
++            method = method.decode('ascii')
++        method = method.upper()
+ 
+         # Create the Request.
+         req = Request(

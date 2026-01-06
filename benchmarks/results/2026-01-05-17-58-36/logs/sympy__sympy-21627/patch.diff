@@ -1,0 +1,21 @@
+Based on the architect's analysis, I need to create a patch for the sympy repository. The issue is in `sympy/functions/elementary/complexes.py` at lines 616-621 in the `Abs.eval` method. Let me generate the patch:
+
+--- a/sympy/functions/elementary/complexes.py
++++ b/sympy/functions/elementary/complexes.py
+@@ -613,11 +613,14 @@ class Abs(Function):
+         if arg.is_zero:
+             return S.Zero
+ 
++        # Handle extended real arguments early to prevent recursion
++        if arg.is_extended_real:
++            return sqrt(arg**2)
++
+         # Absolute value of a symbolic argument
+         _arg = arg
+         conj = _arg.conjugate()
+-        if _arg != conj or _arg != -conj:
+-            # arg is not real or imaginary
++        if _arg not in (conj, -conj):
+             return sqrt(_arg*conj)
+ 
+         # If argument is a positive or negative real number

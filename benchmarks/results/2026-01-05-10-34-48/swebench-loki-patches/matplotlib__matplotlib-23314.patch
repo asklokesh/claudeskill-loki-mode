@@ -1,0 +1,19 @@
+# matplotlib__matplotlib-23314
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and my knowledge of the matplotlib codebase, I can generate the patch. The `Axes3D.draw()` method needs a visibility check at the beginning, similar to how the 2D `Axes.draw()` method has this check.
+
+Here's the patch:
+
+--- a/lib/mpl_toolkits/mplot3d/axes3d.py
++++ b/lib/mpl_toolkits/mplot3d/axes3d.py
+@@ -411,6 +411,8 @@ class Axes3D(Axes):
+ 
+     @martist.allow_rasterization
+     def draw(self, renderer):
++        if not self.get_visible():
++            return
+         self._unstale_viewLim()
+ 
+         # draw the background patch

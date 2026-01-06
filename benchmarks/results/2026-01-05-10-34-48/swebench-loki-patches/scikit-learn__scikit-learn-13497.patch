@@ -1,0 +1,23 @@
+# scikit-learn__scikit-learn-13497
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/sklearn/feature_selection/_mutual_info.py
++++ b/sklearn/feature_selection/_mutual_info.py
+@@ -1,6 +1,7 @@
+ # Author: Nikolay Mayorov <n59_ru@hotmail.com>
+ # License: 3-clause BSD
+ 
++import numbers
+ import numpy as np
+ from scipy.sparse import issparse
+ 
+@@ -82,7 +83,7 @@ def _estimate_mi(X, y, discrete_features='auto', discrete_target=False,
+     n_samples, n_features = X.shape
+     X, y = check_X_y(X, y, accept_sparse='csc', y_numeric=not discrete_target)
+ 
+-    if discrete_features == 'auto':
++    if isinstance(discrete_features, str) and discrete_features == 'auto':
+         discrete_features = issparse(X)
+ 
+     if isinstance(discrete_features, bool):

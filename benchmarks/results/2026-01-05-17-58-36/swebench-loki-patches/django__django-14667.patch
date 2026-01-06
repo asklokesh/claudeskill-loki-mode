@@ -1,0 +1,39 @@
+# django__django-14667
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Perfect! This looks like it's addressing exactly the issue described. Let me verify this is the correct patch by understanding the logic:
+
+The issue is in `django/db/models/sql/query.py` in the `set_deferred_loading` method. When `defer()` is called after `only()`:
+
+1. `existing` contains the fields from `only()`
+2. `field_names` contains the fields to defer
+3. When all fields in `existing` are being deferred, `new_existing` becomes empty
+4. The original code would just set `self.deferred_loading = field_names, True`
+5. But if `field_names` contains fields NOT in the original `only()` set, those should still be deferred
+
+The fix:
+- Calculate `new_defer = field_names.difference(existing)` - fields being deferred that weren't in the `only()` set
+- Update the condition to `if (new_existing := existing.difference(field_names)) or new_defer:`
+- In the else branch, use `new_defer` instead of `field_names`
+
+This ensures that when `only("name").defer("name").defer("country")` is called, the `country` field (which wasn't in the original `only()` set) is still tracked as deferred.
+
+Now let me generate the clean patch output:
+
+--- a/django/db/models/sql/query.py
++++ b/django/db/models/sql/query.py
+@@ -2102,10 +2102,12 @@ class Query(BaseExpression):
+         if defer:
+             # Add to existing deferred names.
+             self.deferred_loading = existing.union(field_names), True
+         else:
+             # Remove names from the set of any existing "immediate load" names.
+-            if new_existing := existing.difference(field_names):
++            # Calculate which deferred fields are NOT in the original only() set
++            new_defer = field_names.difference(existing)
++            if (new_existing := existing.difference(field_names)) or new_defer:
+                 self.deferred_loading = new_existing, False
+             else:
+-                self.deferred_loading = field_names, True
++                self.deferred_loading = new_defer, True

@@ -1,0 +1,34 @@
+# astropy__astropy-14182
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on my knowledge of the astropy codebase and the issue description, I can generate the patch. The RST writer in astropy inherits from FixedWidth, and the fix requires passing `header_rows` to the parent class.
+
+```
+--- a/astropy/io/ascii/rst.py
++++ b/astropy/io/ascii/rst.py
+@@ -27,6 +27,12 @@ from .fixedwidth import FixedWidth, FixedWidthData, FixedWidthHeader
+ from .core import Column
+ 
+ 
++class SimpleRSTHeader(FixedWidthHeader):
++    """Header class for RST output that supports header_rows parameter."""
++
++    position_line = None
++
++
+ class SimpleRSTData(FixedWidthData):
+     """
+     Read and write RestructuredText simple table data.
+@@ -57,7 +63,8 @@ class RST(FixedWidth):
+         Formatting character(s) used to separate rows in the RST output.
+     """
+ 
+-    data_class = SimpleRSTData
++    header_class = SimpleRSTHeader
++    data_class = SimpleRSTData
+ 
+     def __init__(self, header_rows=None):
+-        super().__init__(delimiter_pad=None, bookend=False)
++        super().__init__(delimiter_pad=None, bookend=False, header_rows=header_rows)
+```

@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-24152",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Based on the context, I understand that this is a SWE-bench task where I need to generate a patch for a sympy issue. The actual sympy repository would be cloned in a temporary workspace during the benchmark run. Let me generate the patch based on the issue description and the architect's analysis.\n\n--- a/sympy/physics/quantum/tensorproduct.py\n+++ b/sympy/physics/quantum/tensorproduct.py\n@@ -167,7 +167,10 @@\n             if isinstance(args[i], Add):\n                 for aa in args[i].args:\n                     tp = TensorProduct(*args[:i] + (aa,) + args[i + 1:])\n-                    if isinstance(tp, TensorProduct):\n+                    c_part, nc_part = tp.args_cnc()\n+                    if len(nc_part)==1 and isinstance(nc_part[0], TensorProduct):\n+                        nc_part = (nc_part[0]._eval_expand_tensorproduct(), )\n+                    add_args.append(Mul(*c_part)*Mul(*nc_part))\n+                else:\n                         tp = tp._eval_expand_tensorproduct()\n                     add_args.append(tp)\n                 break",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T22:08:57.228217"
+}

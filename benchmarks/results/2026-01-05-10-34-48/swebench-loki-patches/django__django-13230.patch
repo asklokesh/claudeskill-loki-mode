@@ -1,0 +1,32 @@
+# django__django-13230
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+--- a/django/contrib/syndication/views.py
++++ b/django/contrib/syndication/views.py
+@@ -214,6 +214,9 @@ class Feed:
+     def item_pubdate(self, item):
+         return None
+ 
++    def item_comments(self, item):
++        return None
++
+     def item_updateddate(self, item):
+         return None
+ 
+@@ -253,6 +256,7 @@ class Feed:
+                 enc_url = self._get_dynamic_attr("item_enclosure_url", item)
+             author_name = self._get_dynamic_attr("item_author_name", item)
+             pubdate = self._get_dynamic_attr("item_pubdate", item)
++            comments = self._get_dynamic_attr("item_comments", item)
+             updateddate = self._get_dynamic_attr("item_updateddate", item)
+             enclosures = self._get_dynamic_attr("item_enclosures", item)
+ 
+@@ -295,6 +299,7 @@ class Feed:
+                 author_email=author_email,
+                 author_link=author_link,
+                 pubdate=pubdate,
++                comments=comments,
+                 updateddate=updateddate,
+                 unique_id=self._get_dynamic_attr("item_guid", item, link),
+                 unique_id_is_permalink=self._get_dynamic_attr(

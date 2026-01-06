@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-14787",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/django/utils/decorators.py\n+++ b/django/utils/decorators.py\n@@ -1,5 +1,5 @@\n \"Functions that help with dynamically creating decorators for views.\"\n-\n+from functools import WRAPPER_ASSIGNMENTS, partial, update_wrapper, wraps\n \n class classonlymethod(classmethod):\n     def __get__(self, instance, cls=None):\n@@ -23,8 +23,6 @@ def _update_method_wrapper(_wrapper, decorator):\n \n def _multi_decorate(decorators, method):\n     \"\"\"Decorate `method` with one or more function decorators.\"\"\"\n-    from functools import wraps\n-\n     # The 'method' may not have all the attributes expected from a function,\n     # e.g. if it is a functools.partial object.\n     #\n@@ -37,7 +35,11 @@ def _multi_decorate(decorators, method):\n     def _wrapper(self, *args, **kwargs):\n         bound_method = method.__get__(self, type(self))\n         return decorators(bound_method)(*args, **kwargs)\n-    return wraps(method)(_wrapper)\n+    # Copy over wrapper assignments, filtering out attributes that don't exist\n+    # on the wrapped object (e.g. functools.partial doesn't have __name__).\n+    assigned = (a for a in WRAPPER_ASSIGNMENTS if hasattr(method, a))\n+    update_wrapper(_wrapper, method, assigned=assigned)\n+    return _wrapper\n \n \n def method_decorator(decorator, name=''):",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T19:00:28.769653"
+}

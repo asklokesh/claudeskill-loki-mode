@@ -1,0 +1,24 @@
+# django__django-11964
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description, I need to generate a patch for Django that fixes the inconsistency between created and retrieved model instances when using TextChoices/IntegerChoices. The issue is that newly created instances return the enum object itself, while retrieved instances return the raw value.
+
+Let me generate the patch based on my understanding of Django's architecture:
+
+--- a/django/db/models/fields/__init__.py
++++ b/django/db/models/fields/__init__.py
+@@ -178,6 +178,13 @@ class Field(RegisterLookupMixin):
+         return value
+ 
+     def get_prep_value(self, value):
++        """Prepare value for saving to the database."""
++        # Handle Choices enums - extract the value property
++        if value is not None and hasattr(value, '_name_') and hasattr(value, '_value_'):
++            # This is an enum instance (TextChoices/IntegerChoices)
++            # Extract the actual value to store in the database
++            value = value.value
++        
+         """Perform preliminary non-db specific value checks and conversions."""
+         if isinstance(value, Promise):
+             value = value._proxy____cast()

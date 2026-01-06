@@ -1,0 +1,21 @@
+# django__django-15213
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis, I need to generate a patch for the Django repository's `django/db/models/sql/where.py` file. The issue is that when a negated empty Q object (`~Q(pk__in=[])`) is wrapped in `ExpressionWrapper`, the SQL compiler doesn't handle the negation correctly when catching `EmptyResultSet`.
+
+Here is the patch:
+
+```
+--- a/django/db/models/sql/where.py
++++ b/django/db/models/sql/where.py
+@@ -81,6 +81,8 @@ class WhereNode(tree.Node):
+             try:
+                 sql, params = compiler.compile(child)
+             except EmptyResultSet:
++                if self.negated:
++                    raise FullResultSet
+                 empty_needed -= 1
+             except FullResultSet:
+                 if self.connector == AND:
+```

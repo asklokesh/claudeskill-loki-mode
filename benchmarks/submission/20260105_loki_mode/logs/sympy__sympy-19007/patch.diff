@@ -1,0 +1,34 @@
+Based on the context, I'm being asked to generate a patch for a sympy issue as an ENGINEER AGENT, but I don't have access to the actual sympy repository. However, I can generate the patch based on the architect's analysis and my knowledge of the typical BlockMatrix implementation.
+
+The issue is that `_entry()` method in BlockMatrix doesn't handle symbolic indices properly. When indices are symbolic, it should return an unevaluated MatrixElement instead of assuming which block the element comes from.
+
+Here's the patch:
+
+--- a/sympy/matrices/expressions/blockmatrix.py
++++ b/sympy/matrices/expressions/blockmatrix.py
+@@ -1,6 +1,7 @@
+ from __future__ import print_function, division
+ 
+ from sympy import ask, Q
++from sympy.core.logic import fuzzy_not
+ from sympy.core import Basic, Add
+ from sympy.strategies import typed, exhaust, condition, do_one, unpack
+ from sympy.strategies.traverse import bottom_up
+@@ -229,6 +230,17 @@ class BlockMatrix(MatrixExpr):
+         return self._blockmul(other)
+ 
+     def _entry(self, i, j, **kwargs):
++        # Check if indices contain symbolic variables
++        from sympy.core.symbol import Symbol
++        if i.free_symbols or j.free_symbols:
++            # For symbolic indices, check if we can definitively determine the block
++            # If not, return unevaluated
++            for row_block, col_block in self.blocks.keys():
++                if not (self._row_indices[row_block] <= i).is_true or \
++                   not (i < self._row_indices[row_block + 1]).is_true or \
++                   not (self._col_indices[col_block] <= j).is_true or \
++                   not (j < self._col_indices[col_block + 1]).is_true:
++                    return MatrixElement(self, i, j)
+         # Find row entry
+         for row_block, numrows in enumerate(self.rowblocksizes):
+             if i < numrows:

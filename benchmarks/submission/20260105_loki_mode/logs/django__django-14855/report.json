@@ -1,0 +1,9 @@
+{
+  "instance_id": "django__django-14855",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "Perfect! I can see this is the exact issue I need to fix. The patch has already been generated in a previous run and matches exactly what the issue description asks for. However, the user wants me to generate it in raw unified diff format without markdown code blocks. Let me generate the proper patch:\n\n--- a/django/contrib/admin/helpers.py\n+++ b/django/contrib/admin/helpers.py\n@@ -209,7 +209,11 @@ class AdminReadonlyField:\n                     remote_obj = getattr(self.obj, name)\n                     if remote_obj is not None:\n                         url_name = f'admin:{model._meta.app_label}_{model._meta.model_name}_change'\n-                        url = reverse(url_name, args=[quote(remote_obj.pk)])\n+                        url = reverse(\n+                            url_name,\n+                            args=[quote(remote_obj.pk)],\n+                            current_app=self.model_admin.admin_site.name,\n+                        )\n                         return format_html('<a href=\"{}\">{}</a>', url, remote_obj)\n         except NoReverseMatch:\n             pass",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T19:01:36.435628"
+}

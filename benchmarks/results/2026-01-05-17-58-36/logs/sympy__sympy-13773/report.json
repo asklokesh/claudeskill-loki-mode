@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-13773",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "--- a/sympy/matrices/common.py\n+++ b/sympy/matrices/common.py\n@@ -1973,10 +1973,14 @@ class MatrixArithmetic(MatrixRequired):\n             return self._eval_scalar_rmul(other)\n \n     @call_highest_priority('__rmatmul__')\n     def __matmul__(self, other):\n-        return self.__mul__(other)\n+        other = _matrixify(other)\n+        if not getattr(other, 'is_Matrix', False):\n+            raise ValueError(\"Scalar operands are not allowed, use '*' instead\")\n+        return self.__mul__(other)\n \n     @call_highest_priority('__matmul__')\n     def __rmatmul__(self, other):\n-        return self.__rmul__(other)\n+        other = _matrixify(other)\n+        if not getattr(other, 'is_Matrix', False):\n+            raise ValueError(\"Scalar operands are not allowed, use '*' instead\")\n+        return self.__rmul__(other)",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T21:17:40.552737"
+}

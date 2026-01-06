@@ -1,0 +1,32 @@
+# django__django-14016
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and architect's analysis, I need to generate a patch for the Django Q object pickle issue. The problem is that `deepcopy` (which uses pickle) fails on non-pickleable iterables like `dict_keys`. Let me create a patch based on standard Django Q class structure:
+
+```
+--- a/django/db/models/query_utils.py
++++ b/django/db/models/query_utils.py
+@@ -40,6 +40,21 @@ class Q(tree.Node):
+     conditional = True
+ 
+     def __init__(self, *args, _connector=None, _negated=False, **kwargs):
++        # Convert non-pickleable iterables to lists to allow deepcopy/pickle
++        # operations. This handles dict_keys, dict_values, dict_items, and
++        # other view objects that cannot be pickled.
++        args = tuple(
++            (
++                (key, list(value))
++                if isinstance(value, (dict.keys().__class__, dict.values().__class__, dict.items().__class__))
++                else (key, value)
++            )
++            for key, value in args
++        ) if args else args
++        kwargs = {
++            key: list(value) if isinstance(value, (dict.keys().__class__, dict.values().__class__, dict.items().__class__)) else value
++            for key, value in kwargs.items()
++        }
+         super().__init__(children=[*args, *kwargs.items()], connector=_connector, negated=_negated)
+ 
+     def _combine(self, other, conn):
+```

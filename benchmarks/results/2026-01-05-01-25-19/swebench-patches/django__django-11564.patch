@@ -1,0 +1,199 @@
+Based on my knowledge of Django's codebase and the issue description, I'll generate the patch. The key insight from the issue is:
+
+1. The `{% url %}` template tag respects SCRIPT_NAME via `get_script_prefix()` but `{% static %}` does not
+2. The `reverse()` function respects SCRIPT_NAME but `static()` does not
+3. The fix should modify FileSystemStorage and StaticFilesStorage to support SCRIPT_NAME
+
+Let me create the patch based on Django's architecture:
+
+```
+--- a/django/conf/__init__.py
++++ b/django/conf/__init__.py
+@@ -16,6 +16,7 @@ import django
+ from django.conf import global_settings
+ from django.core.exceptions import ImproperlyConfigured
+ from django.utils.deprecation import RemovedInNextVersionWarning
++from django.utils.functional import LazyObject
+ 
+ ENVIRONMENT_VARIABLE = "DJANGO_SETTINGS_MODULE"
+ 
+--- a/django/contrib/staticfiles/storage.py
++++ b/django/contrib/staticfiles/storage.py
+@@ -1,6 +1,7 @@
+ import hashlib
+ import json
+ import os
++import posixpath
+ import re
+ from urllib.parse import unquote, urldefrag, urlsplit, urlunsplit
+ 
+@@ -15,6 +16,17 @@ from django.core.files.base import ContentFile
+ from django.core.files.storage import FileSystemStorage, storages
+ from django.utils.crypto import md5
+ from django.utils.functional import LazyObject
++from django.urls import get_script_prefix
++
++
++class StaticFilesStorage(FileSystemStorage):
++    """
++    Standard file system storage for static files.
++
++    The defaults for ``location`` and ``base_url`` are
++    ``STATIC_ROOT`` and ``STATIC_URL``.
++    """
++    pass
+ 
+ 
+ class HashedFilesMixin:
+--- a/django/core/files/storage.py
++++ b/django/core/files/storage.py
+@@ -8,6 +8,7 @@ from urllib.parse import urljoin
+ from django.conf import settings
+ from django.core.exceptions import SuspiciousFileOperation
+ from django.core.files import File, locks
++from django.core.signals import setting_changed
+ from django.utils.crypto import get_random_string
+ from django.utils.deconstruct import deconstructible
+ from django.utils.encoding import filepath_to_uri
+@@ -220,7 +221,11 @@ class FileSystemStorage(Storage):
+         return os.path.join(self.location, name)
+ 
+     def url(self, name):
+-        if self.base_url is None:
++        url = self._value(self._base_url)
++        if url is None:
+             raise ValueError("This file is not accessible via a URL.")
+-        url = filepath_to_uri(name)
+-        return urljoin(self.base_url, url)
++        if callable(url):
++            url = url()
++        url = urljoin(url, filepath_to_uri(name))
++        return url
+```
+
+Actually, let me review the issue more carefully and create a proper patch. The key changes needed are:
+
+1. Make STATIC_URL and MEDIA_URL callable in settings to support dynamic SCRIPT_NAME
+2. Modify `FileSystemStorage.url()` to call `get_script_prefix()` when the URL is relative
+
+--- a/django/conf/__init__.py
++++ b/django/conf/__init__.py
+@@ -16,6 +16,7 @@ import django
+ from django.conf import global_settings
+ from django.core.exceptions import ImproperlyConfigured
+ from django.utils.deprecation import RemovedInNextVersionWarning
++from django.utils.functional import LazyObject
+ 
+ ENVIRONMENT_VARIABLE = "DJANGO_SETTINGS_MODULE"
+ 
+--- a/django/core/files/storage.py
++++ b/django/core/files/storage.py
+@@ -8,6 +8,7 @@ from urllib.parse import urljoin
+ from django.conf import settings
+ from django.core.exceptions import SuspiciousFileOperation
+ from django.core.files import File, locks
++from django.core.signals import setting_changed
+ from django.utils.crypto import get_random_string
+ from django.utils.deconstruct import deconstructible
+ from django.utils.encoding import filepath_to_uri
+@@ -220,11 +221,25 @@ class FileSystemStorage(Storage):
+         return os.path.join(self.location, name)
+ 
++    def _value(self, value):
++        """
++        Return the value of a setting, handling callable settings.
++        """
++        if callable(value):
++            return value()
++        return value
++
+     def url(self, name):
+-        if self.base_url is None:
++        url = self._value(self._base_url)
++        if url is None:
+             raise ValueError("This file is not accessible via a URL.")
+-        url = filepath_to_uri(name)
+-        return urljoin(self.base_url, url)
++        url = urljoin(url, filepath_to_uri(name))
++        return url
+--- a/django/contrib/staticfiles/storage.py
++++ b/django/contrib/staticfiles/storage.py
+@@ -15,6 +16,17 @@ from django.core.files.base import ContentFile
+ from django.core.files.storage import FileSystemStorage, storages
+ from django.utils.crypto import md5
+ from django.utils.functional import LazyObject
++from django.urls import get_script_prefix
++
++
++class StaticFilesStorage(FileSystemStorage):
++    """
++    Standard file system storage for static files.
++
++    The defaults for ``location`` and ``base_url`` are
++    ``STATIC_ROOT`` and ``STATIC_URL``.
++    """
++    pass
+
+Based on the issue, here is the complete unified diff patch:
+
+--- a/django/conf/__init__.py
++++ b/django/conf/__init__.py
+@@ -16,6 +16,8 @@ import django
+ from django.conf import global_settings
+ from django.core.exceptions import ImproperlyConfigured
+ from django.utils.deprecation import RemovedInNextVersionWarning
++from django.utils.functional import empty
++
+ 
+ ENVIRONMENT_VARIABLE = "DJANGO_SETTINGS_MODULE"
+ 
+@@ -80,6 +82,26 @@ class LazySettings(LazyObject):
+             self._wrapped = Settings(settings_module)
+ 
+     def __repr__(self):
+         return '<%(cls)s "%(settings_module)s">' % {
+             'cls': self.__class__.__name__,
+             'settings_module': self._wrapped.SETTINGS_MODULE if self._wrapped is not empty else 'Not set',
+         }
+ 
++    @property
++    def STATIC_URL(self):
++        self._setup()
++        return self._add_script_prefix(self._wrapped.STATIC_URL)
++
++    @property
++    def MEDIA_URL(self):
++        self._setup()
++        return self._add_script_prefix(self._wrapped.MEDIA_URL)
++
++    def _add_script_prefix(self, value):
++        """
++        Add SCRIPT_NAME prefix to relative URLs.
++        """
++        if value and value.startswith('/') and not value.startswith('//'):
++            from django.urls import get_script_prefix
++            value = get_script_prefix() + value[1:]
++        return value
+--- a/django/templatetags/static.py
++++ b/django/templatetags/static.py
+@@ -1,6 +1,7 @@
+ from urllib.parse import quote, urljoin
+ 
+ from django import template
++from django.urls import get_script_prefix
+ from django.utils.encoding import iri_to_uri
+ 
+ register = template.Library()
+@@ -61,7 +62,11 @@ class StaticNode(template.Node):
+ 
+     def url(self, context):
+         path = self.path.resolve(context)
+-        return self.handle_simple(path)
++        url = self.handle_simple(path)
++        # Add SCRIPT_NAME prefix to relative URLs
++        if url and url.startswith('/') and not url.startswith('//'):
++            url = get_script_prefix() + url[1:]
++        return url
+ 
+     def render(self, context):
+         url = self.url(context)

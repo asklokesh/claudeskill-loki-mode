@@ -1,0 +1,19 @@
+# scikit-learn__scikit-learn-25570
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the architect's analysis and the issue description, I can generate the patch. The issue is in the `_hstack` method where `_add_prefix_for_feature_names_out` is called with all transformers, but it should only be called with fitted transformers to match `_iter(fitted=True)`.
+
+--- a/sklearn/compose/_column_transformer.py
++++ b/sklearn/compose/_column_transformer.py
+@@ -856,7 +856,9 @@
+             output = np.hstack(Xs)
+         if self._sklearn_output_config["dense"] == "pandas":
+             output = pd.DataFrame(output, index=X_index)
+-            names_out = self._add_prefix_for_feature_names_out(self.transformers)
++            names_out = self._add_prefix_for_feature_names_out(
++                list(self._iter(fitted=True, replace_strings=True))
++            )
+             output.columns = names_out
+ 
+         return output

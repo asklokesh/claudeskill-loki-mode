@@ -1,0 +1,76 @@
+# django__django-11905
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the context, I understand that I need to generate a patch for the Django repository based on the issue description. The issue is about preventing the `__isnull` lookup from accepting non-boolean values. Let me generate the appropriate patch based on the architect's analysis:
+
+--- a/django/db/models/lookups.py
++++ b/django/db/models/lookups.py
+@@ -1,5 +1,6 @@
+ """
+ Various helper functions for the ORM.
+ """
++import warnings
+ 
+ from django.db.models.sql.constants import LOOKUP_SEP
+ from django.utils.deprecation import RemovedInDjango40Warning
+@@ -462,6 +463,11 @@ class IsNull(BuiltinLookup):
+     prepare_rhs = False
+ 
+     def as_sql(self, compiler, connection):
++        if not isinstance(self.rhs, bool):
++            warnings.warn(
++                'Using non-boolean values for the __isnull lookup is deprecated, use True or False instead.',
++                RemovedInDjango40Warning,
++            )
+         sql, params = compiler.compile(self.lhs)
+         if self.rhs:
+             return "%s IS NULL" % sql, params
+--- a/tests/lookup/tests.py
++++ b/tests/lookup/tests.py
+@@ -1,5 +1,6 @@
+ import math
+ import unittest
++import warnings
+ from datetime import datetime
+ from operator import attrgetter
+ 
+@@ -8,6 +9,7 @@ from django.core.exceptions import FieldError
+ from django.db.models import F, Max, OuterRef, Subquery
+ from django.test import TestCase, override_settings
+ from django.test.utils import isolate_apps, register_lookup
++from django.utils.deprecation import RemovedInDjango40Warning
+ 
+ from .models import (
+     Article, Author, Game, IsNullWithNoneAsRHS, Player, Season, Tag,
+@@ -85,6 +87,30 @@ class LookupTests(TestCase):
+         self.assertSequenceEqual(Author.objects.filter(alias__isnull=False), [self.au1])
+         self.assertSequenceEqual(Author.objects.filter(alias__isnull=True), [self.au2])
+ 
++    def test_isnull_non_boolean_value_deprecated(self):
++        # Non-boolean values should raise a deprecation warning
++        msg = 'Using non-boolean values for the __isnull lookup is deprecated, use True or False instead.'
++        with warnings.catch_warnings(record=True) as w:
++            warnings.simplefilter('always')
++            list(Author.objects.filter(alias__isnull=1))
++            self.assertEqual(len(w), 1)
++            self.assertEqual(str(w[0].message), msg)
++            self.assertIs(w[0].category, RemovedInDjango40Warning)
++
++        with warnings.catch_warnings(record=True) as w:
++            warnings.simplefilter('always')
++            list(Author.objects.filter(alias__isnull=0))
++            self.assertEqual(len(w), 1)
++            self.assertEqual(str(w[0].message), msg)
++            self.assertIs(w[0].category, RemovedInDjango40Warning)
++
++        with warnings.catch_warnings(record=True) as w:
++            warnings.simplefilter('always')
++            list(Author.objects.filter(alias__isnull='true'))
++            self.assertEqual(len(w), 1)
++            self.assertEqual(str(w[0].message), msg)
++            self.assertIs(w[0].category, RemovedInDjango40Warning)
++
+     def test_lookup_int_as_str(self):
+         self.assertSequenceEqual(
+             Author.objects.filter(id='1'), [self.au1]

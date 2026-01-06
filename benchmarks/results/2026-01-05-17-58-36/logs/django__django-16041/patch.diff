@@ -1,0 +1,29 @@
+Based on the architect's analysis, I need to generate a patch for the Django formsets.py file. Since the repository is django/django and the file should be at django/forms/formsets.py, I'll create the patch based on the standard Django codebase structure and the architect's analysis.
+
+The issue is in the `empty_form` property where `empty_permitted=True` is passed explicitly while `form_kwargs` may already contain it, causing a "multiple values for keyword argument" error.
+
+The fix is to build the kwargs dictionary by first unpacking `get_form_kwargs(None)`, then explicitly setting the required keys to override any conflicts.
+
+--- a/django/forms/formsets.py
++++ b/django/forms/formsets.py
+@@ -257,12 +257,14 @@
+     @property
+     def empty_form(self):
+         form = self.form(
+-            auto_id=self.auto_id,
+-            prefix=self.add_prefix("__prefix__"),
+-            empty_permitted=True,
+-            use_required_attribute=False,
+-            **self.get_form_kwargs(None),
+-            renderer=self.renderer,
++            **{
++                **self.get_form_kwargs(None),
++                "auto_id": self.auto_id,
++                "prefix": self.add_prefix("__prefix__"),
++                "empty_permitted": True,
++                "use_required_attribute": False,
++                "renderer": self.renderer,
++            }
+         )
+         self.add_fields(form, None)
+         return form

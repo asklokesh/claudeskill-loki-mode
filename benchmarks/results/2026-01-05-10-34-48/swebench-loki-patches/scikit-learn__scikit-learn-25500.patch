@@ -1,0 +1,76 @@
+# scikit-learn__scikit-learn-25500
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description and my knowledge of the scikit-learn codebase, I can generate the patch. The issue is in `sklearn/isotonic.py` where `predict()` calls `transform()`, and when pandas output is configured, `transform()` returns a DataFrame/Series instead of a numpy array.
+
+Here is the patch:
+
+```
+--- a/sklearn/isotonic.py
++++ b/sklearn/isotonic.py
+@@ -360,8 +360,11 @@ class IsotonicRegression(RegressorMixin, TransformerMixin, BaseEstimator):
+ 
+         return self
+ 
+-    def transform(self, T):
+-        """Transform new data by linear interpolation.
++    def _transform(self, T):
++        """Internal transform without pandas output wrapper.
++
++        This method contains the core transformation logic and always returns
++        a numpy array, avoiding issues with pandas output configuration.
+ 
+         Parameters
+         ----------
+@@ -371,14 +374,6 @@ class IsotonicRegression(RegressorMixin, TransformerMixin, BaseEstimator):
+         Returns
+         -------
+         y_pred : ndarray of shape (n_samples,)
+-            The transformed data.
+-
+-        Notes
+-        -----
+-        This method can also be used for transforming new data that is distinct
+-        from training data or previously observed data. As a consequence of
+-        this, there might be some values outside of the min/max bounds of the
+-        training data.
+         """
+         if hasattr(self, "X_thresholds_"):
+             dtype = self.X_thresholds_.dtype
+@@ -395,6 +390,37 @@ class IsotonicRegression(RegressorMixin, TransformerMixin, BaseEstimator):
+             return res
+         return res.reshape(T.shape)
+ 
++    def transform(self, T):
++        """Transform new data by linear interpolation.
++
++        Parameters
++        ----------
++        T : array-like of shape (n_samples,) or (n_samples, 1)
++            Data to transform.
++
++        Returns
++        -------
++        y_pred : ndarray of shape (n_samples,)
++            The transformed data.
++
++        Notes
++        -----
++        This method can also be used for transforming new data that is distinct
++        from training data or previously observed data. As a consequence of
++        this, there might be some values outside of the min/max bounds of the
++        training data.
++        """
++        return self._transform(T)
++
+     def predict(self, T):
+         """Predict new data by linear interpolation.
+ 
+@@ -415,4 +441,4 @@ class IsotonicRegression(RegressorMixin, TransformerMixin, BaseEstimator):
+         -----
+         Prediction is equivalent to transformation in isotonic regression.
+         """
+-        return self.transform(T)
++        return self._transform(T)
+ ```

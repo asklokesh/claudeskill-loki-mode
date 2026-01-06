@@ -1,0 +1,56 @@
+# matplotlib__matplotlib-18869
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on the issue description for matplotlib/matplotlib, I'll generate the patch based on standard matplotlib repository structure. The fix needs to:
+
+1. Parse `__version__` string to create `__version_info__` tuple
+2. Add it to `lib/matplotlib/__init__.py`
+
+Let me create the patch:
+
+--- a/lib/matplotlib/__init__.py
++++ b/lib/matplotlib/__init__.py
+@@ -109,6 +109,32 @@
+ from packaging.version import Version
+ from pathlib import Path
+ import re
++from collections import namedtuple
++
++
++_VersionInfo = namedtuple('_VersionInfo',
++                          'major, minor, micro, releaselevel, serial')
++
++
++def _parse_version_info(version_string):
++    """
++    Parse version string into a namedtuple for easy comparison.
++    
++    Returns a namedtuple with major, minor, micro, releaselevel, and serial.
++    """
++    release_level_map = {'dev': 'dev', 'rc': 'candidate', 'a': 'alpha', 
++                         'b': 'beta'}
++    version_pattern = r'^(\d+)\.(\d+)\.(\d+)((?:a|b|rc|\.dev)(\d+))?'
++    match = re.match(version_pattern, version_string)
++    if match:
++        major, minor, micro = int(match.group(1)), int(match.group(2)), int(match.group(3))
++        if match.group(4):
++            level_str = match.group(4).lstrip('.')
++            releaselevel = release_level_map.get(level_str.rstrip('0123456789'), 'final')
++            serial = int(match.group(5)) if match.group(5) else 0
++        else:
++            releaselevel, serial = 'final', 0
++        return _VersionInfo(major, minor, micro, releaselevel, serial)
++    return _VersionInfo(0, 0, 0, 'final', 0)
+ 
+ 
+ # cbook must import matplotlib only within function
+@@ -179,6 +205,8 @@
+ 
+ __version__ = _get_version()
+ __version_info__ = _parse_version_info(__version__)
++
++del _parse_version_info, _VersionInfo
+ 
+ 
+ def _check_versions():

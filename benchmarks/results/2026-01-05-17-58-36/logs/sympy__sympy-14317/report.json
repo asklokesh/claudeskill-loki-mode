@@ -1,0 +1,9 @@
+{
+  "instance_id": "sympy__sympy-14317",
+  "model_name_or_path": "loki-mode-sonnet",
+  "model_patch": "This appears to be the claudeskill-loki-mode repository, not a sympy repository. I need to understand that I'm being asked to generate a patch for a hypothetical sympy issue without having access to the actual sympy codebase. Based on the issue description and my knowledge of how SymPy's printing system works, I'll generate the appropriate patch.\n\n--- a/sympy/printing/latex.py\n+++ b/sympy/printing/latex.py\n@@ -1850,7 +1850,10 @@\n             expr_latex = self._print(expr.as_expr())\n         else:\n             terms = list(expr.as_dict().items())\n-            expr_latex = ' + '.join([self._print(k*v) for k, v in terms])\n+            # Sort terms by degree (descending order) to match str/pretty printers\n+            from sympy.polys.monomials import monomial_key\n+            terms_sorted = sorted(terms, key=lambda x: monomial_key('grlex', x[0]), reverse=True)\n+            expr_latex = ' + '.join([self._print(k*v) for k, v in terms_sorted])\n             expr_latex = expr_latex.replace(' + -', ' - ')\n         \n         gens_latex = ', '.join(map(self._print, expr.gens))",
+  "attempts": 1,
+  "success": true,
+  "error": null,
+  "timestamp": "2026-01-05T21:24:54.474258"
+}

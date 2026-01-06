@@ -1,0 +1,39 @@
+# django__django-15851
+# Loki Mode Multi-Agent Patch
+# Attempts: 1
+
+Based on my knowledge of the Django codebase and the issue description, I can generate the patch. The PostgreSQL client.py file has a `settings_to_cmd_args_env` method that constructs the psql command. The issue is that `parameters` are appended after the database name, but psql requires options before the database name.
+
+```
+--- a/django/db/backends/postgresql/client.py
++++ b/django/db/backends/postgresql/client.py
+@@ -34,8 +34,8 @@ class DatabaseClient(BaseDatabaseClient):
+             args += ["-p", str(port)]
+         if dbname:
+             args += [dbname]
+-        args.extend(parameters)
+ 
++        args = [*args[:1], *parameters, *args[1:]] if parameters else args
+         return args, env
+ 
+     def runshell(self, parameters):
+```
+
+Wait, let me reconsider. The typical Django PostgreSQL client code structure appends parameters at the end. The fix should insert parameters before the dbname. Let me provide a cleaner patch:
+
+```
+--- a/django/db/backends/postgresql/client.py
++++ b/django/db/backends/postgresql/client.py
+@@ -29,13 +29,13 @@ class DatabaseClient(BaseDatabaseClient):
+             args += ["-h", host]
+         if port:
+             args += ["-p", str(port)]
++        args.extend(parameters)
+         if dbname:
+             args += [dbname]
+-        args.extend(parameters)
+ 
+         return args, env
+ 
+     def runshell(self, parameters):
+```
