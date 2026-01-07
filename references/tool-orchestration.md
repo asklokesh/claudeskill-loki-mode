@@ -37,6 +37,7 @@ ToolOrchestra achieves 70% cost reduction vs GPT-5 by explicitly optimizing for 
     "total_agent_calls": 7,
     "retry_count": 1,
     "retry_reasons": ["test_failure"],
+    "recovery_rate": 1.0,
     "model_usage": {
       "haiku": {"calls": 4, "est_tokens": 12000},
       "sonnet": {"calls": 2, "est_tokens": 8000},
@@ -46,14 +47,28 @@ ToolOrchestra achieves 70% cost reduction vs GPT-5 by explicitly optimizing for 
   "outcome": "success",
   "outcome_reason": "tests_passed_after_fix",
   "efficiency_score": 0.85,
-  "efficiency_factors": ["used_haiku_for_tests", "parallel_review"]
+  "efficiency_factors": ["used_haiku_for_tests", "parallel_review"],
+  "quality_pillars": {
+    "tool_selection_correct": true,
+    "memory_retrieval_relevant": true,
+    "goal_adherence": 1.0
+  }
 }
 ```
 
-**Why capture reasons?** (Based on [Hashrocket research](https://hashrocket.substack.com/p/the-hidden-cost-of-well-fix-it-later))
-- "UX debt turns into data debt" - recording actions without intent creates useless analytics
-- Without reasons, we can't learn patterns like "Haiku for tests = higher success rate"
-- Reasons enable filtering and recommendations that raw metrics cannot
+**Why capture these metrics?** (Based on multi-agent research)
+
+1. **Capture intent, not just actions** ([Hashrocket](https://hashrocket.substack.com/p/the-hidden-cost-of-well-fix-it-later))
+   - "UX debt turns into data debt" - recording actions without intent creates useless analytics
+
+2. **Track recovery rate** ([Assessment Framework, arXiv 2512.12791](https://arxiv.org/html/2512.12791v1))
+   - `recovery_rate = successful_retries / total_retries`
+   - Paper found "perfect tool sequencing but only 33% policy adherence" - surface metrics mask failures
+
+3. **Quality pillars beyond outcomes** ([Assessment Framework](https://arxiv.org/html/2512.12791v1))
+   - `tool_selection_correct`: Did we pick the right agent/tool?
+   - `memory_retrieval_relevant`: Did episodic/semantic retrieval help?
+   - `goal_adherence`: Did we stay on task? (0.0-1.0 score)
 
 ### Efficiency Score Calculation
 
@@ -519,12 +534,20 @@ Track these metrics in `.loki/metrics/dashboard.json`:
       "success_rate": 0.94,
       "avg_efficiency_score": 0.78,
       "avg_outcome_reward": 0.82,
-      "avg_preference_reward": 0.71
+      "avg_preference_reward": 0.71,
+      "avg_recovery_rate": 0.87,
+      "avg_goal_adherence": 0.93
+    },
+    "quality_pillars": {
+      "tool_selection_accuracy": 0.91,
+      "memory_retrieval_relevance": 0.84,
+      "policy_adherence": 0.96
     },
     "trends": {
       "efficiency": "+12% vs previous week",
       "success_rate": "+3% vs previous week",
-      "avg_agents_per_task": "-0.8 (improving)"
+      "avg_agents_per_task": "-0.8 (improving)",
+      "recovery_rate": "+5% vs previous week"
     },
     "top_performing_patterns": [
       "Haiku for unit tests (0.95 success, 0.92 efficiency)",
@@ -533,11 +556,29 @@ Track these metrics in `.loki/metrics/dashboard.json`:
     ],
     "areas_for_improvement": [
       "Complex refactors taking 2x expected time",
-      "Security review efficiency below baseline"
+      "Security review efficiency below baseline",
+      "Memory retrieval relevance below 0.85 target"
     ]
   }
 }
 ```
+
+---
+
+## Multi-Dimensional Evaluation
+
+Based on [Measurement Imbalance research (arXiv 2506.02064)](https://arxiv.org/abs/2506.02064):
+
+> "Technical metrics dominate assessments (83%), while human-centered (30%), safety (53%), and economic (30%) remain peripheral"
+
+**Loki Mode tracks four evaluation axes:**
+
+| Axis | Metrics | Current Coverage |
+|------|---------|------------------|
+| **Technical** | success_rate, efficiency_score, recovery_rate | Full |
+| **Human-Centered** | preference_reward, goal_adherence | Partial |
+| **Safety** | policy_adherence, quality_gates_passed | Full (via review system) |
+| **Economic** | model_usage, agents_spawned, wall_time | Full |
 
 ---
 
@@ -546,3 +587,6 @@ Track these metrics in `.loki/metrics/dashboard.json`:
 - [NVIDIA ToolOrchestra](https://github.com/NVlabs/ToolOrchestra) - Multi-turn tool orchestration with RL
 - [ToolScale Dataset](https://huggingface.co/datasets/nvidia/ToolScale) - Training data synthesis
 - ToolOrchestra achieves #1 on GAIA benchmark, 37.1% on HLE (2.5x more efficient than GPT-5)
+- [Assessment Framework for Agentic AI (arXiv 2512.12791)](https://arxiv.org/html/2512.12791v1) - Four-pillar evaluation model
+- [Measurement Imbalance in Agentic AI (arXiv 2506.02064)](https://arxiv.org/abs/2506.02064) - Multi-dimensional evaluation
+- [Adaptive Monitoring for Agentic AI (arXiv 2509.00115)](https://arxiv.org/abs/2509.00115) - AMDM algorithm for anomaly detection
