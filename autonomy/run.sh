@@ -15,6 +15,7 @@
 #   LOKI_SKIP_PREREQS   - Skip prerequisite checks (default: false)
 #   LOKI_DASHBOARD      - Enable web dashboard (default: true)
 #   LOKI_DASHBOARD_PORT - Dashboard port (default: 57374)
+#   LOKI_VIBE_KANBAN    - Enable automatic Vibe Kanban export (default: false)
 #
 # Resource Monitoring (prevents system overload):
 #   LOKI_RESOURCE_CHECK_INTERVAL - Check resources every N seconds (default: 300 = 5min)
@@ -97,6 +98,7 @@ DASHBOARD_PORT=${LOKI_DASHBOARD_PORT:-57374}
 RESOURCE_CHECK_INTERVAL=${LOKI_RESOURCE_CHECK_INTERVAL:-300}  # Check every 5 minutes
 RESOURCE_CPU_THRESHOLD=${LOKI_RESOURCE_CPU_THRESHOLD:-80}     # CPU % threshold
 RESOURCE_MEM_THRESHOLD=${LOKI_RESOURCE_MEM_THRESHOLD:-80}     # Memory % threshold
+ENABLE_VIBE_KANBAN=${LOKI_VIBE_KANBAN:-false}             # Automatic Vibe Kanban export
 
 # Security & Autonomy Controls
 STAGED_AUTONOMY=${LOKI_STAGED_AUTONOMY:-false}           # Require plan approval
@@ -109,6 +111,7 @@ BLOCKED_COMMANDS=${LOKI_BLOCKED_COMMANDS:-"rm -rf /,dd if=,mkfs,:(){ :|:& };:"}
 STATUS_MONITOR_PID=""
 DASHBOARD_PID=""
 RESOURCE_MONITOR_PID=""
+VIBE_KANBAN_PID=""
 
 # SDLC Phase Controls (all enabled by default)
 PHASE_UNIT_TESTS=${LOKI_PHASE_UNIT_TESTS:-true}
@@ -391,6 +394,7 @@ stop_status_monitor() {
         wait "$STATUS_MONITOR_PID" 2>/dev/null || true
     fi
     stop_resource_monitor
+    stop_vibe_kanban_sync
 }
 
 #===============================================================================
@@ -1231,6 +1235,54 @@ stop_dashboard() {
 }
 
 #===============================================================================
+# Vibe Kanban Auto-Export
+#===============================================================================
+
+start_vibe_kanban_sync() {
+    log_header "Starting Vibe Kanban Auto-Export"
+
+    local watcher_script="$SCRIPT_DIR/../scripts/vibe-sync-watcher.sh"
+
+    if [ ! -f "$watcher_script" ]; then
+        log_error "Vibe Kanban watcher script not found: $watcher_script"
+        return 1
+    fi
+
+    # Make script executable if not already
+    chmod +x "$watcher_script" 2>/dev/null || true
+
+    # Start watcher in background
+    log_step "Starting Vibe Kanban sync watcher..."
+    (
+        "$watcher_script" 2>&1 | while read line; do
+            echo "[vibe-kanban] $line" >> .loki/logs/vibe-kanban.log
+        done
+    ) &
+    VIBE_KANBAN_PID=$!
+
+    sleep 1
+
+    if kill -0 $VIBE_KANBAN_PID 2>/dev/null; then
+        log_info "Vibe Kanban sync started (PID: $VIBE_KANBAN_PID)"
+        log_info "Tasks will be automatically exported to Vibe Kanban"
+        log_info "Sync log: ${CYAN}.loki/logs/vibe-kanban.log${NC}"
+        return 0
+    else
+        log_warn "Vibe Kanban sync failed to start"
+        VIBE_KANBAN_PID=""
+        return 1
+    fi
+}
+
+stop_vibe_kanban_sync() {
+    if [ -n "$VIBE_KANBAN_PID" ]; then
+        log_step "Stopping Vibe Kanban sync..."
+        kill "$VIBE_KANBAN_PID" 2>/dev/null || true
+        wait "$VIBE_KANBAN_PID" 2>/dev/null || true
+    fi
+}
+
+#===============================================================================
 # Calculate Exponential Backoff
 #===============================================================================
 
@@ -1919,6 +1971,7 @@ cleanup() {
     log_warn "Received interrupt signal"
     stop_dashboard
     stop_status_monitor
+    stop_vibe_kanban_sync
     save_state ${RETRY_COUNT:-0} "interrupted" 130
     log_info "State saved. Run again to resume."
     exit 130
@@ -1983,6 +2036,13 @@ main() {
     # Start resource monitor (background CPU/memory checks)
     start_resource_monitor
 
+    # Start Vibe Kanban sync (if enabled)
+    if [ "$ENABLE_VIBE_KANBAN" = "true" ]; then
+        start_vibe_kanban_sync
+    else
+        log_info "Vibe Kanban sync disabled (set LOKI_VIBE_KANBAN=true to enable)"
+    fi
+
     # Initialize cross-project learnings database
     init_learnings_db
 
@@ -2009,6 +2069,7 @@ main() {
     # Cleanup
     stop_dashboard
     stop_status_monitor
+    stop_vibe_kanban_sync
 
     exit $result
 }

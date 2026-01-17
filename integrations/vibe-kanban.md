@@ -12,30 +12,54 @@ Loki Mode can optionally integrate with [Vibe Kanban](https://github.com/BloopAI
 | Code review | Automated 3-reviewer | + Visual diff review |
 | Parallel agents | Background subagents | Isolated git worktrees |
 
-## Setup
+## Quick Start (2 Terminals)
 
-### 1. Install Vibe Kanban
+The simplest way to use Vibe Kanban with Loki Mode:
 
+### Terminal 1: Start Vibe Kanban
 ```bash
 npx vibe-kanban
 ```
 
-### 2. Enable Integration in Loki Mode
+### Terminal 2: Start Loki Mode with Auto-Export
+```bash
+export LOKI_VIBE_KANBAN=true
+./autonomy/run.sh ./prd.md
+```
 
-Set environment variable before running:
+That's it! Tasks will automatically appear in Vibe Kanban as Loki Mode progresses. No manual export needed.
+
+## How It Works
+
+When `LOKI_VIBE_KANBAN=true` is set, the autonomy runner:
+1. Starts a background watcher that monitors `.loki/queue/` for changes
+2. Automatically exports tasks to Vibe Kanban format whenever the queue changes
+3. Exports to `~/.vibe-kanban/loki-tasks/` by default (configurable via `VIBE_KANBAN_DIR`)
+4. Cleans up the watcher process when Loki Mode exits
+
+## Advanced Configuration
+
+### Custom Export Directory
 
 ```bash
 export LOKI_VIBE_KANBAN=true
-./scripts/loki-wrapper.sh ./docs/requirements.md
+export VIBE_KANBAN_DIR="$HOME/.vibe-kanban/my-project"
+./autonomy/run.sh ./prd.md
 ```
 
-Or create `.loki/config/integrations.yaml`:
+### Manual Export (Old Method)
 
-```yaml
-vibe-kanban:
-  enabled: true
-  sync_interval: 30  # seconds
-  export_path: ~/.vibe-kanban/loki-tasks/
+If you prefer manual control or don't want automatic syncing:
+
+```bash
+# Terminal 1: Vibe Kanban
+npx vibe-kanban
+
+# Terminal 2: Loki Mode (without auto-export)
+./autonomy/run.sh ./prd.md
+
+# Terminal 3: Manual export when needed
+./scripts/export-to-vibe-kanban.sh
 ```
 
 ## How It Works
