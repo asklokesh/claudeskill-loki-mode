@@ -451,20 +451,24 @@ channels:
 Integrate with [Vibe Kanban](https://github.com/BloopAI/vibe-kanban) for a visual kanban board:
 
 ```bash
-# Install Vibe Kanban
+# Terminal 1: Start Vibe Kanban
 npx vibe-kanban
 
-# Export Loki tasks to Vibe Kanban
-./scripts/export-to-vibe-kanban.sh
+# Terminal 2: Run Loki Mode with automatic sync
+export LOKI_VIBE_KANBAN=true
+./autonomy/run.sh ./prd.md
 ```
+
+Tasks automatically appear in Vibe Kanban as Loki Mode progresses!
 
 **Benefits:**
 - Visual progress tracking of all active agents
+- Real-time task sync (no manual export needed)
 - Manual intervention/prioritization when needed
 - Code review with visual diffs
 - Multi-project dashboard
 
-See [integrations/vibe-kanban.md](integrations/vibe-kanban.md) for full setup guide.
+See [integrations/vibe-kanban.md](integrations/vibe-kanban.md) for full setup guide and troubleshooting.
 
 ---
 
