@@ -5,6 +5,37 @@ All notable changes to Loki Mode will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2026-01-18
+
+### Added - Batch Processing & Research Integration
+
+#### Claude Batch API Patterns
+- Added batch processing patterns to `skills/production.md`
+- 50% cost reduction for large-scale async operations (100K requests/batch)
+- Implementation patterns with polling and result streaming
+- Batch + prompt caching stacking for up to 95% savings
+- Decision table: when to use batch vs real-time API
+
+#### New Research Integrated
+- **Google A2A Protocol v0.3**: Agent Cards, capability discovery, gRPC support
+- **awesome-agentic-patterns**: 105+ production patterns catalog
+- **moridinamael orchestration critique**: "Ralph Wiggum Mode" - simpler beats complex
+
+#### Documentation
+- Added `docs/thick2thin.md`: Honest analysis of thin-skill refactoring tradeoffs
+- Updated `ACKNOWLEDGEMENTS.md` with A2A, agentic patterns sources
+- Updated `skills/agents.md` with A2A-inspired communication patterns
+- Updated `skills/00-index.md` with references/ directory pointer
+
+#### Sources
+- https://platform.claude.com/docs/en/build-with-claude/batch-processing
+- https://github.com/a2aproject/A2A
+- https://developers.googleblog.com/en/a2a-a-new-era-of-agent-interoperability/
+- https://github.com/nibzard/awesome-agentic-patterns
+- https://moridinamael.github.io/agent-orchestration/
+
+---
+
 ## [3.0.0] - 2026-01-18
 
 ### Major Release - Progressive Disclosure Architecture ("Thin Skill")
