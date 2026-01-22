@@ -74,12 +74,27 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Normalize path for GitHub Pages deployment
+    // Local: blog/index.html references ../README.md
+    // GitHub Pages: index.html at root, so ./README.md
+    function normalizePath(path) {
+        // Check if we're on GitHub Pages (path starts with /loki-mode/ or similar)
+        const isGitHubPages = window.location.hostname.includes('github.io');
+
+        if (isGitHubPages && path.startsWith('../')) {
+            // Remove ../ prefix for GitHub Pages deployment
+            return path.replace(/^\.\.\//, './');
+        }
+        return path;
+    }
+
     // Load markdown function
     async function loadMarkdown(path, container) {
         try {
             container.innerHTML = '<p style="text-align: center; color: #8b5cf6;">Loading...</p>';
 
-            const response = await fetch(path);
+            const normalizedPath = normalizePath(path);
+            const response = await fetch(normalizedPath);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -93,11 +108,12 @@ document.addEventListener('DOMContentLoaded', () => {
             // Smooth scroll to top of modal content
             container.scrollIntoView({ behavior: 'smooth', block: 'start' });
         } catch (error) {
+            const normalizedPath = normalizePath(path);
             container.innerHTML = `
                 <div style="text-align: center; padding: 2rem;">
                     <h2 style="color: #f59e0b;">Failed to load document</h2>
                     <p style="color: #cbd5e1;">${error.message}</p>
-                    <p style="color: #64748b; margin-top: 1rem;">Path: ${path}</p>
+                    <p style="color: #64748b; margin-top: 1rem;">Path: ${normalizedPath}</p>
                 </div>
             `;
         }
