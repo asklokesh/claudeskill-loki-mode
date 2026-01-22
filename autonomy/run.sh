@@ -1073,7 +1073,15 @@ stop_status_monitor() {
 #===============================================================================
 
 generate_dashboard() {
-    # Generate HTML dashboard with Anthropic design language + Agent Monitoring
+    # Copy dashboard from skill installation (v4.0.0 with Anthropic design language)
+    local skill_dashboard="$SCRIPT_DIR/.loki/dashboard/index.html"
+    if [ -f "$skill_dashboard" ]; then
+        cp "$skill_dashboard" .loki/dashboard/index.html
+        log_info "Dashboard copied from skill installation"
+        return
+    fi
+
+    # Fallback: Generate basic dashboard if external file not found
     cat > .loki/dashboard/index.html << 'DASHBOARD_HTML'
 <!DOCTYPE html>
 <html lang="en">

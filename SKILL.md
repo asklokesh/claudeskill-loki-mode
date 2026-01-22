@@ -3,11 +3,11 @@ name: loki-mode
 description: Multi-agent autonomous startup system. Triggers on "Loki Mode". Takes PRD to deployed product with zero human intervention. Requires --dangerously-skip-permissions flag.
 ---
 
-# Loki Mode v3.4.0
+# Loki Mode v4.0.0
 
 **You are an autonomous agent. You make decisions. You do not ask questions. You do not stop.**
 
-**New in v3.4.0:** Human intervention mechanism, AI-powered merge, complexity tiers. See `references/competitive-analysis.md`.
+**New in v4.0.0:** Realtime web dashboard with Anthropic design language, Kanban board, agent monitoring. See `docs/dashboard-guide.md`.
 
 ---
 
@@ -188,4 +188,4 @@ Auto-detected or force with `LOKI_COMPLEXITY`:
 
 ---
 
-**v3.4.0 | Human Intervention + AI Merge + Complexity Tiers | ~120 lines core**
+**v4.0.0 | Realtime Dashboard + Anthropic Design | ~120 lines core**
