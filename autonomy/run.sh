@@ -917,19 +917,141 @@ Monitor: watch -n 2 cat .loki/STATUS.txt
 EOF
 }
 
+#===============================================================================
+# Dashboard State Writer (Real-time sync with web dashboard)
+#===============================================================================
+
+write_dashboard_state() {
+    # Write comprehensive dashboard state to JSON for web dashboard consumption
+    local output_file=".loki/dashboard-state.json"
+
+    # Get current phase and version
+    local current_phase="BOOTSTRAP"
+    local version="unknown"
+    local started_at=""
+    local tasks_completed=0
+    local tasks_failed=0
+
+    if [ -f ".loki/state/orchestrator.json" ]; then
+        current_phase=$(python3 -c "import json; print(json.load(open('.loki/state/orchestrator.json')).get('currentPhase', 'BOOTSTRAP'))" 2>/dev/null || echo "BOOTSTRAP")
+        version=$(python3 -c "import json; print(json.load(open('.loki/state/orchestrator.json')).get('version', 'unknown'))" 2>/dev/null || echo "unknown")
+        started_at=$(python3 -c "import json; print(json.load(open('.loki/state/orchestrator.json')).get('startedAt', ''))" 2>/dev/null || echo "")
+        tasks_completed=$(python3 -c "import json; print(json.load(open('.loki/state/orchestrator.json')).get('metrics', {}).get('tasksCompleted', 0))" 2>/dev/null || echo "0")
+        tasks_failed=$(python3 -c "import json; print(json.load(open('.loki/state/orchestrator.json')).get('metrics', {}).get('tasksFailed', 0))" 2>/dev/null || echo "0")
+    fi
+
+    # Get task counts from queues
+    local pending_tasks="[]"
+    local in_progress_tasks="[]"
+    local completed_tasks="[]"
+    local failed_tasks="[]"
+    local review_tasks="[]"
+
+    [ -f ".loki/queue/pending.json" ] && pending_tasks=$(cat ".loki/queue/pending.json" 2>/dev/null || echo "[]")
+    [ -f ".loki/queue/in-progress.json" ] && in_progress_tasks=$(cat ".loki/queue/in-progress.json" 2>/dev/null || echo "[]")
+    [ -f ".loki/queue/completed.json" ] && completed_tasks=$(cat ".loki/queue/completed.json" 2>/dev/null || echo "[]")
+    [ -f ".loki/queue/failed.json" ] && failed_tasks=$(cat ".loki/queue/failed.json" 2>/dev/null || echo "[]")
+    [ -f ".loki/queue/review.json" ] && review_tasks=$(cat ".loki/queue/review.json" 2>/dev/null || echo "[]")
+
+    # Get agents state
+    local agents="[]"
+    [ -f ".loki/state/agents.json" ] && agents=$(cat ".loki/state/agents.json" 2>/dev/null || echo "[]")
+
+    # Get resources state
+    local cpu_usage=0
+    local mem_usage=0
+    local resource_status="ok"
+
+    if [ -f ".loki/state/resources.json" ]; then
+        cpu_usage=$(python3 -c "import json; print(json.load(open('.loki/state/resources.json')).get('cpu', {}).get('usage_percent', 0))" 2>/dev/null || echo "0")
+        mem_usage=$(python3 -c "import json; print(json.load(open('.loki/state/resources.json')).get('memory', {}).get('usage_percent', 0))" 2>/dev/null || echo "0")
+        resource_status=$(python3 -c "import json; print(json.load(open('.loki/state/resources.json')).get('overall_status', 'ok'))" 2>/dev/null || echo "ok")
+    fi
+
+    # Check human intervention signals
+    local mode="autonomous"
+    if [ -f ".loki/PAUSE" ]; then
+        mode="paused"
+    elif [ -f ".loki/STOP" ]; then
+        mode="stopped"
+    fi
+
+    # Get complexity tier
+    local complexity="${DETECTED_COMPLEXITY:-standard}"
+
+    # Get RARV cycle step (approximate based on iteration)
+    local rarv_step=$((ITERATION_COUNT % 4))
+    local rarv_stages='["reason", "act", "reflect", "verify"]'
+
+    # Get memory system stats (if available)
+    local episodic_count=0
+    local semantic_count=0
+    local procedural_count=0
+
+    [ -d ".loki/memory/episodic" ] && episodic_count=$(find ".loki/memory/episodic" -type f -name "*.json" 2>/dev/null | wc -l | tr -d ' ')
+    [ -d ".loki/memory/semantic" ] && semantic_count=$(find ".loki/memory/semantic" -type f -name "*.json" 2>/dev/null | wc -l | tr -d ' ')
+    [ -d ".loki/memory/skills" ] && procedural_count=$(find ".loki/memory/skills" -type f -name "*.json" 2>/dev/null | wc -l | tr -d ' ')
+
+    # Get quality gates status (if available)
+    local quality_gates='{"staticAnalysis":"pending","codeReview":"pending","antiSycophancy":"pending","testCoverage":"pending","securityScan":"pending","performance":"pending"}'
+    if [ -f ".loki/state/quality-gates.json" ]; then
+        quality_gates=$(cat ".loki/state/quality-gates.json" 2>/dev/null || echo "$quality_gates")
+    fi
+
+    # Write comprehensive JSON state
+    cat > "$output_file" << EOF
+{
+  "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "version": "$version",
+  "mode": "$mode",
+  "phase": "$current_phase",
+  "complexity": "$complexity",
+  "iteration": $ITERATION_COUNT,
+  "startedAt": "$started_at",
+  "rarv": {
+    "currentStep": $rarv_step,
+    "stages": $rarv_stages
+  },
+  "tasks": {
+    "pending": $pending_tasks,
+    "inProgress": $in_progress_tasks,
+    "review": $review_tasks,
+    "completed": $completed_tasks,
+    "failed": $failed_tasks
+  },
+  "agents": $agents,
+  "metrics": {
+    "tasksCompleted": $tasks_completed,
+    "tasksFailed": $tasks_failed,
+    "cpuUsage": $cpu_usage,
+    "memoryUsage": $mem_usage,
+    "resourceStatus": "$resource_status"
+  },
+  "memory": {
+    "episodic": $episodic_count,
+    "semantic": $semantic_count,
+    "procedural": $procedural_count
+  },
+  "qualityGates": $quality_gates
+}
+EOF
+}
+
 start_status_monitor() {
     log_step "Starting status monitor..."
 
     # Initial update
     update_status_file
     update_agents_state
+    write_dashboard_state
 
-    # Background update loop
+    # Background update loop (2-second interval for realtime dashboard)
     (
         while true; do
             update_status_file
             update_agents_state
-            sleep 5
+            write_dashboard_state
+            sleep 2
         done
     ) &
     STATUS_MONITOR_PID=$!
