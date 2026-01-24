@@ -8,6 +8,25 @@ document.addEventListener('DOMContentLoaded', () => {
         mangle: false
     });
 
+    // Mobile hamburger menu
+    const hamburger = document.getElementById('hamburger');
+    const navMenu = document.getElementById('navMenu');
+
+    if (hamburger && navMenu) {
+        hamburger.addEventListener('click', () => {
+            hamburger.classList.toggle('active');
+            navMenu.classList.toggle('active');
+        });
+
+        // Close menu when clicking a nav link
+        navMenu.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', () => {
+                hamburger.classList.remove('active');
+                navMenu.classList.remove('active');
+            });
+        });
+    }
+
     // Navigation handling
     const navLinks = document.querySelectorAll('.nav-link');
     const sections = document.querySelectorAll('.section');
@@ -47,6 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (docPath) {
                 await loadMarkdown(docPath, modalContent);
                 modal.style.display = 'block';
+                document.body.style.overflow = 'hidden';
             }
         });
     });
@@ -59,18 +79,29 @@ document.addEventListener('DOMContentLoaded', () => {
             if (postPath) {
                 await loadMarkdown(postPath, modalContent);
                 modal.style.display = 'block';
+                document.body.style.overflow = 'hidden';
             }
         });
     });
 
     // Close modal
-    closeBtn.addEventListener('click', () => {
+    function closeModal() {
         modal.style.display = 'none';
-    });
+        document.body.style.overflow = '';
+    }
+
+    closeBtn.addEventListener('click', closeModal);
 
     window.addEventListener('click', (e) => {
         if (e.target === modal) {
-            modal.style.display = 'none';
+            closeModal();
+        }
+    });
+
+    // Close modal on escape key
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.style.display === 'block') {
+            closeModal();
         }
     });
 

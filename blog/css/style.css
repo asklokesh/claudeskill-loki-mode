@@ -571,40 +571,349 @@ h1, h2, h3, h4, h5, h6 {
     color: var(--accent-secondary);
 }
 
-/* Responsive */
-@media (max-width: 768px) {
+/* Hamburger Menu */
+.hamburger {
+    display: none;
+    flex-direction: column;
+    cursor: pointer;
+    padding: 0.5rem;
+    z-index: 1001;
+}
+
+.hamburger span {
+    width: 25px;
+    height: 3px;
+    background-color: var(--text-primary);
+    margin: 3px 0;
+    border-radius: 2px;
+    transition: all 0.3s ease;
+}
+
+.hamburger.active span:nth-child(1) {
+    transform: rotate(45deg) translate(5px, 5px);
+}
+
+.hamburger.active span:nth-child(2) {
+    opacity: 0;
+}
+
+.hamburger.active span:nth-child(3) {
+    transform: rotate(-45deg) translate(7px, -6px);
+}
+
+/* Responsive - Tablet */
+@media (max-width: 1024px) {
     .nav-menu {
-        gap: 1.25rem;
-        font-size: 0.85rem;
-    }
-
-    .hero-title {
-        font-size: 3rem;
-    }
-
-    .hero-subtitle {
-        font-size: 1.25rem;
+        gap: 1.5rem;
     }
 
     .features {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     }
 
     .docs-grid {
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
+}
+
+/* Responsive - Mobile */
+@media (max-width: 768px) {
+    /* Navigation */
+    .hamburger {
+        display: flex;
+    }
+
+    .nav-container {
+        padding: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .nav-brand h1 {
+        font-size: 1.25rem;
+    }
+
+    .version {
+        font-size: 0.7rem;
+        padding: 0.25rem 0.6rem;
+    }
+
+    .nav-menu {
+        display: none;
+        width: 100%;
+        flex-direction: column;
+        gap: 0;
+        padding-top: 1rem;
+        order: 3;
+    }
+
+    .nav-menu.active {
+        display: flex;
+    }
+
+    .nav-menu li {
+        width: 100%;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .nav-link {
+        display: block;
+        padding: 1rem;
+        font-size: 1rem;
+    }
+
+    .nav-link.github {
+        margin: 1rem 0;
+        text-align: center;
+        border-radius: 0.5rem;
+    }
+
+    /* Main Content */
+    .main-content {
+        padding: 1.5rem 1rem;
+    }
+
+    /* Hero */
+    .hero {
+        padding: 2rem 0.5rem;
+    }
+
+    .hero-title {
+        font-size: 2.25rem;
+    }
+
+    .hero-subtitle {
+        font-size: 1.1rem;
+    }
+
+    .hero-description {
+        font-size: 1rem;
+        padding: 0 0.5rem;
+    }
+
+    .hero-buttons {
+        flex-direction: column;
+        gap: 1rem;
+        padding: 0 1rem;
+    }
+
+    .btn {
+        width: 100%;
+        text-align: center;
+        padding: 0.85rem 1.5rem;
+    }
+
+    /* Features */
+    .features {
         grid-template-columns: 1fr;
+        gap: 1rem;
+        margin: 2rem 0;
     }
 
-    .modal-content {
-        width: 95%;
-        padding: 2rem;
+    .feature-card {
+        padding: 1.5rem;
+        border-radius: 1rem;
     }
 
-    #docContent h1 {
-        font-size: 2rem;
+    .feature-card h3 {
+        font-size: 1.15rem;
+    }
+
+    /* Quick Start */
+    .quick-start {
+        padding: 1.5rem 1rem;
+        margin: 2rem 0;
+        border-radius: 1rem;
+    }
+
+    .quick-start h2 {
+        font-size: 1.35rem;
+    }
+
+    .quick-start pre {
+        padding: 1rem;
+        border-radius: 0.75rem;
+    }
+
+    .quick-start code {
+        font-size: 0.8rem;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+
+    /* Section Headers */
+    .section-header {
+        margin-bottom: 2rem;
     }
 
     .section-header h2 {
+        font-size: 1.75rem;
+    }
+
+    .section-header p {
+        font-size: 1rem;
+        padding: 0 0.5rem;
+    }
+
+    /* Docs Grid */
+    .docs-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .doc-card {
+        padding: 1.25rem;
+        border-radius: 1rem;
+    }
+
+    .doc-card h3 {
+        font-size: 1.1rem;
+        padding-right: 1.5rem;
+    }
+
+    .doc-card p {
+        font-size: 0.9rem;
+    }
+
+    .doc-card::after {
+        right: 1.25rem;
+        top: 1.25rem;
+        font-size: 1.25rem;
+    }
+
+    /* Modal - Full screen on mobile */
+    .modal-content {
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+        padding: 1.5rem 1rem;
+        border-radius: 0;
+        min-height: 100vh;
+        border: none;
+    }
+
+    .close {
         font-size: 2rem;
+        position: sticky;
+        top: 0;
+        background: var(--bg-card);
+        padding: 0.5rem;
+        z-index: 10;
+    }
+
+    #docContent {
+        margin-top: 1rem;
+    }
+
+    #docContent h1 {
+        font-size: 1.5rem;
+        word-wrap: break-word;
+    }
+
+    #docContent h2 {
+        font-size: 1.35rem;
+        word-wrap: break-word;
+    }
+
+    #docContent h3 {
+        font-size: 1.15rem;
+    }
+
+    #docContent p {
+        font-size: 0.95rem;
+        line-height: 1.7;
+    }
+
+    #docContent pre {
+        padding: 1rem;
+        border-radius: 0.75rem;
+        margin: 1rem -1rem;
+        width: calc(100% + 2rem);
+    }
+
+    #docContent pre code {
+        font-size: 0.75rem;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        word-break: break-all;
+    }
+
+    #docContent code {
+        font-size: 0.8rem;
+        word-wrap: break-word;
+        word-break: break-all;
+    }
+
+    #docContent ul,
+    #docContent ol {
+        margin-left: 1.5rem;
+    }
+
+    /* Tables - Scrollable on mobile */
+    #docContent table {
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 1rem 0;
+        font-size: 0.85rem;
+    }
+
+    #docContent th,
+    #docContent td {
+        padding: 0.75rem;
+        min-width: 100px;
+    }
+
+    #docContent blockquote {
+        padding: 1rem;
+        margin: 1rem 0;
+    }
+
+    /* Dashboard Preview */
+    .dashboard-preview {
+        padding: 1rem !important;
+    }
+
+    .dashboard-preview > div:first-child {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 0.5rem !important;
+    }
+
+    /* Footer */
+    .footer {
+        margin-top: 3rem;
+        padding: 2rem 1rem;
+    }
+
+    .footer-content p {
+        font-size: 0.85rem;
+    }
+}
+
+/* Extra small screens */
+@media (max-width: 380px) {
+    .hero-title {
+        font-size: 1.85rem;
+    }
+
+    .hero-subtitle {
+        font-size: 1rem;
+    }
+
+    .nav-brand h1 {
+        font-size: 1.1rem;
+    }
+
+    .section-header h2 {
+        font-size: 1.5rem;
+    }
+
+    #docContent h1 {
+        font-size: 1.35rem;
+    }
+
+    #docContent pre code {
+        font-size: 0.7rem;
     }
 }
 
