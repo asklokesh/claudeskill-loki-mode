@@ -122,7 +122,7 @@ jobs:
       - name: Create GitHub Release
         if: steps.check_release.outputs.release_exists == 'false'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
           gh release create "v${{ steps.version.outputs.version }}" \
             release/loki-mode-${{ steps.version.outputs.version }}.zip \
