@@ -92,6 +92,18 @@ AWS Bedrock's multi-agent collaboration patterns inform Loki Mode's routing and 
 | [Measurement Imbalance in Agentic AI](https://arxiv.org/abs/2506.02064) | arXiv 2506.02064 | Multi-dimensional evaluation axes |
 | [Demo-to-Deployment Gap](https://www.marktechpost.com/2025/12/24/) | Stanford/Harvard | Tool reliability vs tool selection |
 
+### Verification & Hallucination Reduction
+
+| Paper | Authors/Source | Contribution |
+|-------|----------------|--------------|
+| [Chain-of-Verification Reduces Hallucination in LLMs](https://arxiv.org/abs/2309.11495) | Dhuliawala et al., Meta AI, 2023 | 4-step verification (Draft -> Plan -> Execute -> Verify), factored execution, significant hallucination reduction (23% F1 improvement, ~77% reduction in hallucinated entities) |
+
+### Memory Systems
+
+| Paper | Authors/Source | Contribution |
+|-------|----------------|--------------|
+| [MemEvolve: Meta-Evolution of Agent Memory Systems](https://arxiv.org/abs/2512.18746) | Zhang et al., OPPO AI Agent Team, 2025 | Modular design (Encode/Store/Retrieve/Manage), task-aware strategy selection, 17.06% improvement via meta-evolution |
+
 ---
 
 ## Industry Resources
@@ -171,6 +183,10 @@ Key patterns incorporated from practitioner experience:
 | Debate Verification | DeepMind | Critical change verification |
 | One Feature at a Time | Anthropic Harness | Single feature per iteration, full verification |
 | E2E Browser Testing | Anthropic Harness | Playwright MCP for visual verification |
+| Chain-of-Verification | arXiv 2309.11495 | CoVe protocol in quality-gates.md |
+| Factored Verification | arXiv 2309.11495 | Independent verification execution |
+| Modular Memory Design | arXiv 2512.18746 | Encode/Store/Retrieve/Manage mapping in memory-system.md |
+| Task-Aware Memory Strategy | arXiv 2512.18746 | Retrieval weight adjustment by task type |
 
 ---
 
@@ -223,6 +239,52 @@ Key patterns incorporated from practitioner experience:
 
 ---
 
+## Community Projects (Open Source Claude Code Skills)
+
+The following open-source projects have pioneered patterns that influence or complement Loki Mode. Analyzed January 2026.
+
+### High-Impact Projects
+
+| Project | Stars | Key Patterns | Contribution to Loki Mode |
+|---------|-------|--------------|---------------------------|
+| [Superpowers (obra)](https://github.com/obra/superpowers) | 35K+ | Two-Stage Review, TDD Iron Law, Rationalization Tables | **ADOPTED**: Two-stage review (spec compliance THEN code quality) |
+| [agents (wshobson)](https://github.com/wshobson/agents) | 26K+ | 72 plugins, 108 agents, 129 skills, Four-Tier Model Strategy | Plugin marketplace architecture inspiration |
+| [claude-flow (ruvnet)](https://github.com/ruvnet/claude-flow) | 12K+ | Swarm topologies (hierarchical/mesh/ring/star), Consensus algorithms (Raft, Byzantine, CRDT) | Terminal-based orchestration patterns |
+| [oh-my-claudecode (Yeachan-Heo)](https://github.com/Yeachan-Heo/oh-my-claudecode) | N/A | 32 agents, 35 skills, Tiered architecture (LOW/MEDIUM/HIGH), Delegation-first | **ADOPTED**: Tiered agent escalation protocols |
+
+### Specialized Skills
+
+| Project | Focus | Key Patterns | Contribution to Loki Mode |
+|---------|-------|--------------|---------------------------|
+| [claude-mem (thedotmack)](https://github.com/thedotmack/claude-mem) | Memory | Progressive Disclosure (3-layer), SQLite + FTS5, Timeline compression | **ADOPTED**: 3-layer memory (index -> timeline -> full) |
+| [planning-with-files (OthmanAdi)](https://github.com/OthmanAdi/planning-with-files) | Planning | Manus-style 3-file pattern, PreToolUse attention hooks | **ADOPTED**: File-based planning persistence |
+| [claude-scientific-skills (K-Dense-AI)](https://github.com/K-Dense-AI/claude-scientific-skills) | Scientific | 140 domain-specific skills, modular organization | Domain organization patterns |
+| [claude-code-guide (zebbern)](https://github.com/zebbern/claude-code-guide) | Shortcuts | QNEW/QCODE/QCHECK patterns, structured reports | Shortcut command inspiration |
+
+### Key Patterns Adopted from Community
+
+| Pattern | Source | Implementation in Loki Mode |
+|---------|--------|----------------------------|
+| **Two-Stage Review** | Superpowers | Spec compliance review BEFORE code quality review |
+| **Rationalization Tables** | Superpowers | Explicit counters to common agent excuses/rationalizations |
+| **Progressive Disclosure Memory** | claude-mem | 3-layer context: index -> timeline -> full details |
+| **Tiered Agent Escalation** | oh-my-claudecode | LOW -> MEDIUM -> HIGH with explicit escalation triggers |
+| **File-Based Planning** | planning-with-files | Persistent markdown files (task_plan.md, findings.md, progress.md) |
+| **PreToolUse Attention** | planning-with-files | Re-read goals before actions to combat context drift |
+| **Fresh Subagent Per Task** | Superpowers | Clean context for each major task, prevents cross-contamination |
+
+### Patterns Under Evaluation
+
+| Pattern | Source | Status | Notes |
+|---------|--------|--------|-------|
+| **Token Economics Tracking** | claude-mem | Evaluating | discovery_tokens vs read_tokens for compression analysis |
+| **Delegation Enforcer Middleware** | oh-my-claudecode | Evaluating | Auto-inject model parameters based on task tier |
+| **Swarm Topologies** | claude-flow | Not adopted | Adds complexity beyond hierarchical orchestration |
+| **Consensus Algorithms** | claude-flow | Not adopted | Byzantine/Raft overkill for single-user autonomous operation |
+| **Shortcut Commands** | claude-code-guide | Evaluating | QNEW/QCODE/QCHECK for rapid task switching |
+
+---
+
 ## License
 
 This acknowledgements file documents the research and resources that influenced Loki Mode's design. All referenced works retain their original licenses and copyrights.
@@ -231,4 +293,4 @@ Loki Mode itself is released under the MIT License.
 
 ---
 
-*Last updated: v4.1.0*
+*Last updated: v5.1.3*

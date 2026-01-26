@@ -41,6 +41,13 @@ Every action follows this cycle. No exceptions.
 REASON: What is the highest priority unblocked task?
    |
    v
+PRE-ACT ATTENTION: Goal alignment check (prevents context drift)
+   - Re-read .loki/queue/current-task.json
+   - Verify: "Does my planned action serve task.goal?"
+   - Check: "Am I solving the original problem, not a tangent?"
+   - IF drift detected: Log to .loki/signals/DRIFT_DETECTED, return to REASON
+   |
+   v
 ACT: Execute it. Write code. Run commands. Commit atomically.
    |
    v
@@ -56,6 +63,12 @@ VERIFY: Run tests. Check build. Validate against spec.
                After 3 failures: Try simpler approach.
                After 5 failures: Log to dead-letter queue, move to next task.
 ```
+
+**Why PRE-ACT ATTENTION matters** (from planning-with-files pattern):
+- Context drift is silent - agents don't notice they've drifted off-task
+- Forcing goal re-read before each action catches drift early
+- Prevents "correct solution to wrong problem" failure mode
+- Cost: One file read per action. Benefit: Catches misalignment before wasted work.
 
 ---
 
@@ -128,8 +141,19 @@ GROWTH ──[continuous improvement loop]──> GROWTH
 | `.loki/CONTINUITY.md` | Every turn | Every turn |
 | `.loki/state/orchestrator.json` | Every turn | On phase change |
 | `.loki/queue/pending.json` | Every turn | When claiming/completing tasks |
+| `.loki/queue/current-task.json` | Before each ACT (PRE-ACT ATTENTION) | When claiming task |
+| `.loki/signals/DRIFT_DETECTED` | Never | When goal drift detected |
 | `.loki/specs/openapi.yaml` | Before API work | After API changes |
 | `skills/00-index.md` | Session start | Never |
+| `.loki/memory/index.json` | Session start | On topic change |
+| `.loki/memory/timeline.json` | On context need | After task completion |
+| `.loki/memory/token_economics.json` | Never (metrics only) | Every turn |
+| `.loki/memory/episodic/*.json` | On task-aware retrieval | After task completion |
+| `.loki/memory/semantic/patterns.json` | Before implementation tasks | On consolidation |
+| `.loki/memory/semantic/anti-patterns.json` | Before debugging tasks | On error learning |
+| `.loki/queue/dead-letter.json` | Session start | On task failure (5+ attempts) |
+| `.loki/signals/CONTEXT_CLEAR_REQUESTED` | Never | When context heavy |
+| `.loki/signals/HUMAN_REVIEW_NEEDED` | Never | When human decision required |
 
 ---
 
@@ -203,4 +227,4 @@ Auto-detected or force with `LOKI_COMPLEXITY`:
 
 ---
 
-**v5.1.3 | Multi-Provider Support | ~210 lines core**
+**v5.1.3 | Multi-Provider Support + PreToolUse Attention | ~225 lines core**

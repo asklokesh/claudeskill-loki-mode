@@ -33,6 +33,13 @@ Every iteration follows this cycle:
 | - Identify highest priority unblocked task                        |
 | - Determine exact steps to complete it                            |
 +-------------------------------------------------------------------+
+| PRE-ACT ATTENTION: Goal alignment check (prevents context drift)  |
+| - Re-read .loki/queue/current-task.json                           |
+| - Verify: "Does my planned action serve task.goal?"               |
+| - Check: "Am I solving the original problem, not a tangent?"      |
+| - IF drift detected: Log to .loki/signals/DRIFT_DETECTED,         |
+|   return to REASON                                                |
++-------------------------------------------------------------------+
 | ACT: Execute the task                                             |
 | - Dispatch subagent via Task tool OR execute directly             |
 | - Write code, run tests, fix issues                               |
@@ -64,11 +71,17 @@ Every iteration follows this cycle:
 +-------------------------------------------------------------------+
 ```
 
-**Key Enhancement:** The VERIFY step creates a feedback loop where the AI:
+**Key Enhancement (VERIFY):** The VERIFY step creates a feedback loop where the AI:
 - Tests every change automatically
 - Learns from failures by updating CONTINUITY.md
 - Retries with learned context
 - Achieves 2-3x quality improvement (Boris Cherny's observed result)
+
+**Key Enhancement (PRE-ACT ATTENTION):** The planning-with-files pattern adds a goal alignment check:
+- Context drift is silent - agents don't notice they've drifted off-task
+- Forcing goal re-read before each action catches drift early
+- Prevents "correct solution to wrong problem" failure mode
+- Cost: One file read per action. Benefit: Catches misalignment before wasted work.
 
 ---
 

@@ -1,6 +1,6 @@
 # Autonomous Coding Agents Comparison (2025-2026)
 
-> Last Updated: January 17, 2026 (v2.36.8)
+> Last Updated: January 25, 2026 (v2.36.9)
 >
 > A comprehensive comparison of Loki Mode against major autonomous coding agents and AI IDEs in the market.
 > Deep-dive comparisons validated by Opus feedback loops.
@@ -193,6 +193,117 @@
 
 ---
 
+## Open Source Claude Code Skills Comparison (v2.36.9)
+
+**Comprehensive analysis of 8 leading open-source Claude Code skills/extensions. Honest assessment of what Loki Mode lacks and does well.**
+
+### Feature Comparison
+
+| Feature | **Loki Mode** | **Superpowers** | **agents** | **claude-flow** | **oh-my-claudecode** | **claude-mem** |
+|---------|--------------|-----------------|------------|-----------------|---------------------|----------------|
+| **Stars** | 500+ | 35K+ | 26K+ | 12K+ | N/A | N/A |
+| **Agents** | 37 in 7 swarms | Fresh per task | 108 agents | Swarm-based | 32 agents | N/A |
+| **Skills** | Progressive disclosure | N/A | 129 skills | N/A | 35 skills | Memory focus |
+| **Multi-Provider** | Yes (Claude/Codex/Gemini) | No | No | No | No | No |
+| **Memory System** | 3-tier (episodic/semantic/procedural) | N/A | N/A | Hybrid | N/A | SQLite+FTS5 |
+| **Quality Gates** | 7 gates | Two-Stage Review | N/A | Consensus | Tiered | N/A |
+
+### What Loki Mode LACKS (Honest Assessment)
+
+These are patterns from competing projects that are **practically and scientifically superior** to Loki Mode's current implementation:
+
+| Gap | Source | Why It Matters | Status |
+|-----|--------|----------------|--------|
+| **Two-Stage Review** | Superpowers | Separating spec compliance from code quality prevents spec drift. | **IMPLEMENTED** (quality-gates.md lines 285-380) |
+| **Rationalization Tables** | Superpowers | Explicit counters to common agent excuses ("I'll refactor later", "This is edge case"). | **IMPLEMENTED** (troubleshooting.md lines 48-112) |
+| **Progressive Disclosure Memory** | claude-mem | 3-layer (index -> timeline -> full) is more efficient than flat memory. Reduces token usage by 60-80% on context recall. | **IMPLEMENTED** (memory-system.md lines 710-1018) |
+| **Token Economics Tracking** | claude-mem | Tracking discovery_tokens vs read_tokens identifies context bloat. Loki Mode has no visibility into token efficiency. | **IMPLEMENTED** (memory-system.md lines 855-893) |
+| **File-Based Planning Persistence** | planning-with-files | Manus-style 3-file pattern (task_plan.md, findings.md, progress.md) survives session restarts. Loki Mode loses planning context on crash. | **MEDIUM** |
+| **PreToolUse Attention Hooks** | planning-with-files | Re-reading goals BEFORE each action combats context drift. Loki Mode relies on RARV but doesn't enforce pre-action goal review. | **IMPLEMENTED** (SKILL.md lines 44-71) |
+| **Delegation Enforcer Middleware** | oh-my-claudecode | Auto-injecting model parameters prevents wrong-model-for-task. Loki Mode relies on agent discipline. | **LOW** |
+| **Shortcut Commands** | claude-code-guide | QNEW/QCODE/QCHECK patterns enable rapid task switching. Loki Mode requires full prompts. | **LOW** |
+
+### What Loki Mode Does WELL
+
+| Strength | Details | Competitors Lacking This |
+|----------|---------|-------------------------|
+| **Multi-Provider Support** | Only skill supporting Claude, Codex, and Gemini with graceful degradation | All 8 competitors are Claude-only |
+| **RARV Cycle** | Reason-Act-Reflect-Verify is more rigorous than Plan-Execute | Most use simple Plan-Execute |
+| **7-Gate Quality System** | Static analysis + 3 reviewers + devil's advocate + anti-sycophancy + severity blocking + coverage + debate | Superpowers has 2-stage, others have less |
+| **Constitutional AI Integration** | Principles-based self-critique from Anthropic research | None have this |
+| **Anti-Sycophancy (CONSENSAGENT)** | Blind review + devil's advocate prevents groupthink | None have this |
+| **Provider Abstraction Layer** | Clean degradation from full-featured to sequential-only | Claude-only projects can't degrade |
+| **37 Specialized Agents** | Purpose-built agents in 7 swarms vs generic | agents (108) has more but less organized |
+| **Research Foundation** | 10+ academic papers integrated with citations | Most have no research backing |
+
+### Superpowers Deep-Dive (35K+ Stars)
+
+The most influential open-source Claude Code skill. Key patterns:
+
+| Pattern | Description | Loki Mode Status |
+|---------|-------------|------------------|
+| **Two-Stage Review** | Stage 1: Does code match spec? Stage 2: Is code quality good? Never mix. | **IMPLEMENTED** (quality-gates.md) |
+| **TDD Iron Law** | Write failing test BEFORE implementation. No exceptions. | Already in testing.md |
+| **Rationalization Tables** | Explicit list of agent excuses with counters | **IMPLEMENTED** (troubleshooting.md) |
+| **Fresh Subagent Per Task** | New context for each major task, prevents cross-contamination | Already via Task tool |
+| **Red Flag Detection** | Patterns indicating agent is rationalizing (hedging, scope changes) | **IMPLEMENTED** (troubleshooting.md lines 71-103) |
+
+### agents Deep-Dive (26K+ Stars)
+
+Plugin marketplace architecture with unprecedented scale:
+
+| Pattern | Description | Loki Mode Status |
+|---------|-------------|------------------|
+| **72 Plugins** | Modular, focused plugins instead of monolith | Different approach (progressive disclosure) |
+| **108 Agents** | Specialized agents for specific domains | 37 agents in Loki Mode |
+| **129 Skills** | Skills as first-class objects | 10 skills in skills/ |
+| **Four-Tier Model Strategy** | Explicit tier selection with constraints | Similar to Loki Mode tiers |
+
+### claude-mem Deep-Dive
+
+Memory-focused skill with superior context management:
+
+| Pattern | Description | Loki Mode Status |
+|---------|-------------|------------------|
+| **Progressive Disclosure** | 3-layer: index (100 tokens) -> timeline (500 tokens) -> full (unlimited) | **IMPLEMENTED** (memory-system.md lines 710-1018) |
+| **SQLite + FTS5** | Full-text search on memory | Loki Mode uses file-based |
+| **Timeline Compression** | Compress old memories, keep recent detailed | **TO ADOPT** |
+| **Token Economics** | Track tokens per operation for optimization | **IMPLEMENTED** (memory-system.md lines 855-946) |
+
+### oh-my-claudecode Deep-Dive
+
+Tiered agent architecture with explicit escalation:
+
+| Pattern | Description | Loki Mode Status |
+|---------|-------------|------------------|
+| **32 Agents** | Smaller but well-organized agent set | 37 in Loki Mode |
+| **35 Skills** | Domain-specific skills | 10 skills in Loki Mode |
+| **Tiered Architecture** | LOW/MEDIUM/HIGH with explicit triggers | **IMPLEMENTED** (model-selection.md lines 180-363) |
+| **Delegation Enforcer** | Middleware auto-injects correct model | Evaluating |
+| **Delegation-First** | Agents must delegate before acting directly | Different approach |
+
+### Actionable Improvements for Loki Mode
+
+**Phase 1: Critical (v5.2.0)** - COMPLETED
+1. ~~Implement Two-Stage Review in quality-gates.md~~ - DONE (lines 285-380)
+2. ~~Add Rationalization Tables to troubleshooting.md~~ - DONE (lines 48-112)
+3. ~~Add Red Flag Detection patterns~~ - DONE (troubleshooting.md lines 71-103)
+
+**Phase 2: Critical (v5.2.0)** - COMPLETED
+4. ~~Implement Progressive Disclosure Memory (3-layer)~~ - DONE (memory-system.md lines 710-1018)
+5. ~~Add Token Economics Tracking to metrics~~ - DONE (memory-system.md lines 855-893)
+6. ~~Add PreToolUse Attention Hooks~~ - DONE (SKILL.md lines 44-71)
+
+**Phase 3: Medium Priority (v5.4.0)**
+7. File-Based Planning Persistence (Manus-style)
+8. Timeline Compression for memory
+
+**Phase 4: Evaluation (Future)**
+9. Shortcut Commands (QNEW/QCODE)
+10. Delegation Enforcer Middleware
+
+---
+
 ## Deep-Dive Comparison Results
 
 ### Patterns Adopted from Each Competitor
@@ -301,6 +412,16 @@ Each comparison was validated through:
 - [Google Antigravity Blog](https://developers.googleblog.com/build-with-google-antigravity-our-new-agentic-development-platform/)
 - [Amazon Q Developer Features](https://aws.amazon.com/q/developer/features/)
 
+### Open Source Claude Code Skills (v2.36.9)
+- [Superpowers (obra)](https://github.com/obra/superpowers) - 35K+ stars
+- [agents (wshobson)](https://github.com/wshobson/agents) - 26K+ stars
+- [claude-flow (ruvnet)](https://github.com/ruvnet/claude-flow) - 12K+ stars
+- [oh-my-claudecode (Yeachan-Heo)](https://github.com/Yeachan-Heo/oh-my-claudecode)
+- [claude-mem (thedotmack)](https://github.com/thedotmack/claude-mem)
+- [planning-with-files (OthmanAdi)](https://github.com/OthmanAdi/planning-with-files)
+- [claude-scientific-skills (K-Dense-AI)](https://github.com/K-Dense-AI/claude-scientific-skills)
+- [claude-code-guide (zebbern)](https://github.com/zebbern/claude-code-guide)
+
 ### Additional Sources
 - [Faros AI - Best AI Coding Agents 2026](https://www.faros.ai/blog/best-ai-coding-agents-2026)
 - [Artificial Analysis - Coding Agents Comparison](https://artificialanalysis.ai/insights/coding-agents-comparison)
@@ -319,6 +440,7 @@ Each comparison was validated through:
 | v2.36.5 | 2026-01-15 | Antigravity, Amazon Q |
 | v2.36.7 | 2026-01-17 | Zencoder/Zenflow |
 | v2.36.8 | 2026-01-17 | Model assignment update (Opus for SDLC phases) |
+| v2.36.9 | 2026-01-25 | Open Source Claude Code Skills (8 repos: Superpowers, agents, claude-flow, oh-my-claudecode, claude-mem, planning-with-files, claude-scientific-skills, claude-code-guide) |
 
 ---
 

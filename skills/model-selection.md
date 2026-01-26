@@ -176,3 +176,234 @@ Task(model="haiku", description="Fix import in utils.py", prompt="...")
 # Complex tasks -> Supervisor orchestration
 Task(description="Implement user authentication with OAuth", prompt="...")
 ```
+
+## Tiered Agent Escalation Triggers
+
+*Inspired by [oh-my-claudecode](https://github.com/Yeachan-Heo/oh-my-claudecode) tiered architecture.*
+
+**Tier Mapping:** LOW=fast=Haiku, MEDIUM=development=Sonnet, HIGH=planning=Opus. This section uses LOW/MEDIUM/HIGH for clarity in escalation context.
+
+Explicit signals that determine when to escalate from one tier to another. These triggers enable automatic tier selection based on task characteristics and runtime conditions.
+
+### Tier Definitions
+
+| Tier | Model | Cost | Speed | Use Case |
+|------|-------|------|-------|----------|
+| **LOW** | Haiku | Lowest | Fastest | Simple, repetitive, well-defined tasks |
+| **MEDIUM** | Sonnet | Medium | Balanced | Complex implementation, testing, debugging |
+| **HIGH** | Opus | Highest | Slowest | Critical decisions, architecture, security |
+
+### Automatic Escalation Triggers
+
+#### LOW -> MEDIUM Escalation
+
+Escalate from Haiku to Sonnet when:
+
+| Trigger | Threshold | Rationale |
+|---------|-----------|-----------|
+| Error count | > 2 consecutive failures | Haiku struggling with complexity |
+| File count | > 5 files modified | Cross-cutting changes need context |
+| Lines changed | > 200 lines | Large changes need careful review |
+| Test failures | > 3 failing tests | Need deeper debugging |
+| Dependency changes | Any package.json/requirements.txt | Dependency resolution is complex |
+| Retry attempts | > 1 retry on same task | Task too complex for current tier |
+
+```python
+# Example: Auto-escalate on repeated failures
+if task.error_count > 2:
+    task.escalate(to="sonnet", reason="Multiple failures indicate complexity")
+```
+
+#### MEDIUM -> HIGH Escalation
+
+Escalate from Sonnet to Opus when:
+
+| Trigger | Threshold | Rationale |
+|---------|-----------|-----------|
+| Error count | > 3 consecutive failures | Even Sonnet struggling |
+| Complexity score | > 15 cyclomatic | Highly complex logic needs planning |
+| Architecture files | Any changes to core/* | Architecture decisions are critical |
+| Breaking changes | API contract modifications | Need careful impact analysis |
+| Performance issues | > 2x baseline regression | Need optimization strategy |
+| Integration scope | > 3 services affected | Cross-service coordination |
+
+```python
+# Example: Auto-escalate for architecture changes
+if "core/" in modified_files or "architecture" in task.tags:
+    task.escalate(to="opus", reason="Architecture changes require planning tier")
+```
+
+#### HIGH -> HUMAN Escalation (Terminal)
+
+When even Opus fails, escalate to human intervention:
+
+| Trigger | Threshold | Action |
+|---------|-----------|--------|
+| Error count | > 5 consecutive at HIGH tier | Create `.loki/signals/HUMAN_REVIEW_NEEDED` |
+| Ambiguous requirements | Cannot determine correct behavior | Create signal with specific questions |
+| External dependencies | Blocked on third-party API/service | Document blocker, pause task |
+| Ethical concerns | Task may violate principles | Halt immediately, document concern |
+
+```python
+# Terminal escalation - no automated recovery
+if task.tier == "opus" and task.error_count > 5:
+    create_signal(".loki/signals/HUMAN_REVIEW_NEEDED", {
+        "task_id": task.id,
+        "reason": "5+ failures at planning tier",
+        "attempts": task.attempt_log,
+        "recommendation": "Manual investigation required"
+    })
+    task.status = "blocked_on_human"
+```
+
+### Threshold Rationale
+
+Why these specific thresholds? Each value is grounded in research or proven heuristics:
+
+| Threshold | Value | Justification |
+|-----------|-------|---------------|
+| **Error count > 2** (LOW->MEDIUM) | 3 attempts | "Two strikes" principle: first failure may be transient (network, timeout), second suggests genuine complexity. Third attempt warrants escalation to capable tier. |
+| **Error count > 3** (MEDIUM->HIGH) | 4 attempts | Sonnet has significantly more capability than Haiku, so allow one additional attempt before expensive Opus escalation. Balances cost vs. success rate. |
+| **Error count > 5** (HIGH->HUMAN) | 6 attempts | Planning tier (Opus) exhausted all automated reasoning options. Further attempts unlikely to succeed; human judgment required. |
+| **File count > 5** | 6+ files | Cross-cutting changes affecting 5+ files require holistic understanding of system interactions. Research on code review effectiveness shows reviewer accuracy drops with multi-file changes. |
+| **Lines changed > 200** | 200 LOC | Studies on code review effectiveness (Cisco, SmartBear) show review quality degrades significantly above 200-400 LOC. Microsoft's internal research suggests 200 LOC as optimal review size. |
+| **Cyclomatic complexity > 15** | McCabe threshold | Industry standard since McCabe (1976). NIST considers >15 "high risk." Many static analysis tools default to this threshold. |
+| **Test failures > 3** | 4+ failures | Distinguishes isolated flakiness from systemic issues. Single test failure may be flaky; 3+ indicates deeper problems requiring debugging capability. |
+| **Retry attempts > 1** | 2+ retries | First retry accounts for transient issues. Second retry at same tier signals fundamental mismatch between task complexity and model capability. |
+| **5+ successful tasks** (de-escalation) | Success streak | Sustained success indicates task complexity has reduced or model has adapted. Safe to try lower-cost tier with quick re-escalation if needed. |
+
+**References:**
+- McCabe, T.J. (1976). "A Complexity Measure." IEEE Transactions on Software Engineering.
+- Cisco Code Review Study: Optimal review size 200-400 LOC for defect detection.
+- SmartBear "Best Kept Secrets of Peer Code Review": Review effectiveness drops 50% above 400 LOC.
+
+### Always-HIGH Triggers (No Escalation Path)
+
+These tasks ALWAYS start at HIGH tier (Opus):
+
+| Category | Examples | Rationale |
+|----------|----------|-----------|
+| **Security** | Auth, encryption, secrets, RBAC | Security cannot be compromised |
+| **Architecture** | System design, service boundaries, data models | Foundation decisions |
+| **Breaking Changes** | API versioning, schema migrations, deprecations | High blast radius |
+| **Production Incidents** | Outage response, data corruption, rollback | Critical impact |
+| **Compliance** | GDPR, HIPAA, SOC2 implementations | Regulatory requirements |
+| **Cost Decisions** | Infrastructure scaling, vendor selection | Financial impact |
+
+```python
+# Example: Security tasks always use Opus
+ALWAYS_HIGH_PATTERNS = [
+    r"(auth|security|encrypt|secret|credential|token|password)",
+    r"(architecture|system.design|schema.migration)",
+    r"(production|incident|outage|rollback)",
+    r"(compliance|gdpr|hipaa|soc2|pci)",
+]
+
+if any(re.search(p, task.description, re.I) for p in ALWAYS_HIGH_PATTERNS):
+    task.tier = "HIGH"  # No escalation, start at Opus
+```
+
+### De-escalation Triggers (Cost Optimization)
+
+De-escalate to lower tier when conditions improve:
+
+| Trigger | Action | Rationale |
+|---------|--------|-----------|
+| 5+ successful tasks at tier | Consider de-escalation | Complexity resolved |
+| Single-file changes | Use LOW for isolated fixes | Simple scope |
+| Test-only changes | Use LOW for unit tests | Well-defined output |
+| Documentation | Use LOW for docs/comments | Low risk |
+
+```python
+# Example: De-escalate when task becomes routine
+if task.success_streak >= 5 and task.scope == "single_file":
+    task.deescalate(to="haiku", reason="Task scope is simple and stable")
+```
+
+### Escalation Flow Diagram
+
+```
+                    +------------------+
+                    |   Task Arrives   |
+                    +--------+---------+
+                             |
+                    +--------v---------+
+                    | Check ALWAYS_HIGH |
+                    +--------+---------+
+                             |
+              +--------------+--------------+
+              |                             |
+        [matches]                     [no match]
+              |                             |
+     +--------v--------+           +--------v--------+
+     |   START: HIGH   |           |   START: LOW    |
+     |    (Opus)       |           |    (Haiku)      |
+     +-----------------+           +--------+--------+
+                                            |
+                                   +--------v--------+
+                                   |  Execute Task   |
+                                   +--------+--------+
+                                            |
+                              +-------------+-------------+
+                              |                           |
+                        [success]                   [failure]
+                              |                           |
+                    +---------v---------+       +---------v---------+
+                    | Continue at tier  |       | Check thresholds  |
+                    +-------------------+       +---------+---------+
+                                                          |
+                                              +-----------+-----------+
+                                              |                       |
+                                        [under limit]           [over limit]
+                                              |                       |
+                                     +--------v--------+     +--------v--------+
+                                     |  Retry at tier  |     | ESCALATE tier   |
+                                     +-----------------+     +-----------------+
+```
+
+### Implementation in Provider Context
+
+For Claude (full features):
+```python
+# Task tool with tier awareness
+Task(
+    model=determine_tier(task),  # Returns "opus", "sonnet", or "haiku"
+    description=task.description,
+    prompt=task.prompt,
+    metadata={"escalation_count": task.escalation_count}
+)
+```
+
+For Codex/Gemini (degraded mode):
+```python
+# Map tiers to effort/thinking levels
+TIER_MAPPING = {
+    "codex": {"HIGH": "xhigh", "MEDIUM": "high", "LOW": "low"},
+    "gemini": {"HIGH": "high", "MEDIUM": "medium", "LOW": "low"},
+}
+effort_level = TIER_MAPPING[provider][determine_tier(task)]
+```
+
+### Metrics for Tier Optimization
+
+Track these metrics to tune escalation thresholds:
+
+| Metric | Purpose | Target |
+|--------|---------|--------|
+| Escalation rate | How often tasks escalate | < 20% |
+| First-tier success | Tasks completed without escalation | > 80% |
+| Cost per task | Average token cost by tier | Minimize |
+| Time to completion | Including escalation delays | Minimize |
+| Quality score | Post-completion review score | > 4.0/5.0 |
+
+```python
+# Log escalation events for analysis
+log_escalation(
+    task_id=task.id,
+    from_tier=current_tier,
+    to_tier=new_tier,
+    trigger=trigger_reason,
+    error_count=task.error_count,
+    timestamp=now()
+)
+```
