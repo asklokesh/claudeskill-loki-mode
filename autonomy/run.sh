@@ -3349,8 +3349,11 @@ run_autonomous() {
     log_info "Base wait: ${BASE_WAIT}s"
     log_info "Max wait: ${MAX_WAIT}s"
     log_info "Autonomy mode: $AUTONOMY_MODE"
-    log_info "Prompt repetition (Haiku): $PROMPT_REPETITION"
-    log_info "Confidence routing: $CONFIDENCE_ROUTING"
+    # Only show Claude-specific features for Claude provider
+    if [ "${PROVIDER_NAME:-claude}" = "claude" ]; then
+        log_info "Prompt repetition (Haiku): $PROMPT_REPETITION"
+        log_info "Confidence routing: $CONFIDENCE_ROUTING"
+    fi
     echo ""
 
     load_state
