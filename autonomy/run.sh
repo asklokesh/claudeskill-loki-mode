@@ -3981,7 +3981,12 @@ main() {
                 ;;
         esac
     done
-    set -- "${REMAINING_ARGS[@]}"
+    # Safe expansion for empty arrays with set -u
+    if [ ${#REMAINING_ARGS[@]} -gt 0 ]; then
+        set -- "${REMAINING_ARGS[@]}"
+    else
+        set --
+    fi
 
     # Validate PRD if provided
     if [ -n "$PRD_PATH" ] && [ ! -f "$PRD_PATH" ]; then
