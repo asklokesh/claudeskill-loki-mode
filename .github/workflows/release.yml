@@ -190,6 +190,8 @@ jobs:
     needs: release
     if: needs.release.outputs.release_created == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -220,6 +222,12 @@ jobs:
           npx vsce package
           echo "VSIX_FILE=$(ls *.vsix)" >> $GITHUB_ENV
 
+      - name: Publish to VS Code Marketplace
+        working-directory: vscode-extension
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: npx vsce publish -p "$VSCE_PAT"
+
       - name: Upload VSIX to GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -227,12 +235,6 @@ jobs:
           gh release upload "v${{ needs.release.outputs.version }}" \
             "vscode-extension/${{ env.VSIX_FILE }}" \
             --clobber
-
-      - name: Publish to VS Code Marketplace
-        working-directory: vscode-extension
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
-        run: npx vsce publish -p "$VSCE_PAT"
 
   update-homebrew:
     needs: [release, publish-npm, publish-docker]
