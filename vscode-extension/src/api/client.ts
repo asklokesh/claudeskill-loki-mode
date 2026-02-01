@@ -49,7 +49,6 @@ function createApiError(message: string, code: string, statusCode?: number, resp
  */
 export class LokiApiClient {
     private readonly config: Required<ApiClientConfig>;
-    private eventSource: EventSource | null = null;
     private eventCallbacks: Map<string, Set<EventCallback>> = new Map();
     private typedCallbacks: Partial<EventCallbacks> = {};
 
@@ -253,11 +252,16 @@ export class LokiApiClient {
     }
 
     // =========================================================================
-    // SSE Event Subscription
+    // Polling-based Event Subscription (VS Code compatible)
+    // Note: EventSource is not available in Node.js/VS Code extension context
+    // Using polling as a reliable alternative
     // =========================================================================
 
+    private pollingInterval: ReturnType<typeof setInterval> | null = null;
+    private readonly POLLING_INTERVAL_MS = 2000;
+
     /**
-     * Subscribe to server-sent events
+     * Subscribe to events using polling
      * @param callback - Callback function for all events
      * @returns Disposable to unsubscribe
      */
@@ -269,14 +273,14 @@ export class LokiApiClient {
         }
         this.eventCallbacks.get(key)!.add(callback);
 
-        // Create EventSource if not exists
-        this.ensureEventSource();
+        // Start polling if not already started
+        this.startPolling();
 
         // Return disposable
         return {
             dispose: () => {
                 this.eventCallbacks.get(key)?.delete(callback);
-                this.cleanupEventSourceIfEmpty();
+                this.cleanupPollingIfEmpty();
             },
         };
     }
@@ -294,8 +298,8 @@ export class LokiApiClient {
             }
         }
 
-        // Create EventSource if not exists
-        this.ensureEventSource();
+        // Start polling if not already started
+        this.startPolling();
 
         // Return disposable
         return {
@@ -303,39 +307,57 @@ export class LokiApiClient {
                 for (const type of Object.keys(callbacks)) {
                     delete (this.typedCallbacks as Record<string, unknown>)[type];
                 }
-                this.cleanupEventSourceIfEmpty();
+                this.cleanupPollingIfEmpty();
             },
         };
     }
 
     /**
-     * Ensure EventSource is created and connected
+     * Start polling for status updates
      */
-    private ensureEventSource(): void {
-        if (this.eventSource) {
+    private startPolling(): void {
+        if (this.pollingInterval) {
             return;
         }
 
-        const url = `${this.config.baseUrl}/events`;
-        this.eventSource = new EventSource(url);
+        console.log('[LokiApiClient] Starting polling for status updates');
 
-        this.eventSource.onmessage = (event) => {
-            try {
-                const parsedEvent = JSON.parse(event.data) as LokiEvent;
-                this.dispatchEvent(parsedEvent);
-            } catch (error) {
-                console.error('[LokiApiClient] Failed to parse SSE event:', error);
-            }
-        };
+        // Poll immediately
+        this.pollForEvents();
 
-        this.eventSource.onerror = (error) => {
-            console.error('[LokiApiClient] SSE connection error:', error);
-            // EventSource will automatically reconnect
-        };
+        // Then poll at regular intervals
+        this.pollingInterval = setInterval(() => {
+            this.pollForEvents();
+        }, this.POLLING_INTERVAL_MS);
+    }
 
-        this.eventSource.onopen = () => {
-            console.log('[LokiApiClient] SSE connection established');
-        };
+    /**
+     * Poll the server for the latest status and dispatch as events
+     */
+    private async pollForEvents(): Promise<void> {
+        try {
+            const status = await this.getStatus();
+
+            // Create a synthetic status poll event
+            const event: LokiEvent = {
+                type: 'status',
+                timestamp: new Date().toISOString(),
+                data: status
+            } as LokiEvent;
+
+            this.dispatchEvent(event);
+        } catch (error) {
+            // Server might be unavailable - dispatch connection error event
+            const errorEvent: LokiEvent = {
+                type: 'connection:error',
+                timestamp: new Date().toISOString(),
+                data: {
+                    message: error instanceof Error ? error.message : 'Connection error',
+                    code: 'POLL_ERROR'
+                }
+            } as LokiEvent;
+            this.dispatchEvent(errorEvent);
+        }
     }
 
     /**
@@ -367,24 +389,25 @@ export class LokiApiClient {
     }
 
     /**
-     * Clean up EventSource if no callbacks remain
+     * Clean up polling if no callbacks remain
      */
-    private cleanupEventSourceIfEmpty(): void {
+    private cleanupPollingIfEmpty(): void {
         const hasGenericCallbacks = (this.eventCallbacks.get('all')?.size ?? 0) > 0;
         const hasTypedCallbacks = Object.keys(this.typedCallbacks).length > 0;
 
         if (!hasGenericCallbacks && !hasTypedCallbacks) {
-            this.closeEventSource();
+            this.stopPolling();
         }
     }
 
     /**
-     * Close the EventSource connection
+     * Stop polling
      */
-    private closeEventSource(): void {
-        if (this.eventSource) {
-            this.eventSource.close();
-            this.eventSource = null;
+    private stopPolling(): void {
+        if (this.pollingInterval) {
+            clearInterval(this.pollingInterval);
+            this.pollingInterval = null;
+            console.log('[LokiApiClient] Stopped polling');
         }
     }
 
@@ -396,7 +419,7 @@ export class LokiApiClient {
      * Dispose of the client and clean up resources
      */
     dispose(): void {
-        this.closeEventSource();
+        this.stopPolling();
         this.eventCallbacks.clear();
         this.typedCallbacks = {};
     }

@@ -219,7 +219,7 @@ export class TaskTreeProvider implements vscode.TreeDataProvider<TaskItem> {
 
     private async fetchTasks(): Promise<void> {
         try {
-            const response = await fetch(`${this.apiEndpoint}/api/tasks`);
+            const response = await fetch(`${this.apiEndpoint}/tasks`);
             if (response.ok) {
                 const data = await response.json() as { tasks?: LokiTask[] };
                 this.tasks = data.tasks || [];

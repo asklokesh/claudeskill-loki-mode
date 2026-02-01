@@ -356,6 +356,27 @@ export interface HeartbeatEvent extends BaseEvent {
 }
 
 /**
+ * Status poll event (used by VS Code extension polling)
+ */
+export interface StatusPollEvent {
+    type: 'status';
+    timestamp: string;
+    data: StatusResponse;
+}
+
+/**
+ * Connection error event (used by VS Code extension polling)
+ */
+export interface ConnectionErrorEvent {
+    type: 'connection:error';
+    timestamp: string;
+    data: {
+        message: string;
+        code: string;
+    };
+}
+
+/**
  * Union type of all SSE events
  */
 export type LokiEvent =
@@ -371,7 +392,9 @@ export type LokiEvent =
     | TaskFailedEvent
     | LogEvent
     | ErrorEvent
-    | HeartbeatEvent;
+    | HeartbeatEvent
+    | StatusPollEvent
+    | ConnectionErrorEvent;
 
 /**
  * Event type string literals
@@ -400,6 +423,8 @@ export interface EventCallbacks {
     'log'?: (event: LogEvent) => void;
     'error'?: (event: ErrorEvent) => void;
     'heartbeat'?: (event: HeartbeatEvent) => void;
+    'status'?: (event: StatusPollEvent) => void;
+    'connection:error'?: (event: ConnectionErrorEvent) => void;
 }
 
 // =============================================================================

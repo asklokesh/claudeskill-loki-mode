@@ -701,9 +701,7 @@ export function activate(context: vscode.ExtensionContext): void {
  */
 export function deactivate(): void {
     logger.info('Deactivating Loki Mode extension...');
-
     stopPolling();
-    Logger.dispose();
-
     logger.info('Loki Mode extension deactivated');
+    Logger.dispose();
 }

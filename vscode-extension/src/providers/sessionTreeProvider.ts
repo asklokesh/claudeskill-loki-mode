@@ -384,7 +384,7 @@ export class SessionTreeProvider implements vscode.TreeDataProvider<SessionItem>
 
     private async fetchSession(): Promise<void> {
         try {
-            const response = await fetch(`${this.apiEndpoint}/session`);
+            const response = await fetch(`${this.apiEndpoint}/status`);
             if (response.ok) {
                 const data = await response.json() as Record<string, unknown>;
                 this.session = {

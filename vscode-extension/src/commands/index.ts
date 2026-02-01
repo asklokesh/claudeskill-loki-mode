@@ -5,28 +5,26 @@ import { StatusBarManager, showQuickPickMenu } from '../views/statusBarItem';
 
 /**
  * Provider options for starting a session
+ * Maps display labels to provider values
  */
-interface ProviderOption {
-    label: string;
-    description: string;
-    value: 'claude' | 'codex' | 'gemini';
-}
+const PROVIDER_MAP: Record<string, 'claude' | 'codex' | 'gemini'> = {
+    'Claude Code': 'claude',
+    'OpenAI Codex': 'codex',
+    'Google Gemini': 'gemini'
+};
 
-const PROVIDER_OPTIONS: ProviderOption[] = [
+const PROVIDER_OPTIONS: vscode.QuickPickItem[] = [
     {
         label: 'Claude Code',
-        description: 'Full features (recommended)',
-        value: 'claude'
+        description: 'Full features (recommended)'
     },
     {
         label: 'OpenAI Codex',
-        description: 'Degraded mode - sequential only',
-        value: 'codex'
+        description: 'Degraded mode - sequential only'
     },
     {
         label: 'Google Gemini',
-        description: 'Degraded mode - sequential only',
-        value: 'gemini'
+        description: 'Degraded mode - sequential only'
     }
 ];
 
@@ -173,11 +171,7 @@ async function startSession(deps: CommandDependencies): Promise<void> {
 
     // Step 2: Select provider
     const providerPick = await vscode.window.showQuickPick(
-        PROVIDER_OPTIONS.map(p => ({
-            label: p.label,
-            description: p.description,
-            value: p.value
-        })),
+        PROVIDER_OPTIONS,
         {
             placeHolder: 'Select AI Provider',
             title: 'Choose Provider for Loki Mode'
@@ -188,7 +182,8 @@ async function startSession(deps: CommandDependencies): Promise<void> {
         return;
     }
 
-    const provider = (providerPick as ProviderOption).value;
+    // Map the label back to the provider value
+    const provider = PROVIDER_MAP[providerPick.label] || 'claude';
     outputChannel.appendLine(`Selected provider: ${provider}`);
 
     // Step 3: Start the session
@@ -199,13 +194,13 @@ async function startSession(deps: CommandDependencies): Promise<void> {
             provider: provider
         });
 
-        const response = await fetch(`${apiEndpoint}/api/session/start`, {
+        const response = await fetch(`${apiEndpoint}/start`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                prdPath,
+                prd: prdPath,
                 provider
             })
         });
@@ -257,7 +252,7 @@ async function stopSession(deps: CommandDependencies): Promise<void> {
     }
 
     try {
-        const response = await fetch(`${apiEndpoint}/api/session/stop`, {
+        const response = await fetch(`${apiEndpoint}/stop`, {
             method: 'POST'
         });
 
@@ -295,7 +290,7 @@ async function pauseSession(deps: CommandDependencies): Promise<void> {
     }
 
     try {
-        const response = await fetch(`${apiEndpoint}/api/session/pause`, {
+        const response = await fetch(`${apiEndpoint}/pause`, {
             method: 'POST'
         });
 
@@ -332,7 +327,7 @@ async function resumeSession(deps: CommandDependencies): Promise<void> {
     }
 
     try {
-        const response = await fetch(`${apiEndpoint}/api/session/resume`, {
+        const response = await fetch(`${apiEndpoint}/resume`, {
             method: 'POST'
         });
 
@@ -438,7 +433,7 @@ async function injectInput(deps: CommandDependencies): Promise<void> {
     }
 
     try {
-        const response = await fetch(`${apiEndpoint}/api/session/input`, {
+        const response = await fetch(`${apiEndpoint}/input`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
