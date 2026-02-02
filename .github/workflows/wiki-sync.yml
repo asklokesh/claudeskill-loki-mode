@@ -8,16 +8,7 @@ on:
     paths:
       - 'wiki/**'
       - 'CHANGELOG.md'
-      - 'README.md'
-      - 'autonomy/**'
-      - 'api/**'
   workflow_dispatch:
-    inputs:
-      enhance_with_ai:
-        description: 'Enhance wiki content with Claude Opus AI'
-        required: false
-        default: 'false'
-        type: boolean
 
 permissions:
   contents: write
@@ -40,58 +31,63 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Clone wiki
+      - name: Clone or init wiki
         run: |
-          git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git wiki-repo || mkdir wiki-repo
-          cd wiki-repo
-          git init 2>/dev/null || true
+          git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git wiki-repo 2>/dev/null || {
+            mkdir -p wiki-repo
+            cd wiki-repo
+            git init
+            git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git
+          }
 
-      - name: Update wiki content
+      - name: Copy wiki pages
         run: |
-          # Copy wiki pages
           cp -r wiki/* wiki-repo/ 2>/dev/null || true
-
-          # Update version in all pages
           cd wiki-repo
-          find . -name "*.md" -exec sed -i "s/Version:.*/Version: ${{ steps.version.outputs.version }}/g" {} \;
 
-          # Update Home page with latest version
+          # Update version references
+          VERSION="${{ steps.version.outputs.version }}"
+          find . -name "*.md" -type f -exec sed -i "s/Version: .*/Version: $VERSION/g" {} \; 2>/dev/null || true
+
           if [ -f "Home.md" ]; then
-            sed -i "s/Current Version:.*/Current Version: **${{ steps.version.outputs.version }}**/g" Home.md
+            sed -i "s/Current Version: \*\*.*\*\*/Current Version: **$VERSION**/g" Home.md 2>/dev/null || true
           fi
 
-      - name: Generate Changelog page
+      - name: Generate Changelog
         run: |
-          cat > wiki-repo/Changelog.md << 'EOF'
-          # Changelog
-
-          For the complete changelog, see the [CHANGELOG.md](https://github.com/asklokesh/loki-mode/blob/main/CHANGELOG.md) in the main repository.
-
-          ---
-
-          EOF
-
-          # Append first 200 lines of changelog
-          head -200 CHANGELOG.md >> wiki-repo/Changelog.md
-
-          echo "" >> wiki-repo/Changelog.md
-          echo "---" >> wiki-repo/Changelog.md
-          echo "" >> wiki-repo/Changelog.md
-          echo "[View full changelog](https://github.com/asklokesh/loki-mode/blob/main/CHANGELOG.md)" >> wiki-repo/Changelog.md
+          cd wiki-repo
+          echo "# Changelog" > Changelog.md
+          echo "" >> Changelog.md
+          echo "See [CHANGELOG.md](https://github.com/asklokesh/loki-mode/blob/main/CHANGELOG.md) for complete history." >> Changelog.md
+          echo "" >> Changelog.md
+          echo "---" >> Changelog.md
+          echo "" >> Changelog.md
+          head -150 ../CHANGELOG.md >> Changelog.md 2>/dev/null || true
 
       - name: Push to wiki
         run: |
           cd wiki-repo
           git add -A
-          git diff --staged --quiet || git commit -m "Sync wiki for v${{ steps.version.outputs.version }}"
-          git push origin master || git push origin main || echo "Wiki push skipped (no changes or new repo)"
+          if git diff --staged --quiet; then
+            echo "No changes to push"
+          else
+            git commit -m "Sync wiki for v${{ steps.version.outputs.version }}"
+            git push origin HEAD:master 2>/dev/null || git push origin HEAD:main 2>/dev/null || echo "Push failed - wiki may need initialization"
+          fi
 
-  enhance-wiki:
+      - name: Summary
+        run: |
+          echo "## Wiki Sync Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Version: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Wiki URL: https://github.com/${{ github.repository }}/wiki" >> $GITHUB_STEP_SUMMARY
+
+  enhance-with-ai:
     runs-on: ubuntu-latest
     needs: sync-wiki
-    if: github.event_name == 'release' || github.event.inputs.enhance_with_ai == 'true'
+    if: github.event_name == 'release'
     steps:
-      - name: Checkout main repo
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -103,50 +99,52 @@ jobs:
         id: version
         run: echo "version=$(cat VERSION)" >> $GITHUB_OUTPUT
 
-      - name: Clone wiki for enhancement
+      - name: Clone wiki
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git wiki-repo
 
-      - name: Generate state machine diagrams with Claude Opus
-        if: env.ANTHROPIC_API_KEY != ''
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      - name: Create AI enhancement script
         run: |
-          cat > generate-diagrams.js << 'DIAGRAMSCRIPT'
-          const https = require('https');
-          const fs = require('fs');
+          cat > enhance.mjs << 'ENDSCRIPT'
+          import https from 'https';
+          import fs from 'fs';
+          import path from 'path';
 
-          const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+          const API_KEY = process.env.ANTHROPIC_API_KEY;
+          const VERSION = process.env.VERSION || 'latest';
+
+          if (!API_KEY) {
+            console.log('No ANTHROPIC_API_KEY - skipping AI enhancement');
+            process.exit(0);
+          }
 
           async function callClaude(prompt) {
             return new Promise((resolve, reject) => {
-              const data = JSON.stringify({
+              const body = JSON.stringify({
                 model: 'claude-opus-4-5-20251101',
                 max_tokens: 8192,
                 messages: [{ role: 'user', content: prompt }]
               });
 
-              const options = {
+              const req = https.request({
                 hostname: 'api.anthropic.com',
                 port: 443,
                 path: '/v1/messages',
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
-                  'x-api-key': ANTHROPIC_API_KEY,
+                  'x-api-key': API_KEY,
                   'anthropic-version': '2023-06-01'
                 }
-              };
-
-              const req = https.request(options, (res) => {
-                let body = '';
-                res.on('data', chunk => body += chunk);
+              }, (res) => {
+                let data = '';
+                res.on('data', chunk => data += chunk);
                 res.on('end', () => {
                   try {
-                    const response = JSON.parse(body);
-                    resolve(response.content[0].text);
+                    const json = JSON.parse(data);
+                    resolve(json.content?.[0]?.text || '');
                   } catch (e) {
                     reject(e);
                   }
@@ -154,173 +152,57 @@ jobs:
               });
 
               req.on('error', reject);
-              req.write(data);
+              req.write(body);
               req.end();
             });
           }
 
-          async function main() {
-            // Read key source files
-            const runSh = fs.existsSync('autonomy/run.sh') ? fs.readFileSync('autonomy/run.sh', 'utf8').slice(0, 50000) : '';
-            const lokiCli = fs.existsSync('autonomy/loki') ? fs.readFileSync('autonomy/loki', 'utf8').slice(0, 50000) : '';
+          async function enhancePage(file) {
+            const name = path.basename(file, '.md');
+            if (name.startsWith('_') || name === 'Changelog') return;
 
-            const prompt = `Analyze this Loki Mode codebase and generate comprehensive ASCII state machine diagrams.
+            console.log('Enhancing ' + name + '...');
+            const content = fs.readFileSync(file, 'utf8');
 
-Source files (truncated):
-run.sh: ${runSh.slice(0, 20000)}
-loki CLI: ${lokiCli.slice(0, 20000)}
-
-Generate a complete Architecture.md wiki page with:
-1. Session State Machine (IDLE -> RUNNING -> COMPLETED with all transitions)
-2. Task Queue State Machine (PENDING -> QUEUED -> IN_PROGRESS -> COMPLETED/DEAD_LETTER)
-3. SDLC Phase Flow (all phases from requirements to deployment)
-4. Agent Lifecycle (SPAWN -> WORKING -> TERMINATED)
-5. Parallel Workflow Streams (git worktrees)
-6. Notification Flow (events to webhooks)
-7. Memory System Architecture (learnings extraction)
-8. Enterprise Authentication Flow (token validation)
-9. Provider Selection Logic
-
-Use ASCII box diagrams with + - | characters. Include all states, transitions, and relevant details from the code.
-Do not use emojis. Return ONLY the markdown content.`;
+            const prompt = 'You are a technical documentation expert. Enhance this Loki Mode v' + VERSION + ' wiki page.\n\n' +
+              'Current content:\n' + content + '\n\n' +
+              'Instructions: Improve clarity, add examples where helpful, ensure accuracy. Do not use emojis. Return ONLY markdown.';
 
             try {
-              console.log('Generating state machine diagrams...');
-              const content = await callClaude(prompt);
-              fs.writeFileSync('wiki-repo/Architecture.md', content);
-              console.log('Architecture diagrams generated');
-            } catch (error) {
-              console.error('Failed to generate diagrams:', error.message);
+              const enhanced = await callClaude(prompt);
+              if (enhanced && enhanced.length > 100) {
+                fs.writeFileSync(file, enhanced);
+                console.log('Enhanced ' + name);
+              }
+            } catch (e) {
+              console.error('Failed: ' + e.message);
             }
           }
 
-          main().catch(console.error);
-          DIAGRAMSCRIPT
+          const wikiDir = './wiki-repo';
+          const files = fs.readdirSync(wikiDir).filter(f => f.endsWith('.md'));
 
-          node generate-diagrams.js
+          for (const f of ['Home.md', 'Getting-Started.md', 'FAQ.md']) {
+            const fp = path.join(wikiDir, f);
+            if (fs.existsSync(fp)) {
+              await enhancePage(fp);
+              await new Promise(r => setTimeout(r, 2000));
+            }
+          }
+          ENDSCRIPT
 
-      - name: Enhance wiki with Claude Opus
+      - name: Run AI enhancement
         if: env.ANTHROPIC_API_KEY != ''
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: |
-          # Create enhancement script
-          cat > enhance-wiki.js << 'SCRIPT'
-          const https = require('https');
-          const fs = require('fs');
-          const path = require('path');
-
-          const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-          const VERSION = process.env.VERSION || 'latest';
-
-          async function callClaude(prompt, maxTokens = 4096) {
-            return new Promise((resolve, reject) => {
-              const data = JSON.stringify({
-                model: 'claude-opus-4-5-20251101',
-                max_tokens: maxTokens,
-                messages: [{ role: 'user', content: prompt }]
-              });
-
-              const options = {
-                hostname: 'api.anthropic.com',
-                port: 443,
-                path: '/v1/messages',
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'x-api-key': ANTHROPIC_API_KEY,
-                  'anthropic-version': '2023-06-01'
-                }
-              };
-
-              const req = https.request(options, (res) => {
-                let body = '';
-                res.on('data', chunk => body += chunk);
-                res.on('end', () => {
-                  try {
-                    const response = JSON.parse(body);
-                    resolve(response.content[0].text);
-                  } catch (e) {
-                    reject(e);
-                  }
-                });
-              });
-
-              req.on('error', reject);
-              req.write(data);
-              req.end();
-            });
-          }
-
-          async function enhancePage(filePath) {
-            const content = fs.readFileSync(filePath, 'utf8');
-            const fileName = path.basename(filePath, '.md');
-
-            // Skip sidebar and changelog
-            if (fileName.startsWith('_') || fileName === 'Changelog') {
-              return;
-            }
-
-            console.log(`Enhancing ${fileName}...`);
-
-            const prompt = `You are a technical documentation expert. Review and enhance this wiki page for Loki Mode v${VERSION}.
-
-Current content:
-${content}
-
-Instructions:
-1. Add any missing details based on your knowledge of Loki Mode
-2. Improve clarity and organization
-3. Add practical examples where helpful
-4. Ensure accuracy - do not invent features
-5. Keep the same markdown structure
-6. Do not use emojis
-7. Return ONLY the enhanced markdown content, nothing else
-
-Enhanced content:`;
-
-            try {
-              const enhanced = await callClaude(prompt, 8192);
-              fs.writeFileSync(filePath, enhanced);
-              console.log(`Enhanced ${fileName}`);
-            } catch (error) {
-              console.error(`Failed to enhance ${fileName}:`, error.message);
-            }
-          }
-
-          async function main() {
-            const wikiDir = './wiki-repo';
-            const files = fs.readdirSync(wikiDir)
-              .filter(f => f.endsWith('.md'))
-              .map(f => path.join(wikiDir, f));
-
-            // Enhance key pages (limit API calls)
-            const keyPages = ['Home.md', 'Getting-Started.md', 'Use-Cases.md', 'FAQ.md'];
-            for (const page of keyPages) {
-              const filePath = path.join(wikiDir, page);
-              if (fs.existsSync(filePath)) {
-                await enhancePage(filePath);
-                await new Promise(r => setTimeout(r, 1000)); // Rate limit
-              }
-            }
-          }
-
-          main().catch(console.error);
-          SCRIPT
-
-          VERSION=${{ steps.version.outputs.version }} node enhance-wiki.js
+          VERSION: ${{ steps.version.outputs.version }}
+        run: node enhance.mjs
 
       - name: Push enhanced wiki
         run: |
           cd wiki-repo
           git add -A
-          git diff --staged --quiet || git commit -m "AI-enhanced wiki for v${{ steps.version.outputs.version }}"
-          git push origin master || git push origin main || echo "No changes to push"
-
-      - name: Summary
-        run: |
-          echo "## Wiki Sync Complete" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- Version: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Wiki URL: https://github.com/${{ github.repository }}/wiki" >> $GITHUB_STEP_SUMMARY
-          echo "- AI Enhancement: ${{ github.event_name == 'release' && 'Yes' || 'No' }}" >> $GITHUB_STEP_SUMMARY
+          if ! git diff --staged --quiet; then
+            git commit -m "AI-enhanced wiki for v${{ steps.version.outputs.version }}"
+            git push origin HEAD:master 2>/dev/null || git push origin HEAD:main 2>/dev/null || true
+          fi
