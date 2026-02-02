@@ -246,9 +246,9 @@ notify_session_start() {
 }
 
 notify_session_end() {
-    local status="${1:-completed}"
+    local end_status="${1:-completed}"
     local duration="${2:-}"
-    local msg="Loki Mode session ended with status: $status"
+    local msg="Loki Mode session ended with status: $end_status"
     [ -n "$duration" ] && msg="$msg (duration: $duration)"
     notify "session_end" "Session Ended" "$msg"
 }
