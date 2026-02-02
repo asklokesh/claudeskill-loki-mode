@@ -561,6 +561,87 @@ log_step() { echo -e "${CYAN}[STEP]${NC} $*"; }
 log_debug() { [[ "${LOKI_DEBUG:-}" == "true" ]] && echo -e "${CYAN}[DEBUG]${NC} $*" || true; }
 
 #===============================================================================
+# Event Emission (Dashboard Integration)
+# Writes events to .loki/events.jsonl for dashboard consumption
+#===============================================================================
+
+emit_event() {
+    local event_type="$1"
+    shift
+    local event_data="$*"
+    local events_file=".loki/events.jsonl"
+    local timestamp
+    timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+    mkdir -p .loki
+
+    # Build JSON event with proper escaping
+    local json_event
+    json_event=$(python3 -c "
+import json
+import sys
+event = {
+    'timestamp': '$timestamp',
+    'type': '$event_type',
+    'data': '''$event_data'''
+}
+print(json.dumps(event))
+" 2>/dev/null)
+
+    # Fallback to simple JSON if python fails
+    if [ -z "$json_event" ]; then
+        # Escape quotes and special chars for JSON
+        local escaped_data
+        escaped_data=$(echo "$event_data" | sed 's/"/\\"/g' | tr -d '\n')
+        json_event="{\"timestamp\":\"$timestamp\",\"type\":\"$event_type\",\"data\":\"$escaped_data\"}"
+    fi
+
+    echo "$json_event" >> "$events_file"
+
+    # Also log for debugging
+    log_debug "Event: $event_type - $event_data"
+}
+
+# Emit structured event with key-value pairs
+emit_event_json() {
+    local event_type="$1"
+    shift
+    local events_file=".loki/events.jsonl"
+    local timestamp
+    timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+    mkdir -p .loki
+
+    # Build JSON from remaining args as key=value pairs
+    local json_data="{"
+    local first=true
+    while [ $# -gt 0 ]; do
+        local key="${1%%=*}"
+        local value="${1#*=}"
+        if [ "$first" = true ]; then
+            first=false
+        else
+            json_data+=","
+        fi
+        # Quote string values, leave numbers/booleans as-is
+        if [[ "$value" =~ ^[0-9]+$ ]] || [[ "$value" =~ ^(true|false|null)$ ]]; then
+            json_data+="\"$key\":$value"
+        else
+            # Escape quotes in value
+            value=$(echo "$value" | sed 's/"/\\"/g')
+            json_data+="\"$key\":\"$value\""
+        fi
+        shift
+    done
+    json_data+="}"
+
+    local json_event="{\"timestamp\":\"$timestamp\",\"type\":\"$event_type\",\"data\":$json_data}"
+    echo "$json_event" >> "$events_file"
+
+    log_debug "Event: $event_type - $json_data"
+}
+
+#===============================================================================
 # Complexity Tier Detection (Auto-Claude pattern)
 #===============================================================================
 
@@ -2031,6 +2112,51 @@ EOF
 }
 
 #===============================================================================
+# Phase Management (Dashboard Integration)
+#===============================================================================
+
+# Track last known phase to detect changes
+LAST_KNOWN_PHASE=""
+
+# Set the current phase and emit event if changed
+set_phase() {
+    local new_phase="$1"
+    local orch_file=".loki/state/orchestrator.json"
+
+    mkdir -p .loki/state
+
+    # Get current phase
+    local current_phase=""
+    if [ -f "$orch_file" ]; then
+        current_phase=$(python3 -c "import json; print(json.load(open('$orch_file')).get('currentPhase', ''))" 2>/dev/null || echo "")
+    fi
+
+    # Only emit event if phase changed
+    if [ "$new_phase" != "$current_phase" ]; then
+        emit_event_json "phase_change" \
+            "from=$current_phase" \
+            "to=$new_phase" \
+            "iteration=$ITERATION_COUNT"
+
+        log_info "Phase changed: $current_phase -> $new_phase"
+
+        # Update orchestrator state
+        if [ -f "$orch_file" ]; then
+            python3 -c "
+import json
+with open('$orch_file', 'r') as f:
+    data = json.load(f)
+data['currentPhase'] = '$new_phase'
+with open('$orch_file', 'w') as f:
+    json.dump(data, f, indent=2)
+" 2>/dev/null || true
+        fi
+    fi
+
+    LAST_KNOWN_PHASE="$new_phase"
+}
+
+#===============================================================================
 # Dashboard State Writer (Real-time sync with web dashboard)
 #===============================================================================
 
@@ -2052,6 +2178,15 @@ write_dashboard_state() {
         tasks_completed=$(python3 -c "import json; print(json.load(open('.loki/state/orchestrator.json')).get('metrics', {}).get('tasksCompleted', 0))" 2>/dev/null || echo "0")
         tasks_failed=$(python3 -c "import json; print(json.load(open('.loki/state/orchestrator.json')).get('metrics', {}).get('tasksFailed', 0))" 2>/dev/null || echo "0")
     fi
+
+    # Emit phase change event if phase has changed (checked in background monitor loop)
+    if [ -n "$LAST_KNOWN_PHASE" ] && [ "$current_phase" != "$LAST_KNOWN_PHASE" ]; then
+        emit_event_json "phase_change" \
+            "from=$LAST_KNOWN_PHASE" \
+            "to=$current_phase" \
+            "iteration=$ITERATION_COUNT"
+    fi
+    LAST_KNOWN_PHASE="$current_phase"
 
     # Get task counts from queues
     local pending_tasks="[]"
@@ -2169,6 +2304,12 @@ track_iteration_start() {
 
     mkdir -p .loki/queue
 
+    # Emit iteration start event for dashboard
+    emit_event_json "iteration_start" \
+        "iteration=$iteration" \
+        "provider=${PROVIDER_NAME:-claude}" \
+        "prd=${prd:-Codebase Analysis}"
+
     # Create task entry
     local task_json=$(cat <<EOF
 {
@@ -2214,6 +2355,15 @@ track_iteration_complete() {
     local task_id="iteration-$iteration"
 
     mkdir -p .loki/queue
+
+    # Emit iteration complete event for dashboard
+    local status_str
+    [ "$exit_code" = "0" ] && status_str="completed" || status_str="failed"
+    emit_event_json "iteration_complete" \
+        "iteration=$iteration" \
+        "status=$status_str" \
+        "exitCode=$exit_code" \
+        "provider=${PROVIDER_NAME:-claude}"
 
     # Get task from in-progress
     local in_progress_file=".loki/queue/in-progress.json"
@@ -4675,6 +4825,14 @@ main() {
     # Log session start for audit
     audit_log "SESSION_START" "prd=$PRD_PATH,dashboard=$ENABLE_DASHBOARD,staged_autonomy=$STAGED_AUTONOMY,parallel=$PARALLEL_MODE"
 
+    # Emit session start event for dashboard
+    emit_event_json "session_start" \
+        "provider=${PROVIDER_NAME:-claude}" \
+        "prd=${PRD_PATH:-}" \
+        "parallel=${PARALLEL_MODE:-false}" \
+        "complexity=${DETECTED_COMPLEXITY:-standard}" \
+        "pid=$$"
+
     # Run in appropriate mode
     local result=0
     if [ "$PARALLEL_MODE" = "true" ]; then
@@ -4721,6 +4879,12 @@ main() {
 
     # Log session end for audit
     audit_log "SESSION_END" "result=$result,prd=$PRD_PATH"
+
+    # Emit session end event for dashboard
+    emit_event_json "session_end" \
+        "result=$result" \
+        "provider=${PROVIDER_NAME:-claude}" \
+        "iterations=$ITERATION_COUNT"
 
     # Cleanup
     stop_dashboard

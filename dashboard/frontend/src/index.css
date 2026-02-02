@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  body {
+    @apply bg-anthropic-cream text-anthropic-charcoal;
+    @apply dark:bg-anthropic-charcoal dark:text-anthropic-cream;
+  }
+
+  * {
+    @apply border-anthropic-charcoal/10;
+    @apply dark:border-anthropic-cream/10;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-4 py-2 rounded-lg font-medium transition-colors;
+    @apply bg-anthropic-orange text-white;
+    @apply hover:bg-anthropic-orange-hover;
+    @apply focus:outline-none focus:ring-2 focus:ring-anthropic-orange focus:ring-offset-2;
+    @apply dark:focus:ring-offset-anthropic-charcoal;
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2 rounded-lg font-medium transition-colors;
+    @apply bg-anthropic-charcoal/5 text-anthropic-charcoal;
+    @apply hover:bg-anthropic-charcoal/10;
+    @apply dark:bg-anthropic-cream/10 dark:text-anthropic-cream;
+    @apply dark:hover:bg-anthropic-cream/20;
+  }
+
+  .card {
+    @apply rounded-xl p-4 transition-shadow;
+    @apply bg-white shadow-sm border;
+    @apply dark:bg-anthropic-charcoal-light dark:border-anthropic-cream/10;
+  }
+
+  .kanban-column {
+    @apply flex flex-col gap-3 p-3 rounded-xl min-w-[280px] max-w-[320px];
+    @apply bg-anthropic-charcoal/5;
+    @apply dark:bg-anthropic-cream/5;
+  }
+
+  .kanban-card {
+    @apply p-3 rounded-lg cursor-grab active:cursor-grabbing transition-all;
+    @apply bg-white shadow-sm border hover:shadow-md;
+    @apply dark:bg-anthropic-charcoal dark:border-anthropic-cream/10;
+  }
+}

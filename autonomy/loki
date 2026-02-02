@@ -131,7 +131,7 @@ show_help() {
     echo "  resume           Resume paused execution"
     echo "  status           Show current status"
     echo "  logs             Show recent log output"
-    echo "  dashboard        Open dashboard in browser"
+    echo "  dashboard [cmd]  Dashboard server (start|stop|status|url|open)"
     echo "  provider [cmd]   Manage AI provider (show|set|list|info)"
     echo "  serve            Start HTTP API server (alias for api start)"
     echo "  api [cmd]        HTTP API server (start|stop|status)"
@@ -691,15 +691,445 @@ cmd_provider_info() {
     esac
 }
 
-# Open dashboard in browser
-cmd_dashboard() {
-    local port=${LOKI_DASHBOARD_PORT:-57374}
-    local url="http://127.0.0.1:$port/dashboard/index.html"
+# Dashboard server management
+DASHBOARD_PID_DIR="${HOME}/.loki/dashboard"
+DASHBOARD_PID_FILE="${DASHBOARD_PID_DIR}/dashboard.pid"
+DASHBOARD_DEFAULT_PORT=3000
+DASHBOARD_DEFAULT_HOST="localhost"
 
-    if [ ! -d "$LOKI_DIR/dashboard" ]; then
-        echo -e "${YELLOW}Dashboard not found. Start Loki Mode first.${NC}"
+cmd_dashboard() {
+    local subcommand="${1:-}"
+
+    # If no subcommand provided, show help (backward compatible with old behavior)
+    if [ -z "$subcommand" ]; then
+        cmd_dashboard_help
+        exit 0
+    fi
+
+    shift || true
+
+    case "$subcommand" in
+        start)
+            cmd_dashboard_start "$@"
+            ;;
+        stop)
+            cmd_dashboard_stop
+            ;;
+        status)
+            cmd_dashboard_status
+            ;;
+        url)
+            cmd_dashboard_url "$@"
+            ;;
+        open)
+            cmd_dashboard_open
+            ;;
+        --help|-h|help)
+            cmd_dashboard_help
+            ;;
+        *)
+            echo -e "${RED}Unknown dashboard command: $subcommand${NC}"
+            echo "Run 'loki dashboard help' for usage."
+            exit 1
+            ;;
+    esac
+}
+
+cmd_dashboard_help() {
+    echo -e "${BOLD}Loki Mode Dashboard Server${NC}"
+    echo ""
+    echo "Usage: loki dashboard <command> [options]"
+    echo ""
+    echo "Commands:"
+    echo "  start    Start the dashboard server"
+    echo "  stop     Stop the dashboard server"
+    echo "  status   Show server status and URL"
+    echo "  url      Get the dashboard URL"
+    echo "  open     Open dashboard in browser"
+    echo "  help     Show this help"
+    echo ""
+    echo "Options for 'start':"
+    echo "  --port PORT    Port to listen on (default: $DASHBOARD_DEFAULT_PORT)"
+    echo "  --host HOST    Host to bind to (default: $DASHBOARD_DEFAULT_HOST)"
+    echo ""
+    echo "Options for 'url':"
+    echo "  --format FMT   Output format: text (default) or json"
+    echo ""
+    echo "Environment:"
+    echo "  LOKI_DASHBOARD_PORT  Default port (overrides $DASHBOARD_DEFAULT_PORT)"
+    echo "  LOKI_DASHBOARD_HOST  Default host (overrides $DASHBOARD_DEFAULT_HOST)"
+    echo ""
+    echo "Examples:"
+    echo "  loki dashboard start                  # Start on default port"
+    echo "  loki dashboard start --port 8080      # Start on port 8080"
+    echo "  loki dashboard status                 # Check if running"
+    echo "  loki dashboard url --format json      # Get URL as JSON"
+    echo "  loki dashboard open                   # Open in browser"
+    echo "  loki dashboard stop                   # Stop server"
+}
+
+cmd_dashboard_start() {
+    local port="${LOKI_DASHBOARD_PORT:-$DASHBOARD_DEFAULT_PORT}"
+    local host="${LOKI_DASHBOARD_HOST:-$DASHBOARD_DEFAULT_HOST}"
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --port)
+                if [[ -n "${2:-}" ]]; then
+                    port="$2"
+                    shift 2
+                else
+                    echo -e "${RED}--port requires a value${NC}"
+                    exit 1
+                fi
+                ;;
+            --port=*)
+                port="${1#*=}"
+                shift
+                ;;
+            --host)
+                if [[ -n "${2:-}" ]]; then
+                    host="$2"
+                    shift 2
+                else
+                    echo -e "${RED}--host requires a value${NC}"
+                    exit 1
+                fi
+                ;;
+            --host=*)
+                host="${1#*=}"
+                shift
+                ;;
+            --help|-h)
+                cmd_dashboard_help
+                exit 0
+                ;;
+            *)
+                echo -e "${RED}Unknown option: $1${NC}"
+                echo "Run 'loki dashboard start --help' for usage."
+                exit 1
+                ;;
+        esac
+    done
+
+    # Validate port is numeric
+    if [[ ! "$port" =~ ^[0-9]+$ ]]; then
+        echo -e "${RED}Invalid port: $port${NC}"
+        echo "Port must be a number."
         exit 1
     fi
+
+    # Check if Python is available
+    if ! command -v python &> /dev/null && ! command -v python3 &> /dev/null; then
+        echo -e "${RED}Error: Python not found${NC}"
+        echo "Python is required for the dashboard server."
+        echo "Install with: brew install python"
+        exit 1
+    fi
+
+    # Determine python command
+    local python_cmd="python3"
+    if ! command -v python3 &> /dev/null; then
+        python_cmd="python"
+    fi
+
+    # Check if already running
+    if [ -f "$DASHBOARD_PID_FILE" ]; then
+        local existing_pid
+        existing_pid=$(cat "$DASHBOARD_PID_FILE" 2>/dev/null)
+        if [ -n "$existing_pid" ] && kill -0 "$existing_pid" 2>/dev/null; then
+            echo -e "${YELLOW}Dashboard server already running (PID: $existing_pid)${NC}"
+            echo ""
+            cmd_dashboard_status
+            exit 0
+        fi
+        # Stale PID file, remove it
+        rm -f "$DASHBOARD_PID_FILE"
+    fi
+
+    # Check if port is already in use
+    if command -v lsof &> /dev/null; then
+        if lsof -i ":$port" &> /dev/null; then
+            echo -e "${RED}Error: Port $port is already in use${NC}"
+            echo ""
+            echo "Check what's using the port:"
+            echo "  lsof -i :$port"
+            echo ""
+            echo "Or use a different port:"
+            echo "  loki dashboard start --port 8080"
+            exit 1
+        fi
+    fi
+
+    # Ensure PID directory exists
+    mkdir -p "$DASHBOARD_PID_DIR"
+
+    # Create log directory
+    local log_dir="${DASHBOARD_PID_DIR}/logs"
+    mkdir -p "$log_dir"
+    local log_file="${log_dir}/dashboard.log"
+
+    echo -e "${GREEN}Starting dashboard server...${NC}"
+    echo -e "${CYAN}Host:${NC} $host"
+    echo -e "${CYAN}Port:${NC} $port"
+    echo ""
+
+    # Start the dashboard server in background
+    # Using LOKI_DASHBOARD_HOST and LOKI_DASHBOARD_PORT env vars for the server
+    LOKI_DASHBOARD_HOST="$host" LOKI_DASHBOARD_PORT="$port" \
+        nohup "$python_cmd" -m dashboard.server > "$log_file" 2>&1 &
+    local new_pid=$!
+
+    # Save PID
+    echo "$new_pid" > "$DASHBOARD_PID_FILE"
+
+    # Also save port and host for status command
+    echo "$port" > "${DASHBOARD_PID_DIR}/port"
+    echo "$host" > "${DASHBOARD_PID_DIR}/host"
+
+    # Wait a moment and check if process is still running
+    sleep 1
+
+    if kill -0 "$new_pid" 2>/dev/null; then
+        local url="http://${host}:${port}"
+        echo -e "${GREEN}Dashboard server started${NC}"
+        echo ""
+        echo "  PID:  $new_pid"
+        echo "  URL:  $url"
+        echo "  Logs: $log_file"
+        echo ""
+        echo -e "Open in browser: ${CYAN}loki dashboard open${NC}"
+        echo -e "Check status:    ${CYAN}loki dashboard status${NC}"
+        echo -e "Stop server:     ${CYAN}loki dashboard stop${NC}"
+    else
+        rm -f "$DASHBOARD_PID_FILE"
+        echo -e "${RED}Failed to start dashboard server${NC}"
+        echo ""
+        echo "Check the log file for errors:"
+        echo "  cat $log_file"
+        exit 1
+    fi
+}
+
+cmd_dashboard_stop() {
+    if [ ! -f "$DASHBOARD_PID_FILE" ]; then
+        echo -e "${YELLOW}Dashboard server is not running${NC}"
+        echo "(No PID file found at $DASHBOARD_PID_FILE)"
+        exit 0
+    fi
+
+    local pid
+    pid=$(cat "$DASHBOARD_PID_FILE" 2>/dev/null)
+
+    if [ -z "$pid" ]; then
+        rm -f "$DASHBOARD_PID_FILE"
+        echo -e "${YELLOW}Dashboard server is not running (empty PID file)${NC}"
+        exit 0
+    fi
+
+    if kill -0 "$pid" 2>/dev/null; then
+        echo -e "${GREEN}Stopping dashboard server (PID: $pid)...${NC}"
+        kill "$pid" 2>/dev/null
+
+        # Wait for process to terminate
+        local wait_count=0
+        while kill -0 "$pid" 2>/dev/null && [ $wait_count -lt 10 ]; do
+            sleep 0.5
+            ((wait_count++))
+        done
+
+        # Force kill if still running
+        if kill -0 "$pid" 2>/dev/null; then
+            echo -e "${YELLOW}Process did not terminate gracefully, force killing...${NC}"
+            kill -9 "$pid" 2>/dev/null
+        fi
+
+        rm -f "$DASHBOARD_PID_FILE"
+        echo -e "${GREEN}Dashboard server stopped${NC}"
+    else
+        rm -f "$DASHBOARD_PID_FILE"
+        echo -e "${YELLOW}Dashboard server was not running (stale PID file removed)${NC}"
+    fi
+}
+
+cmd_dashboard_status() {
+    echo -e "${BOLD}Dashboard Server Status${NC}"
+    echo ""
+
+    if [ ! -f "$DASHBOARD_PID_FILE" ]; then
+        echo -e "${YELLOW}Status: Not running${NC}"
+        echo ""
+        echo -e "Start with: ${CYAN}loki dashboard start${NC}"
+        return 0
+    fi
+
+    local pid
+    pid=$(cat "$DASHBOARD_PID_FILE" 2>/dev/null)
+
+    if [ -z "$pid" ]; then
+        echo -e "${YELLOW}Status: Not running (empty PID file)${NC}"
+        rm -f "$DASHBOARD_PID_FILE"
+        return 0
+    fi
+
+    if kill -0 "$pid" 2>/dev/null; then
+        # Read saved host and port
+        local host="${DASHBOARD_DEFAULT_HOST}"
+        local port="${DASHBOARD_DEFAULT_PORT}"
+
+        if [ -f "${DASHBOARD_PID_DIR}/host" ]; then
+            host=$(cat "${DASHBOARD_PID_DIR}/host" 2>/dev/null)
+        fi
+        if [ -f "${DASHBOARD_PID_DIR}/port" ]; then
+            port=$(cat "${DASHBOARD_PID_DIR}/port" 2>/dev/null)
+        fi
+
+        local url="http://${host}:${port}"
+
+        echo -e "${GREEN}Status: Running${NC}"
+        echo ""
+        echo "  PID:  $pid"
+        echo "  Host: $host"
+        echo "  Port: $port"
+        echo "  URL:  $url"
+        echo ""
+
+        # Check if server is responding
+        if command -v curl &> /dev/null; then
+            if curl -s --connect-timeout 2 "$url" &> /dev/null; then
+                echo -e "${GREEN}Server is responding${NC}"
+            else
+                echo -e "${YELLOW}Server process running but not responding on $url${NC}"
+                echo "The server may still be starting up."
+            fi
+        fi
+
+        echo ""
+        echo -e "Open in browser: ${CYAN}loki dashboard open${NC}"
+        echo -e "Stop server:     ${CYAN}loki dashboard stop${NC}"
+    else
+        echo -e "${YELLOW}Status: Not running (stale PID file)${NC}"
+        rm -f "$DASHBOARD_PID_FILE"
+        echo ""
+        echo -e "Start with: ${CYAN}loki dashboard start${NC}"
+    fi
+}
+
+cmd_dashboard_url() {
+    local format="text"
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --format)
+                if [[ -n "${2:-}" ]]; then
+                    format="$2"
+                    shift 2
+                else
+                    echo -e "${RED}--format requires a value (text or json)${NC}"
+                    exit 1
+                fi
+                ;;
+            --format=*)
+                format="${1#*=}"
+                shift
+                ;;
+            --help|-h)
+                echo "Usage: loki dashboard url [--format text|json]"
+                exit 0
+                ;;
+            *)
+                echo -e "${RED}Unknown option: $1${NC}"
+                exit 1
+                ;;
+        esac
+    done
+
+    # Validate format
+    if [[ "$format" != "text" && "$format" != "json" ]]; then
+        echo -e "${RED}Invalid format: $format${NC}"
+        echo "Valid formats: text, json"
+        exit 1
+    fi
+
+    # Check if running
+    if [ ! -f "$DASHBOARD_PID_FILE" ]; then
+        if [[ "$format" == "json" ]]; then
+            echo '{"running":false,"error":"Dashboard server is not running"}'
+        else
+            echo -e "${YELLOW}Dashboard server is not running${NC}"
+            echo "Start with: loki dashboard start"
+        fi
+        exit 1
+    fi
+
+    local pid
+    pid=$(cat "$DASHBOARD_PID_FILE" 2>/dev/null)
+
+    if [ -z "$pid" ] || ! kill -0 "$pid" 2>/dev/null; then
+        rm -f "$DASHBOARD_PID_FILE"
+        if [[ "$format" == "json" ]]; then
+            echo '{"running":false,"error":"Dashboard server is not running"}'
+        else
+            echo -e "${YELLOW}Dashboard server is not running${NC}"
+            echo "Start with: loki dashboard start"
+        fi
+        exit 1
+    fi
+
+    # Read saved host and port
+    local host="${DASHBOARD_DEFAULT_HOST}"
+    local port="${DASHBOARD_DEFAULT_PORT}"
+
+    if [ -f "${DASHBOARD_PID_DIR}/host" ]; then
+        host=$(cat "${DASHBOARD_PID_DIR}/host" 2>/dev/null)
+    fi
+    if [ -f "${DASHBOARD_PID_DIR}/port" ]; then
+        port=$(cat "${DASHBOARD_PID_DIR}/port" 2>/dev/null)
+    fi
+
+    local url="http://${host}:${port}"
+
+    if [[ "$format" == "json" ]]; then
+        echo "{\"running\":true,\"url\":\"$url\",\"host\":\"$host\",\"port\":$port,\"pid\":$pid}"
+    else
+        echo "$url"
+    fi
+}
+
+cmd_dashboard_open() {
+    # Check if server is running
+    if [ ! -f "$DASHBOARD_PID_FILE" ]; then
+        echo -e "${YELLOW}Dashboard server is not running${NC}"
+        echo ""
+        echo -e "Start with: ${CYAN}loki dashboard start${NC}"
+        exit 1
+    fi
+
+    local pid
+    pid=$(cat "$DASHBOARD_PID_FILE" 2>/dev/null)
+
+    if [ -z "$pid" ] || ! kill -0 "$pid" 2>/dev/null; then
+        rm -f "$DASHBOARD_PID_FILE"
+        echo -e "${YELLOW}Dashboard server is not running${NC}"
+        echo ""
+        echo -e "Start with: ${CYAN}loki dashboard start${NC}"
+        exit 1
+    fi
+
+    # Read saved host and port
+    local host="${DASHBOARD_DEFAULT_HOST}"
+    local port="${DASHBOARD_DEFAULT_PORT}"
+
+    if [ -f "${DASHBOARD_PID_DIR}/host" ]; then
+        host=$(cat "${DASHBOARD_PID_DIR}/host" 2>/dev/null)
+    fi
+    if [ -f "${DASHBOARD_PID_DIR}/port" ]; then
+        port=$(cat "${DASHBOARD_PID_DIR}/port" 2>/dev/null)
+    fi
+
+    local url="http://${host}:${port}"
 
     echo -e "${GREEN}Opening dashboard: $url${NC}"
 
@@ -708,7 +1138,11 @@ cmd_dashboard() {
         open "$url"
     elif command -v xdg-open &> /dev/null; then
         xdg-open "$url"
+    elif command -v start &> /dev/null; then
+        start "$url"
     else
+        echo ""
+        echo "Could not detect browser opener."
         echo "Please open in browser: $url"
     fi
 }
@@ -1630,7 +2064,7 @@ main() {
             cmd_status
             ;;
         dashboard)
-            cmd_dashboard
+            cmd_dashboard "$@"
             ;;
         logs)
             cmd_logs "$@"
