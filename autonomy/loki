@@ -136,6 +136,7 @@ show_help() {
     echo "  serve            Start HTTP API server (alias for api start)"
     echo "  api [cmd]        HTTP API server (start|stop|status)"
     echo "  sandbox [cmd]    Docker sandbox (start|stop|status|logs|shell|build)"
+    echo "  notify [cmd]     Send notifications (test|slack|discord|webhook|status)"
     echo "  import           Import GitHub issues as tasks"
     echo "  config [cmd]     Manage configuration (show|init|edit|path)"
     echo "  memory [cmd]     Cross-project learnings (list|show|search|stats)"
@@ -2001,6 +2002,386 @@ cmd_api() {
     esac
 }
 
+# Multi-channel notifications (Slack, Discord, Webhook)
+cmd_notify() {
+    local subcommand="${1:-help}"
+    shift || true
+
+    case "$subcommand" in
+        test)
+            cmd_notify_test "$@"
+            ;;
+        slack)
+            cmd_notify_send "slack" "$@"
+            ;;
+        discord)
+            cmd_notify_send "discord" "$@"
+            ;;
+        webhook)
+            cmd_notify_send "webhook" "$@"
+            ;;
+        status)
+            cmd_notify_status
+            ;;
+        --help|-h|help)
+            cmd_notify_help
+            ;;
+        *)
+            # If first arg looks like a message, treat as test
+            if [[ "$subcommand" != -* ]]; then
+                cmd_notify_test "$subcommand" "$@"
+            else
+                echo -e "${RED}Unknown notify command: $subcommand${NC}"
+                echo "Run 'loki notify help' for usage."
+                exit 1
+            fi
+            ;;
+    esac
+}
+
+cmd_notify_help() {
+    echo -e "${BOLD}Loki Mode Notifications${NC}"
+    echo ""
+    echo "Usage: loki notify <command> [message]"
+    echo ""
+    echo "Commands:"
+    echo "  test [message]     Send test notification to all configured channels"
+    echo "  slack <message>    Send notification to Slack only"
+    echo "  discord <message>  Send notification to Discord only"
+    echo "  webhook <message>  Send notification to webhook only"
+    echo "  status             Show which notification channels are configured"
+    echo "  help               Show this help"
+    echo ""
+    echo "Environment Variables:"
+    echo "  LOKI_SLACK_WEBHOOK    Slack incoming webhook URL"
+    echo "  LOKI_DISCORD_WEBHOOK  Discord webhook URL"
+    echo "  LOKI_WEBHOOK_URL      Custom webhook URL (POST JSON)"
+    echo "  LOKI_NOTIFY_CHANNELS  Channels to use (comma-separated: slack,discord,webhook)"
+    echo "                        Default: all configured channels"
+    echo ""
+    echo "Examples:"
+    echo "  loki notify test                    # Test all configured channels"
+    echo "  loki notify test 'Hello World'     # Test with custom message"
+    echo "  loki notify slack 'Build complete' # Send to Slack only"
+    echo "  loki notify status                 # Check configuration"
+    echo ""
+    echo "Configuration via .loki/config.yaml:"
+    echo "  notifications:"
+    echo "    slack_webhook: https://hooks.slack.com/services/..."
+    echo "    discord_webhook: https://discord.com/api/webhooks/..."
+    echo "    webhook_url: https://your-server.com/webhook"
+    echo "    channels: slack,discord  # or 'all'"
+}
+
+cmd_notify_status() {
+    echo -e "${BOLD}Notification Channel Status${NC}"
+    echo ""
+
+    local any_configured=false
+
+    # Check Slack
+    if [ -n "${LOKI_SLACK_WEBHOOK:-}" ]; then
+        echo -e "  ${GREEN}[OK]${NC} Slack     - Configured"
+        any_configured=true
+    else
+        echo -e "  ${DIM}[--]${NC} Slack     - Not configured (set LOKI_SLACK_WEBHOOK)"
+    fi
+
+    # Check Discord
+    if [ -n "${LOKI_DISCORD_WEBHOOK:-}" ]; then
+        echo -e "  ${GREEN}[OK]${NC} Discord   - Configured"
+        any_configured=true
+    else
+        echo -e "  ${DIM}[--]${NC} Discord   - Not configured (set LOKI_DISCORD_WEBHOOK)"
+    fi
+
+    # Check custom webhook
+    if [ -n "${LOKI_WEBHOOK_URL:-}" ]; then
+        echo -e "  ${GREEN}[OK]${NC} Webhook   - Configured"
+        any_configured=true
+    else
+        echo -e "  ${DIM}[--]${NC} Webhook   - Not configured (set LOKI_WEBHOOK_URL)"
+    fi
+
+    echo ""
+
+    # Check channel filter
+    if [ -n "${LOKI_NOTIFY_CHANNELS:-}" ]; then
+        echo -e "${CYAN}Active channels:${NC} ${LOKI_NOTIFY_CHANNELS}"
+    else
+        echo -e "${CYAN}Active channels:${NC} all configured"
+    fi
+
+    echo ""
+
+    if [ "$any_configured" = "false" ]; then
+        echo -e "${YELLOW}No notification channels configured.${NC}"
+        echo "Set environment variables or add to .loki/config.yaml"
+    else
+        echo -e "Test with: ${CYAN}loki notify test${NC}"
+    fi
+}
+
+cmd_notify_test() {
+    local message="${1:-Loki Mode test notification}"
+    local channels_notified=0
+
+    echo -e "${BOLD}Testing Notification Channels${NC}"
+    echo ""
+
+    # Determine which channels to test
+    local channels="${LOKI_NOTIFY_CHANNELS:-all}"
+
+    # Test Slack
+    if [[ "$channels" == "all" || "$channels" == *"slack"* ]]; then
+        if [ -n "${LOKI_SLACK_WEBHOOK:-}" ]; then
+            echo -n "  Slack...    "
+            if send_slack_notification "$message" "Test"; then
+                echo -e "${GREEN}OK${NC}"
+                ((channels_notified++))
+            else
+                echo -e "${RED}FAILED${NC}"
+            fi
+        fi
+    fi
+
+    # Test Discord
+    if [[ "$channels" == "all" || "$channels" == *"discord"* ]]; then
+        if [ -n "${LOKI_DISCORD_WEBHOOK:-}" ]; then
+            echo -n "  Discord...  "
+            if send_discord_notification "$message" "Test"; then
+                echo -e "${GREEN}OK${NC}"
+                ((channels_notified++))
+            else
+                echo -e "${RED}FAILED${NC}"
+            fi
+        fi
+    fi
+
+    # Test custom webhook
+    if [[ "$channels" == "all" || "$channels" == *"webhook"* ]]; then
+        if [ -n "${LOKI_WEBHOOK_URL:-}" ]; then
+            echo -n "  Webhook...  "
+            if send_webhook_notification "$message" "Test"; then
+                echo -e "${GREEN}OK${NC}"
+                ((channels_notified++))
+            else
+                echo -e "${RED}FAILED${NC}"
+            fi
+        fi
+    fi
+
+    echo ""
+
+    if [ $channels_notified -eq 0 ]; then
+        echo -e "${YELLOW}No channels configured or enabled.${NC}"
+        echo "Run 'loki notify status' to check configuration."
+        exit 1
+    else
+        echo -e "${GREEN}Sent to $channels_notified channel(s)${NC}"
+    fi
+}
+
+cmd_notify_send() {
+    local channel="$1"
+    shift
+    local message="$*"
+
+    if [ -z "$message" ]; then
+        echo -e "${RED}Error: Message required${NC}"
+        echo "Usage: loki notify $channel <message>"
+        exit 1
+    fi
+
+    case "$channel" in
+        slack)
+            if [ -z "${LOKI_SLACK_WEBHOOK:-}" ]; then
+                echo -e "${RED}Error: LOKI_SLACK_WEBHOOK not set${NC}"
+                exit 1
+            fi
+            if send_slack_notification "$message" "Manual"; then
+                echo -e "${GREEN}Sent to Slack${NC}"
+            else
+                echo -e "${RED}Failed to send to Slack${NC}"
+                exit 1
+            fi
+            ;;
+        discord)
+            if [ -z "${LOKI_DISCORD_WEBHOOK:-}" ]; then
+                echo -e "${RED}Error: LOKI_DISCORD_WEBHOOK not set${NC}"
+                exit 1
+            fi
+            if send_discord_notification "$message" "Manual"; then
+                echo -e "${GREEN}Sent to Discord${NC}"
+            else
+                echo -e "${RED}Failed to send to Discord${NC}"
+                exit 1
+            fi
+            ;;
+        webhook)
+            if [ -z "${LOKI_WEBHOOK_URL:-}" ]; then
+                echo -e "${RED}Error: LOKI_WEBHOOK_URL not set${NC}"
+                exit 1
+            fi
+            if send_webhook_notification "$message" "Manual"; then
+                echo -e "${GREEN}Sent to webhook${NC}"
+            else
+                echo -e "${RED}Failed to send to webhook${NC}"
+                exit 1
+            fi
+            ;;
+    esac
+}
+
+# Send notification to Slack via incoming webhook
+send_slack_notification() {
+    local message="$1"
+    local event_type="${2:-Notification}"
+    local webhook_url="${LOKI_SLACK_WEBHOOK:-}"
+
+    if [ -z "$webhook_url" ]; then
+        return 1
+    fi
+
+    local project_name
+    project_name=$(basename "$(pwd)")
+    local timestamp
+    timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+
+    # Build Slack payload with blocks for better formatting
+    local payload
+    payload=$(cat <<EOF
+{
+    "blocks": [
+        {
+            "type": "header",
+            "text": {
+                "type": "plain_text",
+                "text": "Loki Mode: $event_type"
+            }
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": "$message"
+            }
+        },
+        {
+            "type": "context",
+            "elements": [
+                {
+                    "type": "mrkdwn",
+                    "text": "*Project:* $project_name | *Time:* $timestamp"
+                }
+            ]
+        }
+    ]
+}
+EOF
+)
+
+    # Send to Slack
+    curl -s -X POST -H 'Content-type: application/json' \
+        --data "$payload" \
+        "$webhook_url" > /dev/null 2>&1
+}
+
+# Send notification to Discord via webhook
+send_discord_notification() {
+    local message="$1"
+    local event_type="${2:-Notification}"
+    local webhook_url="${LOKI_DISCORD_WEBHOOK:-}"
+
+    if [ -z "$webhook_url" ]; then
+        return 1
+    fi
+
+    local project_name
+    project_name=$(basename "$(pwd)")
+    local timestamp
+    timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+
+    # Build Discord embed payload
+    local payload
+    payload=$(cat <<EOF
+{
+    "embeds": [
+        {
+            "title": "Loki Mode: $event_type",
+            "description": "$message",
+            "color": 5814783,
+            "footer": {
+                "text": "Project: $project_name | $timestamp"
+            }
+        }
+    ]
+}
+EOF
+)
+
+    # Send to Discord
+    curl -s -X POST -H 'Content-type: application/json' \
+        --data "$payload" \
+        "$webhook_url" > /dev/null 2>&1
+}
+
+# Send notification to custom webhook
+send_webhook_notification() {
+    local message="$1"
+    local event_type="${2:-Notification}"
+    local webhook_url="${LOKI_WEBHOOK_URL:-}"
+
+    if [ -z "$webhook_url" ]; then
+        return 1
+    fi
+
+    local project_name
+    project_name=$(basename "$(pwd)")
+    local timestamp
+    timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+    # Build generic JSON payload
+    local payload
+    payload=$(cat <<EOF
+{
+    "source": "loki-mode",
+    "event": "$event_type",
+    "message": "$message",
+    "project": "$project_name",
+    "timestamp": "$timestamp",
+    "cwd": "$(pwd)"
+}
+EOF
+)
+
+    # Send to webhook
+    curl -s -X POST -H 'Content-type: application/json' \
+        --data "$payload" \
+        "$webhook_url" > /dev/null 2>&1
+}
+
+# Broadcast notification to all configured channels
+# Used by run.sh for automated notifications
+broadcast_notification() {
+    local message="$1"
+    local event_type="${2:-Notification}"
+    local channels="${LOKI_NOTIFY_CHANNELS:-all}"
+
+    # Send to each enabled channel (silently, for background use)
+    if [[ "$channels" == "all" || "$channels" == *"slack"* ]]; then
+        send_slack_notification "$message" "$event_type" 2>/dev/null || true
+    fi
+
+    if [[ "$channels" == "all" || "$channels" == *"discord"* ]]; then
+        send_discord_notification "$message" "$event_type" 2>/dev/null || true
+    fi
+
+    if [[ "$channels" == "all" || "$channels" == *"webhook"* ]]; then
+        send_webhook_notification "$message" "$event_type" 2>/dev/null || true
+    fi
+}
+
 # Sandbox management (delegates to sandbox.sh)
 cmd_sandbox() {
     local subcommand="${1:-help}"
@@ -2077,6 +2458,9 @@ main() {
             ;;
         sandbox)
             cmd_sandbox "$@"
+            ;;
+        notify)
+            cmd_notify "$@"
             ;;
         import)
             cmd_import

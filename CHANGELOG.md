@@ -5,6 +5,38 @@ All notable changes to Loki Mode will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.13.0] - 2026-02-02
+
+### Added - Multi-Channel Notifications
+
+**Simple, opt-in notifications to Slack, Discord, and custom webhooks.**
+
+#### Environment Variables
+- `LOKI_SLACK_WEBHOOK` - Slack incoming webhook URL
+- `LOKI_DISCORD_WEBHOOK` - Discord webhook URL
+- `LOKI_WEBHOOK_URL` - Generic webhook URL (POST JSON)
+- `LOKI_NOTIFICATIONS` - Enable/disable notifications (default: true)
+
+#### CLI Commands
+- `loki notify test` - Send test notification to all channels
+- `loki notify slack <message>` - Send to Slack only
+- `loki notify discord <message>` - Send to Discord only
+- `loki notify webhook <message>` - Send to webhook only
+- `loki notify status` - Show configured channels
+
+#### Features
+- Non-blocking (curl runs in background)
+- Fails silently (won't break session if webhook fails)
+- Color-coded messages by event type
+- Rich formatting (Slack blocks, Discord embeds)
+- Config file support (.loki/config.yaml)
+
+#### New Files
+- `autonomy/notify.sh` - Multi-channel notification module
+- `autonomy/NOTIFY_INTEGRATION.md` - Integration guide
+
+---
+
 ## [5.12.0] - 2026-02-02
 
 ### Added - Enterprise Features (Optional)
