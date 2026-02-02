@@ -5,6 +5,72 @@ All notable changes to Loki Mode will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.12.0] - 2026-02-02
+
+### Added - Enterprise Features (Optional)
+
+**New opt-in enterprise features for organizations deploying Loki Mode at scale.**
+
+All enterprise features are disabled by default and can be enabled via environment variables:
+- `LOKI_ENTERPRISE_AUTH=true` - Enable token-based authentication
+- `LOKI_ENTERPRISE_AUDIT=true` - Enable audit logging
+
+#### Token-Based Authentication
+- Secure token generation with SHA256 hashing and constant-time comparison
+- Token scopes and expiration support
+- CLI: `loki enterprise token generate/list/revoke/delete`
+- API: `/api/enterprise/tokens` endpoints
+- Tokens stored in `~/.loki/dashboard/tokens.json` (0600 permissions)
+
+#### Audit Logging
+- JSONL-formatted logs with automatic rotation
+- Query and summary APIs
+- CLI: `loki enterprise audit summary/tail`
+- API: `/api/enterprise/audit` endpoints
+- Logs stored in `~/.loki/dashboard/audit/`
+
+#### Cross-Project Registry
+- Auto-discovery of projects with `.loki` directories
+- Health checks and status tracking
+- CLI: `loki projects list/add/remove/discover/sync/health`
+- API: `/api/registry/*` endpoints
+- Registry stored in `~/.loki/dashboard/projects.json`
+
+#### Docker Deployment
+- Multi-stage build (Node frontend + Python backend)
+- Non-root user for security (appuser)
+- Health checks using Python urllib
+- `docker-compose.yml` included for easy deployment
+
+### Security
+- Constant-time token comparison to prevent timing attacks
+- Input validation (empty names, negative expires, max lengths)
+- Pydantic Field constraints for API validation
+- Non-root Docker user
+
+### Fixed
+- CLI flag parsing validation (names starting with `-`)
+- Exit codes for invalid subcommands (now returns 1)
+- Enterprise mode warnings when generating tokens without auth enabled
+
+### New Files
+- `dashboard/auth.py` - Token authentication module
+- `dashboard/audit.py` - Audit logging module
+- `dashboard/registry.py` - Cross-project registry
+- `dashboard/Dockerfile` - Multi-stage Docker build
+- `dashboard/docker-compose.yml` - Docker Compose configuration
+- `dashboard/.dockerignore` - Docker build exclusions
+
+---
+
+## [5.11.0] - 2026-02-01
+
+### Added - Enterprise Kanban Dashboard
+
+Full-featured web dashboard for multi-project task management.
+
+---
+
 ## [5.10.0] - 2026-02-01
 
 ### Added - GitHub Issue to PR Automation
