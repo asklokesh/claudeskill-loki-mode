@@ -115,8 +115,29 @@
 #   LOKI_PROMPT_INJECTION - Enable HUMAN_INPUT.md processing (default: false)
 #                           Set to "true" only in trusted environments
 #===============================================================================
+#
+# Compatibility: bash 3.2+ (macOS default), bash 4+ (Linux), WSL
+# Parallel mode (--parallel) requires bash 4.0+ for associative arrays
+#===============================================================================
 
 set -uo pipefail
+
+# Compatibility check: Ensure we're running in bash (not sh, dash, zsh)
+if [ -z "${BASH_VERSION:-}" ]; then
+    echo "[ERROR] This script requires bash. Please run with: bash $0" >&2
+    exit 1
+fi
+
+# Extract major version for feature checks
+BASH_VERSION_MAJOR="${BASH_VERSION%%.*}"
+BASH_VERSION_MINOR="${BASH_VERSION#*.}"
+BASH_VERSION_MINOR="${BASH_VERSION_MINOR%%.*}"
+
+# Warn if bash version is very old (< 3.2)
+if [ "$BASH_VERSION_MAJOR" -lt 3 ] || { [ "$BASH_VERSION_MAJOR" -eq 3 ] && [ "$BASH_VERSION_MINOR" -lt 2 ]; }; then
+    echo "[WARN] Bash version $BASH_VERSION is old. Recommend bash 3.2+ for full compatibility." >&2
+    echo "[WARN] Some features may not work correctly." >&2
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -519,8 +540,7 @@ else
 fi
 
 # Track worktree PIDs for cleanup (requires bash 4+ for associative arrays)
-# Check bash version for parallel mode compatibility
-BASH_VERSION_MAJOR="${BASH_VERSION%%.*}"
+# BASH_VERSION_MAJOR is defined at script startup
 if [ "$BASH_VERSION_MAJOR" -ge 4 ] 2>/dev/null; then
     declare -A WORKTREE_PIDS
     declare -A WORKTREE_PATHS
@@ -1325,12 +1345,18 @@ notify_rate_limit() {
 # Parallel Workflow Functions (Git Worktrees)
 #===============================================================================
 
-# Check if parallel mode is supported (bash 4+ required)
+# Check if parallel mode is supported (bash 4+ required for associative arrays)
 check_parallel_support() {
     if [ "$BASH_VERSION_MAJOR" -lt 4 ] 2>/dev/null; then
-        log_error "Parallel mode requires bash 4.0 or higher"
-        log_error "Current bash version: $BASH_VERSION"
-        log_error "On macOS, install newer bash: brew install bash"
+        log_error "Parallel mode requires bash 4.0+ (current: $BASH_VERSION)"
+        log_error "Parallel mode uses associative arrays which require bash 4+"
+        log_error ""
+        log_error "How to upgrade:"
+        log_error "  macOS:  brew install bash && sudo chsh -s /opt/homebrew/bin/bash"
+        log_error "  Ubuntu: sudo apt install bash"
+        log_error "  WSL:    Usually has bash 4+ by default"
+        log_error ""
+        log_error "Or run without --parallel flag for sequential mode (works with bash 3.2+)"
         return 1
     fi
     return 0
@@ -1754,7 +1780,7 @@ run_parallel_orchestrator() {
 
         cat > "$state_file" << EOF
 {
-  "timestamp": "$(date -Iseconds)",
+  "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
   "worktrees": {
 $(for stream in "${!WORKTREE_PATHS[@]}"; do
     local path="${WORKTREE_PATHS[$stream]}"

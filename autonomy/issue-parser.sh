@@ -1,6 +1,6 @@
 #!/bin/bash
 #===============================================================================
-# Loki Mode - GitHub Issue Parser (v5.9.0)
+# Loki Mode - GitHub Issue Parser (v5.14.0)
 # Parses GitHub issues and extracts structured data for PRD generation
 #
 # Usage:

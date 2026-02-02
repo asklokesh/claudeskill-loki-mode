@@ -168,10 +168,10 @@ Prompt: "Review the following claims for factual accuracy.
 
 ### Version Numbering
 Follows semantic versioning: MAJOR.MINOR.PATCH
-- Current: v5.9.0
+- Current: v5.14.1
 - MAJOR bump for architecture changes (v5.0.0 = multi-provider support)
-- MINOR bump for new features (v5.9.0 = Cross-Project Learning)
-- PATCH bump for fixes (v5.8.7 = session retry fix)
+- MINOR bump for new features (v5.14.0 = Voice Input Support)
+- PATCH bump for fixes (v5.14.1 = peer review fixes)
 
 ### Code Style
 - **CRITICAL: NEVER use emojis** - Not in code, documentation, commit messages, README, or any output

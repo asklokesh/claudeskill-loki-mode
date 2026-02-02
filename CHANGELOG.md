@@ -20,6 +20,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [5.14.1] - 2026-02-02
+
+### Fixed - Peer Review (5 Opus Agents)
+
+Consolidated fixes from 5 parallel Opus review agents analyzing all v5.14.0 changes.
+
+#### Critical Fixes
+- **run.sh**: Fixed `date -Iseconds` to portable `date -u +%Y-%m-%dT%H:%M:%SZ` (macOS BSD compat)
+- **voice.sh**: Fixed osascript shell injection vulnerability with proper escaping
+- **api-server.js**: Added port validation (range 1-65535, handles NaN/edge cases)
+- **VS Code types**: Fixed HealthResponse to match actual server response
+
+#### Additional Fixes
+- **voice.sh**: Fixed whisper local output path with `--output_dir` flag
+- **api-server.js**: Added logs endpoint line validation (positive, capped at 10000)
+- **blog/index.html**: Removed hardcoded version range in changelog description
+
+---
+
 ## [5.14.0] - 2026-02-02
 
 ### Added - Voice Input Support
@@ -51,6 +70,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### New Files
 - `autonomy/voice.sh` - Voice input module
+
+### Fixed - API Server and VS Code Extension
+
+#### API Server (v1.2.0)
+- Fixed CORS to include DELETE method for cross-origin requests
+- Added proper `--port` and `-p` flag parsing (also accepts bare number)
+- Added body size limit (1MB default, configurable via LOKI_API_MAX_BODY)
+- Fixed SSE connection leak with proper cleanup on close/error/finish
+
+#### VS Code Extension
+- Fixed type definitions to match actual api-server.js response format
+- StatusResponse now matches flat server response (state, pid, statusText, etc.)
+- StartResponse, StopResponse, PauseResponse, ResumeResponse updated to flat format
+- Added 'stopping' state to SessionState type
+- Marked injectInput() as deprecated (/input endpoint not yet implemented)
+- Updated StatusApiResponse validator for backward compatibility
+
+#### run.sh Cross-Platform Compatibility
+- Added bash version check at script startup (warns if bash < 3.2)
+- Added explicit shell compatibility check (rejects sh/dash/zsh)
+- Improved parallel mode error message with upgrade instructions for all platforms
+- Documented bash 3.2+ requirement for standard mode, bash 4+ for parallel mode
+- Confirmed compatibility with macOS (bash 3.2), Linux, and WSL
+- Fixed `date -Iseconds` to use portable `date -u +%Y-%m-%dT%H:%M:%SZ` format (macOS compat)
+
+### Fixed - Peer Review (5 Opus agents)
+
+#### API Server
+- Added port validation (range 1-65535, handles NaN and edge cases)
+- Added logs endpoint line count validation (positive integers only, cap at 10000)
+
+#### Voice Input (voice.sh)
+- Fixed osascript shell injection vulnerability with proper escaping
+- Fixed whisper local output path by specifying `--output_dir`
+- Added fallback for older whisper versions that output to current directory
+
+#### VS Code Extension
+- Fixed HealthResponse type to match actual server response (removed uptime/timestamp)
+
+#### Documentation
+- Fixed blog/index.html changelog description (removed hardcoded version range)
 
 ---
 

@@ -230,17 +230,28 @@ transcribe_whisper_api() {
 # Transcribe audio using local Whisper
 transcribe_whisper_local() {
     local audio_file="$1"
+    local output_dir
+    output_dir=$(dirname "$audio_file")
 
     if ! command -v whisper &>/dev/null; then
         log_error "Whisper not installed. Run: pip install openai-whisper"
         return 1
     fi
 
-    whisper "$audio_file" --model base --language en --output_format txt 2>/dev/null
+    # Specify output directory to ensure output goes to same location as audio
+    whisper "$audio_file" --model base --language en --output_format txt --output_dir "$output_dir" 2>/dev/null
     local txt_file="${audio_file%.wav}.txt"
     if [[ -f "$txt_file" ]]; then
         cat "$txt_file"
         rm -f "$txt_file"
+    else
+        # Fallback: check current directory (older whisper versions)
+        local basename_txt
+        basename_txt=$(basename "${audio_file%.wav}.txt")
+        if [[ -f "$basename_txt" ]]; then
+            cat "$basename_txt"
+            rm -f "$basename_txt"
+        fi
     fi
 }
 
@@ -269,10 +280,14 @@ EOF
             # Use a temporary file approach
             local temp_file
             temp_file=$(make_temp_file .txt)
+            # Escape single quotes in temp_file for safe embedding in AppleScript
+            local escaped_temp_file="${temp_file//\'/\'\\\'\'}"
             osascript <<EOF
 tell application "System Events"
     set userInput to text returned of (display dialog "Dictate or type your PRD:" default answer "" buttons {"Cancel", "OK"} default button "OK" with title "Loki Mode Voice Input")
-    do shell script "echo " & quoted form of userInput & " > '$temp_file'"
+    do shell script "cat > '${escaped_temp_file}'" & " <<HEREDOC
+" & userInput & "
+HEREDOC"
 end tell
 EOF
             if [[ -f "$temp_file" ]]; then

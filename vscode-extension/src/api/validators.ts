@@ -24,9 +24,9 @@ const VALID_PHASES: Phase[] = [
 ];
 
 /**
- * Valid session state values
+ * Valid session state values (includes 'stopping' from api-server.js v1.2.0)
  */
-const VALID_SESSION_STATES: SessionState[] = ['running', 'paused', 'stopped', 'completed', 'failed'];
+const VALID_SESSION_STATES: SessionState[] = ['running', 'paused', 'stopping', 'stopped', 'completed', 'failed'];
 
 /**
  * Check if a value is a valid Provider
@@ -57,22 +57,24 @@ export function isValidSessionState(value: unknown): value is SessionState {
 }
 
 /**
- * Status response shape from /status endpoint
+ * Status response shape from /status endpoint (matches api-server.js v1.2.0)
+ * Server returns: { state, pid, statusText, currentPhase, currentTask, pendingTasks, provider, version, lokiDir, timestamp }
  */
 export interface StatusApiResponse {
+    state?: 'running' | 'paused' | 'stopping' | 'stopped';
+    pid?: number | null;
+    statusText?: string;
+    currentPhase?: string;
+    currentTask?: string;
+    pendingTasks?: number;
+    provider?: string;
+    version?: string;
+    lokiDir?: string;
+    timestamp?: string;
+    // Legacy fields for backward compatibility
     running?: boolean;
     paused?: boolean;
     status?: string;
-    provider?: string;
-    uptime?: number;
-    tasksCompleted?: number;
-    tasksPending?: number;
-    tasks?: Array<{
-        id: string;
-        title: string;
-        status: string;
-        description?: string;
-    }>;
 }
 
 /**
@@ -86,46 +88,51 @@ export function parseStatusResponse(data: unknown): StatusApiResponse {
     const obj = data as Record<string, unknown>;
     const result: StatusApiResponse = {};
 
-    // Extract boolean fields
-    if (typeof obj.running === 'boolean') {
-        result.running = obj.running;
+    // New format fields (api-server.js v1.2.0)
+    if (typeof obj.state === 'string') {
+        result.state = obj.state as StatusApiResponse['state'];
+        // Derive legacy boolean fields for backward compatibility
+        result.running = obj.state === 'running';
+        result.paused = obj.state === 'paused';
     }
-    if (typeof obj.paused === 'boolean') {
-        result.paused = obj.paused;
+    if (typeof obj.pid === 'number' || obj.pid === null) {
+        result.pid = obj.pid as number | null;
     }
-
-    // Extract string fields
-    if (typeof obj.status === 'string') {
-        result.status = obj.status;
+    if (typeof obj.statusText === 'string') {
+        result.statusText = obj.statusText;
+        result.status = obj.statusText; // Legacy field
+    }
+    if (typeof obj.currentPhase === 'string') {
+        result.currentPhase = obj.currentPhase;
+    }
+    if (typeof obj.currentTask === 'string') {
+        result.currentTask = obj.currentTask;
+    }
+    if (typeof obj.pendingTasks === 'number') {
+        result.pendingTasks = obj.pendingTasks;
     }
     if (typeof obj.provider === 'string') {
         result.provider = obj.provider;
     }
-
-    // Extract number fields
-    if (typeof obj.uptime === 'number') {
-        result.uptime = obj.uptime;
+    if (typeof obj.version === 'string') {
+        result.version = obj.version;
     }
-    if (typeof obj.tasksCompleted === 'number') {
-        result.tasksCompleted = obj.tasksCompleted;
+    if (typeof obj.lokiDir === 'string') {
+        result.lokiDir = obj.lokiDir;
     }
-    if (typeof obj.tasksPending === 'number') {
-        result.tasksPending = obj.tasksPending;
+    if (typeof obj.timestamp === 'string') {
+        result.timestamp = obj.timestamp;
     }
 
-    // Extract tasks array
-    if (Array.isArray(obj.tasks)) {
-        result.tasks = obj.tasks
-            .filter((task): task is Record<string, unknown> =>
-                typeof task === 'object' && task !== null
-            )
-            .map(task => ({
-                id: typeof task.id === 'string' ? task.id : '',
-                title: typeof task.title === 'string' ? task.title : '',
-                status: typeof task.status === 'string' ? task.status : 'pending',
-                description: typeof task.description === 'string' ? task.description : undefined
-            }))
-            .filter(task => task.id && task.title);
+    // Legacy format fields (for backward compatibility)
+    if (result.running === undefined && typeof obj.running === 'boolean') {
+        result.running = obj.running;
+    }
+    if (result.paused === undefined && typeof obj.paused === 'boolean') {
+        result.paused = obj.paused;
+    }
+    if (result.status === undefined && typeof obj.status === 'string') {
+        result.status = obj.status;
     }
 
     return result;

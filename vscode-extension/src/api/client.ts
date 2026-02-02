@@ -289,12 +289,17 @@ export class LokiApiClient {
      * Inject input into the running session
      * @param input - Input string to inject
      * @param targetTask - Optional target task ID
+     * @deprecated The /input endpoint is not yet implemented in api-server.js
+     * Use file-based input via .loki/HUMAN_INPUT.md instead
      */
     async injectInput(input: string, targetTask?: string): Promise<void> {
+        console.warn('[LokiApiClient] injectInput() is deprecated - /input endpoint not implemented');
+        console.warn('[LokiApiClient] Use file-based input: echo "message" > .loki/HUMAN_INPUT.md');
         const body: InputRequest = { input };
         if (targetTask) {
             body.targetTask = targetTask;
         }
+        // This will fail with 404 - endpoint not implemented
         await this.request<void>('POST', '/input', body);
     }
 

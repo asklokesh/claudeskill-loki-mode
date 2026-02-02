@@ -33,11 +33,12 @@ export type TaskStatus =
     | 'skipped';
 
 /**
- * Session state
+ * Session state (matches api-server.js v1.2.0)
  */
 export type SessionState =
     | 'running'
     | 'paused'
+    | 'stopping'
     | 'stopped'
     | 'completed'
     | 'failed';
@@ -65,16 +66,19 @@ export interface Task {
 
 /**
  * Current session status (matches server response format)
- * Server returns: { status, pid, provider, prd, startedAt, uptime, dashboard }
+ * Server returns: { state, pid, statusText, currentPhase, currentTask, pendingTasks, provider, version, lokiDir, timestamp }
  */
 export interface SessionStatus {
-    status: 'running' | 'stopped' | 'idle';
+    state: 'running' | 'paused' | 'stopping' | 'stopped';
     pid: number | null;
-    provider: Provider | null;
-    prd: string | null;
-    startedAt: string | null;
-    uptime: number | null;
-    dashboard: string | null;
+    statusText: string;
+    currentPhase: string;
+    currentTask: string;
+    pendingTasks: number;
+    provider: Provider;
+    version: string;
+    lokiDir: string;
+    timestamp: string;
 }
 
 // =============================================================================
@@ -91,76 +95,67 @@ export interface ApiResponse {
 }
 
 /**
- * Health check response
+ * Health check response (matches api-server.js /health endpoint)
+ * Server returns: { status: 'ok', version: '...' }
  */
 export interface HealthResponse {
     status: 'ok' | 'error';
     version: string;
-    uptime: number;
-    timestamp: string;
 }
 
 /**
- * Status endpoint response
+ * Status endpoint response (flat format from server)
+ * Note: Server returns SessionStatus directly, not wrapped in ApiResponse
  */
-export interface StatusResponse extends ApiResponse {
-    data: SessionStatus;
+export type StatusResponse = SessionStatus;
+
+/**
+ * Start session response (flat format from server)
+ * Server returns: { started: true, pid, provider, args }
+ */
+export interface StartResponse {
+    started: boolean;
+    pid: number;
+    provider: Provider;
+    args: string[];
+    error?: string;
 }
 
 /**
- * Start session response
+ * Stop session response (flat format from server)
+ * Server returns: { stopped: true }
  */
-export interface StartResponse extends ApiResponse {
-    data: {
-        sessionId: string;
-        provider: Provider;
-        prdPath: string;
-        startedAt: string;
-    };
+export interface StopResponse {
+    stopped: boolean;
+    error?: string;
 }
 
 /**
- * Stop session response
+ * Pause session response (flat format from server)
+ * Server returns: { paused: true }
  */
-export interface StopResponse extends ApiResponse {
-    data: {
-        sessionId: string;
-        stoppedAt: string;
-        tasksCompleted: number;
-        totalTasks: number;
-    };
+export interface PauseResponse {
+    paused: boolean;
+    error?: string;
 }
 
 /**
- * Pause session response
+ * Resume session response (flat format from server)
+ * Server returns: { resumed: true }
  */
-export interface PauseResponse extends ApiResponse {
-    data: {
-        sessionId: string;
-        pausedAt: string;
-        phase: Phase;
-    };
+export interface ResumeResponse {
+    resumed: boolean;
+    error?: string;
 }
 
 /**
- * Resume session response
+ * Input injection response (PLANNED - endpoint not yet implemented)
+ * @deprecated The /input endpoint is not yet implemented in api-server.js
  */
-export interface ResumeResponse extends ApiResponse {
-    data: {
-        sessionId: string;
-        resumedAt: string;
-        phase: Phase;
-    };
-}
-
-/**
- * Input injection response
- */
-export interface InputResponse extends ApiResponse {
-    data: {
-        received: boolean;
-        queuePosition?: number;
-    };
+export interface InputResponse {
+    received: boolean;
+    queuePosition?: number;
+    error?: string;
 }
 
 // =============================================================================
@@ -361,7 +356,7 @@ export interface HeartbeatEvent extends BaseEvent {
 export interface StatusPollEvent {
     type: 'status';
     timestamp: string;
-    data: StatusResponse;
+    data: SessionStatus;
 }
 
 /**

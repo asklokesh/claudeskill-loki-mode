@@ -29,6 +29,11 @@ const fs = require('fs');
 const path = require('path');
 const { spawn, execSync } = require('child_process');
 
+// Validate port number is in valid range
+function isValidPort(port) {
+    return Number.isInteger(port) && port >= 1 && port <= 65535;
+}
+
 // Parse command line arguments
 function parseArgs() {
     const args = process.argv.slice(2);
@@ -36,13 +41,25 @@ function parseArgs() {
 
     for (let i = 0; i < args.length; i++) {
         if (args[i] === '--port' || args[i] === '-p') {
-            port = parseInt(args[i + 1]);
-            i++; // Skip the value
+            // Ensure next argument exists and is a number
+            if (i + 1 < args.length) {
+                const val = parseInt(args[i + 1], 10);
+                if (isValidPort(val)) {
+                    port = val;
+                }
+                i++; // Skip the value
+            }
         } else if (args[i].startsWith('--port=')) {
-            port = parseInt(args[i].split('=')[1]);
+            const val = parseInt(args[i].split('=')[1], 10);
+            if (isValidPort(val)) {
+                port = val;
+            }
         } else if (/^\d+$/.test(args[i])) {
             // Bare number as port (backwards compatible)
-            port = parseInt(args[i]);
+            const val = parseInt(args[i], 10);
+            if (isValidPort(val)) {
+                port = val;
+            }
         }
     }
 
@@ -283,7 +300,13 @@ async function handleRequest(req, res) {
     }
 
     if (method === 'GET' && pathname === '/logs') {
-        const lines = parseInt(url.searchParams.get('lines')) || 50;
+        let lines = parseInt(url.searchParams.get('lines'), 10);
+        // Validate lines: must be positive, default to 50, cap at 10000
+        if (!Number.isInteger(lines) || lines < 1) {
+            lines = 50;
+        } else if (lines > 10000) {
+            lines = 10000;
+        }
         const logFile = path.join(LOG_DIR, 'session.log');
 
         if (!fs.existsSync(logFile)) {
