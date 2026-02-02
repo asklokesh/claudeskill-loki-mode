@@ -125,6 +125,7 @@ show_help() {
     echo ""
     echo "Commands:"
     echo "  start [PRD]      Start Loki Mode (optionally with PRD file)"
+    echo "  issue <url|num>  Generate PRD from GitHub issue and optionally start"
     echo "  stop             Stop execution immediately"
     echo "  pause            Pause after current session"
     echo "  resume           Resume paused execution"
@@ -152,6 +153,13 @@ show_help() {
     echo "  --no-dashboard   Disable web dashboard"
     echo "  --sandbox        Run in Docker sandbox for isolation"
     echo ""
+    echo "Options for 'issue':"
+    echo "  --repo OWNER/REPO  Specify repository (default: auto-detect)"
+    echo "  --number NUM       Specify issue number (alternative to URL)"
+    echo "  --start            Start Loki Mode with generated PRD"
+    echo "  --dry-run          Preview generated PRD without saving"
+    echo "  --output FILE      Save PRD to custom path (default: .loki/prd-issue-N.md)"
+    echo ""
     echo "Examples:"
     echo "  loki start                    # Start in current directory"
     echo "  loki start ./prd.md           # Start with PRD file"
@@ -159,6 +167,9 @@ show_help() {
     echo "  loki start --parallel         # Start in parallel mode"
     echo "  loki pause                    # Pause execution"
     echo "  loki status                   # Check current status"
+    echo "  loki issue 123                # Generate PRD from issue #123"
+    echo "  loki issue 123 --start        # Generate PRD and start Loki Mode"
+    echo "  loki issue https://github.com/owner/repo/issues/123  # From URL"
     echo ""
     echo "Environment Variables:"
     echo "  See: $RUN_SH (header comments)"
@@ -732,6 +743,480 @@ cmd_import() {
     fi
 }
 
+# Parse GitHub issue using issue-parser.sh
+cmd_issue_parse() {
+    local issue_ref=""
+    local format="yaml"
+    local output_file=""
+    local quiet=false
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --help|-h)
+                echo -e "${BOLD}loki issue parse${NC} - Parse GitHub issue into structured format"
+                echo ""
+                echo "Usage: loki issue parse <issue-ref> [options]"
+                echo ""
+                echo "Issue Reference Formats:"
+                echo "  https://github.com/owner/repo/issues/123"
+                echo "  owner/repo#123"
+                echo "  #123                  (uses current repo)"
+                echo "  123                   (uses current repo)"
+                echo ""
+                echo "Options:"
+                echo "  --format yaml|json    Output format (default: yaml)"
+                echo "  --output FILE         Write to file instead of stdout"
+                echo "  --quiet               Suppress info messages"
+                echo ""
+                echo "Examples:"
+                echo "  loki issue parse 123"
+                echo "  loki issue parse owner/repo#456 --format json"
+                echo "  loki issue parse 789 --output issue.yaml"
+                exit 0
+                ;;
+            --format)
+                format="${2:-yaml}"
+                shift 2
+                ;;
+            --format=*)
+                format="${1#*=}"
+                shift
+                ;;
+            --output|-o)
+                output_file="${2:-}"
+                shift 2
+                ;;
+            --output=*)
+                output_file="${1#*=}"
+                shift
+                ;;
+            --quiet|-q)
+                quiet=true
+                shift
+                ;;
+            -*)
+                echo -e "${RED}Unknown option: $1${NC}"
+                echo "Run 'loki issue parse --help' for usage."
+                exit 1
+                ;;
+            *)
+                if [[ -z "$issue_ref" ]]; then
+                    issue_ref="$1"
+                fi
+                shift
+                ;;
+        esac
+    done
+
+    if [[ -z "$issue_ref" ]]; then
+        echo -e "${RED}Error: Issue reference required${NC}"
+        echo "Usage: loki issue parse <issue-ref>"
+        exit 1
+    fi
+
+    # Find and run issue-parser.sh
+    local parser_script="$SKILL_DIR/autonomy/issue-parser.sh"
+    if [[ ! -f "$parser_script" ]]; then
+        echo -e "${RED}Error: issue-parser.sh not found at $parser_script${NC}"
+        exit 1
+    fi
+
+    local args=("$issue_ref" "--format" "$format")
+    [[ -n "$output_file" ]] && args+=("--output" "$output_file")
+    [[ "$quiet" == "true" ]] && args+=("--quiet")
+
+    "$parser_script" "${args[@]}"
+}
+
+# View parsed GitHub issue details
+cmd_issue_view() {
+    local issue_ref="${1:-}"
+
+    if [[ -z "$issue_ref" ]]; then
+        echo -e "${RED}Error: Issue reference required${NC}"
+        echo "Usage: loki issue view <issue-ref>"
+        exit 1
+    fi
+
+    # Find and run issue-parser.sh
+    local parser_script="$SKILL_DIR/autonomy/issue-parser.sh"
+    if [[ ! -f "$parser_script" ]]; then
+        echo -e "${RED}Error: issue-parser.sh not found at $parser_script${NC}"
+        exit 1
+    fi
+
+    # Parse and get JSON for easier extraction
+    local parsed_json
+    parsed_json=$("$parser_script" "$issue_ref" --format json --quiet 2>&1)
+    local exit_code=$?
+
+    if [[ $exit_code -ne 0 ]]; then
+        echo "$parsed_json"
+        exit $exit_code
+    fi
+
+    # Extract fields using jq
+    local title type priority labels url problem acceptance technical raw_body
+    title=$(echo "$parsed_json" | jq -r '.metadata.title // ""')
+    type=$(echo "$parsed_json" | jq -r '.metadata.type // "task"')
+    priority=$(echo "$parsed_json" | jq -r '.metadata.priority // "normal"')
+    labels=$(echo "$parsed_json" | jq -r '.metadata.labels | join(", ") // ""')
+    url=$(echo "$parsed_json" | jq -r '.source.url // ""')
+    problem=$(echo "$parsed_json" | jq -r '.content.problem_statement // ""')
+    acceptance=$(echo "$parsed_json" | jq -r '.content.acceptance_criteria // ""')
+    technical=$(echo "$parsed_json" | jq -r '.content.technical_requirements // ""')
+    raw_body=$(echo "$parsed_json" | jq -r '.content.raw_body // ""')
+
+    # Display structured view
+    echo -e "${BOLD}GitHub Issue Details${NC}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+
+    echo -e "${CYAN}Title:${NC}    $title"
+    echo -e "${CYAN}Type:${NC}     $type"
+    echo -e "${CYAN}Priority:${NC} $priority"
+    echo -e "${CYAN}Labels:${NC}   $labels"
+    echo -e "${CYAN}URL:${NC}      $url"
+    echo ""
+
+    # Problem statement
+    if [[ -n "$problem" ]]; then
+        echo -e "${BOLD}Problem Statement${NC}"
+        echo "─────────────────────────────────────────────────────────────────────────"
+        echo "$problem" | head -15
+        echo ""
+    fi
+
+    # Acceptance criteria
+    if [[ -n "$acceptance" && "$acceptance" != "null" ]]; then
+        echo -e "${BOLD}Acceptance Criteria${NC}"
+        echo "─────────────────────────────────────────────────────────────────────────"
+        echo "$acceptance" | head -15
+        echo ""
+    fi
+
+    # Technical requirements
+    if [[ -n "$technical" && "$technical" != "null" ]]; then
+        echo -e "${BOLD}Technical Requirements${NC}"
+        echo "─────────────────────────────────────────────────────────────────────────"
+        echo "$technical" | head -10
+        echo ""
+    fi
+
+    # Show raw body preview if nothing else was extracted
+    if [[ -z "$problem" && -z "$acceptance" && -z "$technical" && -n "$raw_body" ]]; then
+        echo -e "${BOLD}Issue Body${NC}"
+        echo "─────────────────────────────────────────────────────────────────────────"
+        echo "$raw_body" | head -20
+        echo ""
+    fi
+
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo -e "Next steps:"
+    echo -e "  ${CYAN}loki issue parse $issue_ref --format json${NC}  # Get JSON output"
+    echo -e "  ${CYAN}loki issue $issue_ref --start${NC}              # Generate PRD and start"
+}
+
+# Generate PRD from GitHub issue
+cmd_issue() {
+    local issue_ref=""
+    local repo=""
+    local number=""
+    local start_loki=false
+    local dry_run=false
+    local output_file=""
+    local start_args=()
+    local subcommand=""
+
+    # Check for subcommands first
+    if [[ $# -gt 0 ]]; then
+        case "$1" in
+            parse)
+                # Delegate to issue-parser.sh
+                shift
+                cmd_issue_parse "$@"
+                return $?
+                ;;
+            view)
+                # View parsed issue details
+                shift
+                cmd_issue_view "$@"
+                return $?
+                ;;
+        esac
+    fi
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --help|-h)
+                echo -e "${BOLD}loki issue${NC} - Generate PRD from GitHub issue"
+                echo ""
+                echo "Usage: loki issue <url-or-number> [options]"
+                echo "       loki issue parse <url-or-number> [--format yaml|json]"
+                echo "       loki issue view <url-or-number>"
+                echo "       loki issue --repo owner/repo --number 123 [options]"
+                echo ""
+                echo "Subcommands:"
+                echo "  parse              Parse issue and output structured YAML/JSON"
+                echo "  view               View parsed issue details"
+                echo ""
+                echo "Arguments:"
+                echo "  <url-or-number>    GitHub issue URL or issue number"
+                echo ""
+                echo "Options:"
+                echo "  --repo OWNER/REPO  Specify repository (default: auto-detect from git)"
+                echo "  --number NUM       Specify issue number (alternative to positional arg)"
+                echo "  --start            Start Loki Mode with the generated PRD"
+                echo "  --dry-run          Preview generated PRD without saving"
+                echo "  --output FILE      Save PRD to custom path (default: .loki/prd-issue-N.md)"
+                echo ""
+                echo "Options passed to 'start' (when --start is used):"
+                echo "  --provider NAME    AI provider: claude (default), codex, gemini"
+                echo "  --parallel         Enable parallel mode with git worktrees"
+                echo "  --bg, --background Run in background mode"
+                echo ""
+                echo "Examples:"
+                echo "  loki issue 123                           # Generate PRD from issue #123"
+                echo "  loki issue 123 --dry-run                 # Preview without saving"
+                echo "  loki issue 123 --start                   # Generate and start Loki Mode"
+                echo "  loki issue 123 --start --parallel        # Generate, start in parallel mode"
+                echo "  loki issue parse owner/repo#123          # Parse and output structured data"
+                echo "  loki issue parse 123 --format json       # Parse and output JSON"
+                echo "  loki issue view 123                      # View parsed issue details"
+                echo "  loki issue --repo org/repo --number 456  # Specify repo and issue"
+                echo "  loki issue https://github.com/org/repo/issues/789"
+                exit 0
+                ;;
+            --repo)
+                if [[ -n "${2:-}" ]]; then
+                    repo="$2"
+                    shift 2
+                else
+                    echo -e "${RED}--repo requires a value (owner/repo)${NC}"
+                    exit 1
+                fi
+                ;;
+            --repo=*)
+                repo="${1#*=}"
+                shift
+                ;;
+            --number)
+                if [[ -n "${2:-}" ]]; then
+                    number="$2"
+                    shift 2
+                else
+                    echo -e "${RED}--number requires a value${NC}"
+                    exit 1
+                fi
+                ;;
+            --number=*)
+                number="${1#*=}"
+                shift
+                ;;
+            --start)
+                start_loki=true
+                shift
+                ;;
+            --dry-run)
+                dry_run=true
+                shift
+                ;;
+            --output)
+                if [[ -n "${2:-}" ]]; then
+                    output_file="$2"
+                    shift 2
+                else
+                    echo -e "${RED}--output requires a file path${NC}"
+                    exit 1
+                fi
+                ;;
+            --output=*)
+                output_file="${1#*=}"
+                shift
+                ;;
+            # Pass through options to start command
+            --provider|--parallel|--bg|--background|--simple|--complex|--github|--no-dashboard|--sandbox)
+                start_args+=("$1")
+                if [[ "$1" == "--provider" && -n "${2:-}" ]]; then
+                    start_args+=("$2")
+                    shift
+                fi
+                shift
+                ;;
+            -*)
+                echo -e "${RED}Unknown option: $1${NC}"
+                echo "Run 'loki issue --help' for usage."
+                exit 1
+                ;;
+            *)
+                issue_ref="$1"
+                shift
+                ;;
+        esac
+    done
+
+    # Check gh CLI
+    if ! command -v gh &> /dev/null; then
+        echo -e "${RED}Error: gh CLI not found${NC}"
+        echo "Install with: brew install gh"
+        exit 1
+    fi
+
+    if ! gh auth status &> /dev/null 2>&1; then
+        echo -e "${RED}Error: gh CLI not authenticated${NC}"
+        echo "Run: gh auth login"
+        exit 1
+    fi
+
+    # Parse issue reference
+    if [[ -n "$issue_ref" ]]; then
+        # Check if it's a URL
+        if [[ "$issue_ref" =~ ^https?://github\.com/([^/]+/[^/]+)/issues/([0-9]+) ]]; then
+            repo="${BASH_REMATCH[1]}"
+            number="${BASH_REMATCH[2]}"
+        elif [[ "$issue_ref" =~ ^([^/]+/[^/]+)#([0-9]+)$ ]]; then
+            # owner/repo#number format
+            repo="${BASH_REMATCH[1]}"
+            number="${BASH_REMATCH[2]}"
+        elif [[ "$issue_ref" =~ ^#?([0-9]+)$ ]]; then
+            # Just a number (with optional #)
+            number="${BASH_REMATCH[1]}"
+        else
+            echo -e "${RED}Invalid issue reference: $issue_ref${NC}"
+            echo "Expected: issue number (123), owner/repo#123, or GitHub URL"
+            exit 1
+        fi
+    fi
+
+    # Validate we have a number
+    if [[ -z "$number" ]]; then
+        echo -e "${RED}Error: No issue number specified${NC}"
+        echo "Usage: loki issue <number> or loki issue --number <number>"
+        echo "Run 'loki issue --help' for full usage."
+        exit 1
+    fi
+
+    # Auto-detect repo if not specified
+    if [[ -z "$repo" ]]; then
+        # Try to get from gh CLI (uses git remote)
+        repo=$(gh repo view --json nameWithOwner -q '.nameWithOwner' 2>/dev/null) || true
+        if [[ -z "$repo" ]]; then
+            echo -e "${RED}Error: Could not determine repository${NC}"
+            echo "Specify with: --repo owner/repo"
+            echo "Or run from a directory with a GitHub remote configured."
+            exit 1
+        fi
+    fi
+
+    echo -e "${CYAN}Fetching issue #$number from $repo...${NC}"
+
+    # Fetch issue details
+    local issue_json
+    if ! issue_json=$(gh issue view "$number" --repo "$repo" --json number,title,body,labels,milestone,author,createdAt,url 2>&1); then
+        echo -e "${RED}Error fetching issue: $issue_json${NC}"
+        exit 1
+    fi
+
+    # Extract fields
+    local title body labels milestone author created_at issue_url
+    title=$(echo "$issue_json" | jq -r '.title')
+    body=$(echo "$issue_json" | jq -r '.body // ""')
+    labels=$(echo "$issue_json" | jq -r '[.labels[].name] | join(", ") // ""')
+    milestone=$(echo "$issue_json" | jq -r '.milestone.title // ""')
+    author=$(echo "$issue_json" | jq -r '.author.login // ""')
+    created_at=$(echo "$issue_json" | jq -r '.createdAt // ""')
+    issue_url=$(echo "$issue_json" | jq -r '.url')
+
+    # Generate PRD content
+    local prd_content
+    prd_content=$(cat <<EOF
+# PRD: $title
+
+**Source:** GitHub Issue [#$number]($issue_url)
+**Author:** @$author
+**Created:** $created_at
+$([ -n "$labels" ] && echo "**Labels:** $labels")
+$([ -n "$milestone" ] && echo "**Milestone:** $milestone")
+
+---
+
+## Overview
+
+$body
+
+---
+
+## Acceptance Criteria
+
+Based on the issue description, implement the following:
+
+1. Address all requirements specified in the issue body above
+2. Ensure backward compatibility (unless explicitly breaking changes are requested)
+3. Add appropriate tests for new functionality
+4. Update documentation as needed
+
+---
+
+## Technical Notes
+
+- Source: GitHub Issue #$number
+- Repository: $repo
+- Generated by: Loki Mode CLI
+
+---
+
+## References
+
+- Original Issue: $issue_url
+EOF
+)
+
+    # Handle dry-run
+    if [[ "$dry_run" == "true" ]]; then
+        echo ""
+        echo -e "${BOLD}Generated PRD Preview:${NC}"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "$prd_content"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        echo -e "${DIM}(dry-run mode - PRD not saved)${NC}"
+        exit 0
+    fi
+
+    # Determine output file
+    if [[ -z "$output_file" ]]; then
+        mkdir -p "$LOKI_DIR"
+        output_file="$LOKI_DIR/prd-issue-$number.md"
+    fi
+
+    # Write PRD file
+    echo "$prd_content" > "$output_file"
+    echo -e "${GREEN}PRD generated: $output_file${NC}"
+
+    # Fetch comments if any exist
+    local comments_count
+    comments_count=$(gh issue view "$number" --repo "$repo" --json comments -q '.comments | length' 2>/dev/null) || comments_count=0
+
+    if [[ "$comments_count" -gt 0 ]]; then
+        echo -e "${DIM}Issue has $comments_count comment(s) - view with: gh issue view $number --repo $repo${NC}"
+    fi
+
+    # Start Loki Mode if requested
+    if [[ "$start_loki" == "true" ]]; then
+        echo ""
+        echo -e "${GREEN}Starting Loki Mode with generated PRD...${NC}"
+        cmd_start "$output_file" "${start_args[@]}"
+    else
+        echo ""
+        echo "Next steps:"
+        echo -e "  ${CYAN}loki start $output_file${NC}           # Start Loki Mode with this PRD"
+        echo -e "  ${CYAN}loki issue $number --start${NC}        # Or re-run with --start flag"
+        echo -e "  ${DIM}cat $output_file${NC}  # View the generated PRD"
+    fi
+}
+
 # Show configuration
 cmd_config() {
     local subcommand="${1:-show}"
@@ -1119,6 +1604,9 @@ main() {
             ;;
         import)
             cmd_import
+            ;;
+        issue)
+            cmd_issue "$@"
             ;;
         config)
             cmd_config "$@"

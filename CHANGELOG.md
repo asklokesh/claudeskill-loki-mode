@@ -5,6 +5,37 @@ All notable changes to Loki Mode will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.10.0] - 2026-02-01
+
+### Added - GitHub Issue to PR Automation
+
+**New feature: Convert GitHub issues to PRDs and auto-start Loki Mode.**
+
+#### New CLI Command
+- `loki issue <url-or-number>` - Generate PRD from GitHub issue
+- `loki issue parse <ref>` - Parse issue and output structured YAML/JSON
+- `loki issue view <ref>` - View parsed issue details
+
+#### Options
+- `--dry-run` - Preview generated PRD without saving
+- `--start` - Generate PRD and start Loki Mode
+- `--output FILE` - Save PRD to custom path
+- `--repo OWNER/REPO` - Specify repository
+- `--number NUM` - Specify issue number
+
+#### Features
+- Parse issue URL, `owner/repo#num`, or issue number formats
+- Extract acceptance criteria from checkboxes
+- Detect priority and type from labels
+- Auto-detect repository from git remote
+- Generate structured PRD ready for Loki Mode execution
+
+#### New Files
+- `autonomy/issue-parser.sh` - Issue parsing and PRD generation
+- `tests/test-issue-parser.sh` - Test suite (11 tests)
+
+---
+
 ## [5.9.0] - 2026-02-01
 
 ### Added - Cross-Project Learning
