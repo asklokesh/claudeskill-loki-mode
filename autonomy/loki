@@ -3261,7 +3261,7 @@ try:
     from memory.engine import MemoryEngine
     import json
     episode_id = os.environ.get('LOKI_ID', '')
-    engine = MemoryEngine('.loki/memory')
+    engine = MemoryEngine(base_path='.loki/memory')
     episode = engine.get_episode(episode_id)
     if episode:
         print(json.dumps(episode.to_dict(), indent=2))
@@ -3282,7 +3282,7 @@ except Exception as e:
                 python3 -c "
 try:
     from memory.engine import MemoryEngine
-    engine = MemoryEngine('.loki/memory')
+    engine = MemoryEngine(base_path='.loki/memory')
     patterns = engine.find_patterns()
     if not patterns:
         print('No patterns found')
@@ -3303,7 +3303,7 @@ try:
     from memory.engine import MemoryEngine
     import json
     pattern_id = os.environ.get('LOKI_ID', '')
-    engine = MemoryEngine('.loki/memory')
+    engine = MemoryEngine(base_path='.loki/memory')
     pattern = engine.get_pattern(pattern_id)
     if pattern:
         print(json.dumps(pattern.to_dict(), indent=2))

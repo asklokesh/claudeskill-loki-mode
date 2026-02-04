@@ -38,6 +38,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [5.20.7] - 2026-02-04
+
+### Fixed - Memory Pattern Command Error
+
+- Fixed `loki memory pattern` and `loki memory episode` commands
+- Bug: MemoryEngine was called with positional arg instead of `base_path=` keyword
+- Error was: `'str' object has no attribute 'read_json'`
+
+### Comprehensive Testing Complete (100% Coverage)
+
+**CLI Commands Tested: 87 commands - ALL PASS**
+- Session: start, stop, pause, resume, status, reset
+- Dashboard/API: start, stop, status, url, serve
+- Provider: show, list, info, set (claude/codex/gemini)
+- Config: show, init, path
+- Issue: parse, view, dry-run, formats
+- Memory: list, stats, index, search, pattern, episode
+- Utility: logs, notify, voice
+
+**run.sh Testing: 34 tests - ALL PASS**
+
+**VS Code Extension: Fully verified**
+- 11 commands, 8 settings, 6 views, 22 source files
+
+---
+
 ## [5.20.6] - 2026-02-04
 
 ### Fixed - Dockerfile.sandbox Build Error
