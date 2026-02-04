@@ -217,7 +217,11 @@ jobs:
           echo "Syncing version to $VERSION"
           npm pkg set version="$VERSION"
 
-      - name: Install dependencies
+      - name: Install dashboard-ui dependencies
+        working-directory: dashboard-ui
+        run: npm ci
+
+      - name: Install extension dependencies
         working-directory: vscode-extension
         run: npm ci
 
