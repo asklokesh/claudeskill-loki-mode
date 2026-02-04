@@ -35,7 +35,7 @@ blog/
 
 ### 2. Architecture
 - Core workflow (RARV cycle)
-- 37 agent types
+- 41 agent types
 - Memory systems
 - Quality control
 - Tool orchestration
