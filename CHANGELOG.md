@@ -38,6 +38,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [5.20.1] - 2026-02-04
+
+### Fixed - CI/CD Pipeline for VS Code Extension
+
+- Fixed GitHub Actions workflow to install dashboard-ui dependencies before VS Code extension build
+- Added `npm ci` step for dashboard-ui in publish-vscode job
+- Ensures Web Components bundle is available for extension packaging
+
+---
+
 ## [5.20.0] - 2026-02-04
 
 ### Added - Dashboard Consolidation, Unified Web Components Architecture
