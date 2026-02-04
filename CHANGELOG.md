@@ -38,6 +38,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [5.20.2] - 2026-02-04
+
+### Fixed - CI/CD Pipeline for VS Code Extension
+
+- Changed `npm ci` to `npm install` for dashboard-ui (no package-lock.json in repo)
+- Ensures Web Components bundle builds correctly in CI environment
+
+---
+
 ## [5.20.1] - 2026-02-04
 
 ### Fixed - CI/CD Pipeline for VS Code Extension

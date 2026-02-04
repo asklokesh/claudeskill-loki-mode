@@ -219,7 +219,7 @@ jobs:
 
       - name: Install dashboard-ui dependencies
         working-directory: dashboard-ui
-        run: npm ci
+        run: npm install
 
       - name: Install extension dependencies
         working-directory: vscode-extension
