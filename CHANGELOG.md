@@ -5,7 +5,7 @@ All notable changes to Loki Mode will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Executive Summary (v5.5 - v5.18)
+## Executive Summary (v5.5 - v5.20)
 
 - **Security Hardening** - Fixed command injection in hooks, path traversal in MCP server
 - **Unified Memory Access** - Single interface for all tools to access memory system
@@ -31,6 +31,94 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **HTTP/SSE API Server** - Full REST API matching CLI features with TypeScript client SDK
 - **Docker Sandbox** - Secure isolated execution with seccomp profiles
 - **Docker Deployment** - Production-ready containerization with health checks
+- **Dashboard Consolidation** - Unified 5 dashboards into Web Components architecture (71-87% code reduction)
+- **Learning System** - Cross-tool learning with signals, aggregation, and suggestions
+- **Swarm Intelligence** - Voting, consensus, delegation patterns with BFT
+- **State Management** - Centralized state with file locking and change notifications
+
+---
+
+## [5.20.0] - 2026-02-04
+
+### Added - Dashboard Consolidation, Unified Web Components Architecture
+
+**Major release: Consolidated 5 dashboard implementations into unified Web Components architecture with 71-87% code reduction.**
+
+#### Build Infrastructure
+
+**New File: `dashboard-ui/esbuild.config.cjs`**
+- ESM bundle for modern browsers and React integration
+- IIFE bundle for VS Code webview (CSP-compatible)
+- Watch mode with hot reload for development
+- Minification and sourcemaps for production
+
+**New File: `dashboard-ui/types/index.d.ts`**
+- TypeScript definitions for all 5 components
+- Event detail types for custom events
+- API client and state management types
+- JSX intrinsic element declarations
+
+**New File: `dashboard-ui/scripts/build-standalone.js`**
+- Generates self-contained HTML with inlined bundle
+- Offline support with localStorage
+- Theme switching with system preference detection
+
+#### VS Code Integration
+
+**Refactored: `vscode-extension/src/views/dashboardWebview.ts`**
+- Reduced from 1,339 lines to 392 lines (71% reduction)
+- Uses Web Components instead of inline HTML/JS
+- All 5 tabs: Tasks, Sessions, Logs, Memory, Learning
+- CSP-compliant with nonce-based script loading
+
+**Updated: `vscode-extension/esbuild.js`**
+- Copies dashboard-ui bundle to media/
+- Build order: dashboard-ui first, then extension
+
+**Deprecated: `vscode-extension/src/views/memoryViewProvider.ts`**
+- Marked deprecated (removal in v6.0.0)
+- Memory available in main dashboard Memory tab
+
+#### React Integration
+
+**New File: `dashboard/frontend/src/hooks/useWebComponent.ts`**
+- Generic hook for Web Component integration
+- Prop-to-attribute syncing with camelCase conversion
+- Event listener management with cleanup
+- Complex value serialization
+
+**New Directory: `dashboard/frontend/src/components/wrappers/`**
+- `LokiTaskBoardWrapper.tsx` - Task board with drag-drop events
+- `LokiSessionControlWrapper.tsx` - Session lifecycle control
+- `LokiMemoryBrowserWrapper.tsx` - Memory browser with selection events
+
+#### API Client Enhancements
+
+**Updated: `dashboard-ui/core/loki-api-client.js`**
+- Adaptive polling based on page visibility
+- VS Code message bridge for extension communication
+- Context detection (vscode, browser, cli)
+- Standardized intervals: 2s active, 5s background, 10s offline
+
+#### Theme Unification
+
+**Updated: `dashboard/frontend/tailwind.config.js`**
+- Imports design tokens from loki-unified-styles.js
+- CSS variables mapped to Tailwind utilities
+- Anthropic color palette (orange #d97757, cream #faf9f0, charcoal #131314)
+
+**Updated: `dashboard/frontend/src/index.css`**
+- Complete light/dark theme CSS variables
+- Component classes using unified tokens
+
+#### Code Reduction Summary
+
+| Component | Before | After | Reduction |
+|-----------|--------|-------|-----------|
+| dashboardWebview.ts | 1,339 lines | 392 lines | 71% |
+| Static dashboard | ~2,000 lines | 262 lines | 87% |
+| Theme implementations | 4 separate | 1 unified | 75% |
+| API clients | 4 separate | 1 + bridge | 75% |
 
 ---
 
