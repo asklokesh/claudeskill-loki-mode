@@ -991,6 +991,18 @@ async def get_audit_summary(days: int = 7):
 
 
 # =============================================================================
+# Collaboration API (Real-time multi-user support)
+# =============================================================================
+
+try:
+    from collab.api import create_collab_routes
+    create_collab_routes(app)
+    logger.info("Collaboration API routes enabled")
+except ImportError as e:
+    logger.debug(f"Collaboration module not available: {e}")
+
+
+# =============================================================================
 # Static File Serving (Production/Docker)
 # =============================================================================
 # Must be configured AFTER all API routes to avoid conflicts

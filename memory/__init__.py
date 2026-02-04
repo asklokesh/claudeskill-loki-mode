@@ -1,5 +1,33 @@
 # Loki Mode Memory System
 # Core data schemas and engine for episodic, semantic, and procedural memory.
+# Supports namespace-based project isolation (v5.19.0).
+
+# Embeddings module requires numpy - make it optional
+try:
+    from .embeddings import (
+        EmbeddingEngine,
+        EmbeddingConfig,
+        EmbeddingProvider,
+        EmbeddingQuality,
+        ChunkingStrategy,
+        TextChunker,
+        quick_similarity,
+        create_config_file,
+        compute_quality_score,
+    )
+    _EMBEDDINGS_AVAILABLE = True
+except ImportError:
+    # numpy not installed - embeddings not available
+    EmbeddingEngine = None
+    EmbeddingConfig = None
+    EmbeddingProvider = None
+    EmbeddingQuality = None
+    ChunkingStrategy = None
+    TextChunker = None
+    quick_similarity = None
+    create_config_file = None
+    compute_quality_score = None
+    _EMBEDDINGS_AVAILABLE = False
 
 from .schemas import (
     ActionEntry,
@@ -12,7 +40,7 @@ from .schemas import (
     ProceduralSkill,
 )
 
-from .storage import MemoryStorage
+from .storage import MemoryStorage, DEFAULT_NAMESPACE
 
 from .engine import (
     MemoryEngine,
@@ -50,7 +78,25 @@ from .unified_access import (
     MemoryContext,
 )
 
+from .namespace import (
+    NamespaceManager,
+    NamespaceInfo,
+    detect_namespace,
+    DEFAULT_NAMESPACE as NS_DEFAULT,
+    GLOBAL_NAMESPACE,
+)
+
 __all__ = [
+    # Embeddings
+    "EmbeddingEngine",
+    "EmbeddingConfig",
+    "EmbeddingProvider",
+    "EmbeddingQuality",
+    "ChunkingStrategy",
+    "TextChunker",
+    "quick_similarity",
+    "create_config_file",
+    "compute_quality_score",
     # Schemas
     "ActionEntry",
     "ErrorEntry",
@@ -87,4 +133,10 @@ __all__ = [
     # Unified Access
     "UnifiedMemoryAccess",
     "MemoryContext",
+    # Namespace (v5.19.0)
+    "NamespaceManager",
+    "NamespaceInfo",
+    "detect_namespace",
+    "DEFAULT_NAMESPACE",
+    "GLOBAL_NAMESPACE",
 ]

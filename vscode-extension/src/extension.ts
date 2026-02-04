@@ -6,15 +6,20 @@ import { Logger, logger } from './utils/logger';
 import { ChatViewProvider } from './views/chatViewProvider';
 import { LogsViewProvider } from './views/logsViewProvider';
 import { MemoryViewProvider } from './views/memoryViewProvider';
+import { DashboardWebviewProvider } from './views/dashboardWebview';
 import { LokiApiClient } from './api/client';
 import { parseStatusResponse, isValidTaskStatus } from './api/validators';
 import { LokiEvent, Disposable } from './api/types';
+import { getLearningCollector, disposeLearningCollector, LearningCollector, Outcome } from './services/learning-collector';
+import { getFileEditMemoryIntegration, disposeFileEditMemoryIntegration, FileEditMemoryIntegration } from './services/memory-integration';
 
 // State tracking
 let isRunning = false;
 let isPaused = false;
 let statusBarItem: vscode.StatusBarItem | undefined;
 let statusSubscription: Disposable | undefined;
+let learningCollector: LearningCollector | undefined;
+let memoryIntegration: FileEditMemoryIntegration | undefined;
 
 /**
  * Session item for the sessions tree view
@@ -159,6 +164,7 @@ let tasksProvider: TasksProvider;
 let chatViewProvider: ChatViewProvider;
 let logsViewProvider: LogsViewProvider;
 let memoryViewProvider: MemoryViewProvider;
+let dashboardWebviewProvider: DashboardWebviewProvider;
 let apiClient: LokiApiClient;
 
 /**
@@ -382,10 +388,16 @@ async function startLokiMode(): Promise<void> {
 
     logger.info('Starting Loki Mode...');
 
+    // Track command and start workflow
+    learningCollector?.trackCommand('loki.start', ['loki.stop', 'loki.pause']);
+    learningCollector?.startWorkflow('loki_session_start');
+    learningCollector?.addWorkflowStep('loki_session_start', 'initiate_start');
+
     // Check for PRD file
     let prdPath = Config.prdPath;
 
     if (!prdPath) {
+        learningCollector?.addWorkflowStep('loki_session_start', 'select_prd');
         const result = await vscode.window.showOpenDialog({
             canSelectFiles: true,
             canSelectFolders: false,
@@ -399,10 +411,18 @@ async function startLokiMode(): Promise<void> {
 
         if (result && result.length > 0) {
             prdPath = result[0].fsPath;
+            // Track PRD file selection preference
+            learningCollector?.emitUserPreference(
+                'prd_file_type',
+                path.extname(prdPath),
+                ['.md', '.txt', '.json'].filter(ext => ext !== path.extname(prdPath)),
+                { prdPath }
+            );
         }
     }
 
     try {
+        learningCollector?.addWorkflowStep('loki_session_start', 'api_request');
         await apiRequest('/start', 'POST', {
             provider: Config.provider,
             prd: prdPath || undefined
@@ -422,14 +442,42 @@ async function startLokiMode(): Promise<void> {
             new Date()
         ));
 
+        // Track provider preference
+        learningCollector?.emitUserPreference(
+            'provider_choice',
+            Config.provider,
+            ['claude', 'codex', 'gemini'].filter(p => p !== Config.provider),
+            { sessionName }
+        );
+
         vscode.window.showInformationMessage(`Loki Mode started with provider: ${Config.provider}`);
         logger.info(`Loki Mode started (provider: ${Config.provider}, prd: ${prdPath || 'none'})`);
 
         startPolling();
+
+        // Complete workflow successfully
+        learningCollector?.addWorkflowStep('loki_session_start', 'session_active');
+        learningCollector?.completeWorkflow('loki_session_start', {
+            context: { provider: Config.provider, hasPrd: !!prdPath }
+        });
+
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         vscode.window.showErrorMessage(`Failed to start Loki Mode: ${errorMessage}`);
         logger.error('Failed to start Loki Mode', error);
+
+        // Emit error pattern
+        learningCollector?.emitErrorPattern(
+            'session_start_failed',
+            errorMessage,
+            {
+                stackTrace: error instanceof Error ? error.stack : undefined,
+                context: { provider: Config.provider, hasPrd: !!prdPath }
+            }
+        );
+
+        // Complete workflow with failure
+        learningCollector?.completeWorkflow('loki_session_start', { outcome: Outcome.FAILURE });
     }
 }
 
@@ -443,6 +491,7 @@ async function stopLokiMode(): Promise<void> {
     }
 
     logger.info('Stopping Loki Mode...');
+    learningCollector?.trackCommand('loki.stop', ['loki.pause', 'loki.resume']);
 
     try {
         await apiRequest('/stop', 'POST');
@@ -456,12 +505,26 @@ async function stopLokiMode(): Promise<void> {
         tasksProvider.clearTasks();
         stopPolling();
 
+        // Emit success pattern for clean stop
+        learningCollector?.emitSuccessPattern(
+            'session_stop',
+            ['initiate_stop', 'api_request', 'cleanup_ui'],
+            { postconditions: ['session_inactive', 'ui_cleared'] }
+        );
+
         vscode.window.showInformationMessage('Loki Mode stopped');
         logger.info('Loki Mode stopped');
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         vscode.window.showErrorMessage(`Failed to stop Loki Mode: ${errorMessage}`);
         logger.error('Failed to stop Loki Mode', error);
+
+        // Emit error pattern
+        learningCollector?.emitErrorPattern(
+            'session_stop_failed',
+            errorMessage,
+            { stackTrace: error instanceof Error ? error.stack : undefined }
+        );
     }
 }
 
@@ -480,6 +543,7 @@ async function pauseLokiMode(): Promise<void> {
     }
 
     logger.info('Pausing Loki Mode...');
+    learningCollector?.trackCommand('loki.pause', ['loki.stop', 'loki.resume']);
 
     try {
         await apiRequest('/pause', 'POST');
@@ -488,12 +552,24 @@ async function pauseLokiMode(): Promise<void> {
         updateStatusBar();
         updateContext();
 
+        learningCollector?.emitSuccessPattern(
+            'session_pause',
+            ['initiate_pause', 'api_request', 'update_ui'],
+            { preconditions: ['session_running'], postconditions: ['session_paused'] }
+        );
+
         vscode.window.showInformationMessage('Loki Mode paused');
         logger.info('Loki Mode paused');
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         vscode.window.showErrorMessage(`Failed to pause Loki Mode: ${errorMessage}`);
         logger.error('Failed to pause Loki Mode', error);
+
+        learningCollector?.emitErrorPattern(
+            'session_pause_failed',
+            errorMessage,
+            { stackTrace: error instanceof Error ? error.stack : undefined }
+        );
     }
 }
 
@@ -507,6 +583,7 @@ async function resumeLokiMode(): Promise<void> {
     }
 
     logger.info('Resuming Loki Mode...');
+    learningCollector?.trackCommand('loki.resume', ['loki.stop', 'loki.pause']);
 
     try {
         await apiRequest('/resume', 'POST');
@@ -515,12 +592,24 @@ async function resumeLokiMode(): Promise<void> {
         updateStatusBar();
         updateContext();
 
+        learningCollector?.emitSuccessPattern(
+            'session_resume',
+            ['initiate_resume', 'api_request', 'update_ui'],
+            { preconditions: ['session_paused'], postconditions: ['session_running'] }
+        );
+
         vscode.window.showInformationMessage('Loki Mode resumed');
         logger.info('Loki Mode resumed');
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         vscode.window.showErrorMessage(`Failed to resume Loki Mode: ${errorMessage}`);
         logger.error('Failed to resume Loki Mode', error);
+
+        learningCollector?.emitErrorPattern(
+            'session_resume_failed',
+            errorMessage,
+            { stackTrace: error instanceof Error ? error.stack : undefined }
+        );
     }
 }
 
@@ -529,6 +618,7 @@ async function resumeLokiMode(): Promise<void> {
  */
 async function showStatus(): Promise<void> {
     logger.info('Fetching Loki status...');
+    learningCollector?.trackCommand('loki.status', ['loki.refreshTasks']);
 
     try {
         const rawStatus = await apiRequest('/status');
@@ -567,6 +657,8 @@ async function injectInput(): Promise<void> {
         return;
     }
 
+    learningCollector?.trackCommand('loki.injectInput', []);
+
     const input = await vscode.window.showInputBox({
         prompt: 'Enter input to inject into Loki Mode',
         placeHolder: 'Type your message...'
@@ -581,12 +673,28 @@ async function injectInput(): Promise<void> {
     try {
         await apiRequest('/input', 'POST', { input });
 
+        // Track input injection as a success pattern
+        learningCollector?.emitSuccessPattern(
+            'input_injection',
+            ['open_input_box', 'enter_text', 'submit'],
+            {
+                context: { inputLength: input.length },
+                postconditions: ['input_queued']
+            }
+        );
+
         vscode.window.showInformationMessage('Input injected successfully');
         logger.info(`Input injected: ${input.substring(0, 50)}...`);
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         vscode.window.showErrorMessage(`Failed to inject input: ${errorMessage}`);
         logger.error('Failed to inject input', error);
+
+        learningCollector?.emitErrorPattern(
+            'input_injection_failed',
+            errorMessage,
+            { stackTrace: error instanceof Error ? error.stack : undefined }
+        );
     }
 }
 
@@ -594,6 +702,8 @@ async function injectInput(): Promise<void> {
  * Show quick pick menu for Loki commands
  */
 async function showQuickPick(): Promise<void> {
+    learningCollector?.trackCommand('loki.showQuickPick', []);
+
     const items: vscode.QuickPickItem[] = [
         { label: '$(play) Start Loki Mode', description: 'Start autonomous mode' },
         { label: '$(stop) Stop Loki Mode', description: 'Stop autonomous mode' },
@@ -611,6 +721,15 @@ async function showQuickPick(): Promise<void> {
     if (!selected) {
         return;
     }
+
+    // Track menu selection as user preference
+    const allLabels = items.map(i => i.label);
+    learningCollector?.emitUserPreference(
+        'quick_pick_selection',
+        selected.label,
+        allLabels.filter(l => l !== selected.label),
+        { menuType: 'command_palette' }
+    );
 
     switch (selected.label) {
         case '$(play) Start Loki Mode':
@@ -641,6 +760,8 @@ async function showQuickPick(): Promise<void> {
  * Open PRD file command handler
  */
 async function openPrd(): Promise<void> {
+    learningCollector?.trackCommand('loki.openPrd', []);
+
     let prdPath = Config.prdPath;
 
     if (!prdPath) {
@@ -664,6 +785,14 @@ async function openPrd(): Promise<void> {
         const doc = await vscode.workspace.openTextDocument(prdPath);
         await vscode.window.showTextDocument(doc);
         logger.info(`Opened PRD file: ${prdPath}`);
+
+        // Track PRD file open as user preference
+        learningCollector?.emitUserPreference(
+            'prd_file_opened',
+            path.extname(prdPath),
+            [],
+            { prdPath }
+        );
     }
 }
 
@@ -672,6 +801,14 @@ async function openPrd(): Promise<void> {
  */
 export function activate(context: vscode.ExtensionContext): void {
     logger.info('Activating Loki Mode extension...');
+
+    // Initialize learning collector for signal emission
+    learningCollector = getLearningCollector();
+    logger.info('Learning collector initialized');
+
+    // Initialize file edit memory integration for episodic memory
+    memoryIntegration = getFileEditMemoryIntegration();
+    logger.info('File edit memory integration initialized');
 
     // Initialize API client with configurable polling interval
     apiClient = new LokiApiClient(Config.apiBaseUrl, { pollingInterval: Config.pollingInterval });
@@ -684,6 +821,7 @@ export function activate(context: vscode.ExtensionContext): void {
     chatViewProvider = new ChatViewProvider(context.extensionUri, apiClient);
     logsViewProvider = new LogsViewProvider(context.extensionUri, apiClient);
     memoryViewProvider = new MemoryViewProvider(context.extensionUri, apiClient);
+    dashboardWebviewProvider = new DashboardWebviewProvider(context.extensionUri, apiClient);
 
     // Register tree views
     const sessionsView = vscode.window.createTreeView('loki-sessions', {
@@ -712,6 +850,11 @@ export function activate(context: vscode.ExtensionContext): void {
         memoryViewProvider
     );
 
+    const dashboardView = vscode.window.registerWebviewViewProvider(
+        DashboardWebviewProvider.viewType,
+        dashboardWebviewProvider
+    );
+
     // Create status bar item
     statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
     statusBarItem.command = 'loki.status';
@@ -736,7 +879,12 @@ export function activate(context: vscode.ExtensionContext): void {
             logger.debug('Tasks refreshed');
         }),
         vscode.commands.registerCommand('loki.showQuickPick', showQuickPick),
-        vscode.commands.registerCommand('loki.openPrd', openPrd)
+        vscode.commands.registerCommand('loki.openPrd', openPrd),
+        vscode.commands.registerCommand('loki.openDashboard', () => {
+            // Focus the dashboard view in the sidebar
+            vscode.commands.executeCommand('workbench.view.extension.loki-mode');
+            logger.info('Dashboard opened');
+        })
     ];
 
     // Register configuration change listener
@@ -762,6 +910,7 @@ export function activate(context: vscode.ExtensionContext): void {
         chatView,
         logsView,
         memoryView,
+        dashboardView,
         statusBarItem,
         configListener,
         ...commands
@@ -798,9 +947,16 @@ export function deactivate(): void {
     if (memoryViewProvider) {
         memoryViewProvider.dispose();
     }
+    if (dashboardWebviewProvider) {
+        dashboardWebviewProvider.dispose();
+    }
     if (apiClient) {
         apiClient.dispose();
     }
+    // Dispose learning collector
+    disposeLearningCollector();
+    // Dispose file edit memory integration
+    disposeFileEditMemoryIntegration();
     logger.info('Loki Mode extension deactivated');
     Logger.dispose();
 }

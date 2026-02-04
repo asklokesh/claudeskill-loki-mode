@@ -3,17 +3,50 @@ Loki Mode MCP Resources
 
 Resource definitions and helpers for MCP resource endpoints.
 Resources provide read-only access to Loki Mode data.
+Uses StateManager for centralized state access with caching.
 """
 
 import os
+import sys
 import json
 from typing import Dict, Any, List, Optional
 from datetime import datetime
+
+# Add parent directory to path for state manager import
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Import StateManager for centralized state access
+try:
+    from state.manager import StateManager, ManagedFile, get_state_manager
+    HAS_STATE_MANAGER = True
+except ImportError:
+    HAS_STATE_MANAGER = False
+    StateManager = None
+    ManagedFile = None
+    get_state_manager = None
 
 
 def get_loki_base_path() -> str:
     """Get the base .loki directory path."""
     return os.path.join(os.getcwd(), '.loki')
+
+
+# Initialize a module-level StateManager instance
+_state_manager = None
+
+
+def _get_state_manager() -> Optional['StateManager']:
+    """Get or create the StateManager instance."""
+    global _state_manager
+    if not HAS_STATE_MANAGER:
+        return None
+    if _state_manager is None:
+        _state_manager = get_state_manager(
+            loki_dir=get_loki_base_path(),
+            enable_watch=False,  # MCP resources don't need watching
+            enable_events=False
+        )
+    return _state_manager
 
 
 # ============================================================
@@ -61,7 +94,13 @@ def get_continuity_summary() -> Dict[str, Any]:
 # ============================================================
 
 def read_memory_index() -> Dict[str, Any]:
-    """Read the memory index file."""
+    """Read the memory index file using StateManager."""
+    manager = _get_state_manager()
+    if manager:
+        result = manager.get_state(ManagedFile.MEMORY_INDEX)
+        if result:
+            return result
+    # Fallback to direct file read if StateManager not available
     index_path = os.path.join(get_loki_base_path(), 'memory', 'index.json')
     if os.path.exists(index_path):
         with open(index_path, 'r') as f:
@@ -166,7 +205,14 @@ def list_semantic_patterns(category: Optional[str] = None) -> List[Dict[str, Any
 # ============================================================
 
 def read_task_queue() -> Dict[str, Any]:
-    """Read the full task queue."""
+    """Read the full task queue using StateManager."""
+    manager = _get_state_manager()
+    if manager:
+        # Task queue is stored in state/task-queue.json, but we can use a custom path
+        result = manager.get_state("state/task-queue.json")
+        if result:
+            return result
+    # Fallback to direct file read if StateManager not available
     queue_path = os.path.join(get_loki_base_path(), 'state', 'task-queue.json')
     if os.path.exists(queue_path):
         with open(queue_path, 'r') as f:
@@ -206,7 +252,13 @@ def get_task_by_id(task_id: str) -> Optional[Dict[str, Any]]:
 # ============================================================
 
 def read_autonomy_state() -> Dict[str, Any]:
-    """Read the autonomy state file."""
+    """Read the autonomy state file using StateManager."""
+    manager = _get_state_manager()
+    if manager:
+        result = manager.get_state(ManagedFile.AUTONOMY)
+        if result:
+            return result
+    # Fallback to direct file read if StateManager not available
     state_path = os.path.join(get_loki_base_path(), 'state', 'autonomy-state.json')
     if os.path.exists(state_path):
         with open(state_path, 'r') as f:

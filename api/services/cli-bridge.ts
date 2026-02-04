@@ -3,6 +3,7 @@
  *
  * Bridges HTTP API to existing bash CLI infrastructure.
  * Spawns loki commands and captures output for streaming.
+ * Uses StateManager for centralized state access.
  */
 
 import type { Session, SessionStatus, Task, TaskStatus } from "../types/api.ts";
@@ -14,6 +15,7 @@ import {
   emitAgentEvent,
   emitLogEvent,
 } from "./event-bus.ts";
+import { StateManager, ManagedFile, type StateChange } from "../../state/manager.ts";
 
 interface RunningProcess {
   process: Deno.ChildProcess;
@@ -26,12 +28,19 @@ class CLIBridge {
   private lokiDir: string;
   private runningProcesses: Map<string, RunningProcess> = new Map();
   private sessions: Map<string, Session> = new Map();
+  private stateManager: StateManager;
 
   constructor() {
     // Determine loki script location
     this.lokiDir = Deno.env.get("LOKI_DIR") ||
       new URL("../../", import.meta.url).pathname.replace(/\/$/, "");
     this.lokiPath = `${this.lokiDir}/autonomy/run.sh`;
+    // Initialize StateManager for state file access
+    this.stateManager = new StateManager({
+      lokiDir: `${this.lokiDir}/.loki`,
+      enableWatch: false, // CLI bridge doesn't need watching
+      enableEvents: false,
+    });
   }
 
   /**
@@ -203,25 +212,24 @@ class CLIBridge {
     const tasks: Task[] = [];
 
     try {
-      const tasksFile = `${this.lokiDir}/.loki/sessions/${sessionId}/tasks.json`;
-      const content = await Deno.readTextFile(tasksFile);
-      const data = JSON.parse(content);
+      // Use StateManager to read tasks file
+      const data = this.stateManager.getState(`sessions/${sessionId}/tasks.json`);
 
-      if (Array.isArray(data.tasks)) {
-        for (const t of data.tasks) {
+      if (data && Array.isArray(data.tasks)) {
+        for (const t of data.tasks as Array<Record<string, unknown>>) {
           tasks.push({
-            id: t.id || `task_${tasks.length}`,
+            id: (t.id as string) || `task_${tasks.length}`,
             sessionId,
-            title: t.title || t.subject || "Untitled",
-            description: t.description || "",
-            status: this.mapTaskStatus(t.status),
-            priority: t.priority || 0,
-            createdAt: t.createdAt || new Date().toISOString(),
-            startedAt: t.startedAt || null,
-            completedAt: t.completedAt || null,
-            agent: t.agent || null,
-            output: t.output || null,
-            error: t.error || null,
+            title: (t.title as string) || (t.subject as string) || "Untitled",
+            description: (t.description as string) || "",
+            status: this.mapTaskStatus(t.status as string),
+            priority: (t.priority as number) || 0,
+            createdAt: (t.createdAt as string) || new Date().toISOString(),
+            startedAt: (t.startedAt as string) || null,
+            completedAt: (t.completedAt as string) || null,
+            agent: (t.agent as string) || null,
+            output: (t.output as string) || null,
+            error: (t.error as string) || null,
           });
         }
       }
@@ -472,9 +480,9 @@ class CLIBridge {
    */
   private async loadSessionFromFile(sessionId: string): Promise<Session | null> {
     try {
-      const sessionFile = `${this.lokiDir}/.loki/sessions/${sessionId}/session.json`;
-      const content = await Deno.readTextFile(sessionFile);
-      return JSON.parse(content) as Session;
+      // Use StateManager to read session file
+      const data = this.stateManager.getState(`sessions/${sessionId}/session.json`);
+      return data as Session | null;
     } catch {
       return null;
     }

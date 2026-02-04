@@ -222,3 +222,65 @@ export interface PatternsQueryParams {
   category?: string;
   minConfidence?: number;
 }
+
+// -----------------------------------------------------------------------------
+// Suggestions Types (Memory-based)
+// -----------------------------------------------------------------------------
+
+export interface Suggestion {
+  id: string;
+  type: "episodic" | "semantic" | "skills" | "anti_patterns";
+  confidence: number;
+  content: string;
+  action: string;
+}
+
+export interface SuggestionsRequest {
+  context: string;
+  taskType?: string;
+  limit?: number;
+}
+
+export interface SuggestionsResponse {
+  suggestions: Suggestion[];
+  context: string;
+  taskType: string;
+}
+
+// -----------------------------------------------------------------------------
+// Learning-Based Suggestions Types
+// -----------------------------------------------------------------------------
+
+export type LearningSuggestionType = "command" | "error" | "practice" | "tool";
+export type LearningSuggestionPriority = "high" | "medium" | "low";
+
+export interface LearningSuggestion {
+  id: string;
+  type: LearningSuggestionType;
+  priority: LearningSuggestionPriority;
+  title: string;
+  description: string;
+  action: string;
+  confidence: number;
+  relevance_score: number;
+  source: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface LearningSuggestionsRequest {
+  context?: string;
+  taskType?: string;
+  types?: LearningSuggestionType[];
+  limit?: number;
+  minConfidence?: number;
+}
+
+export interface LearningSuggestionsResponse {
+  suggestions: LearningSuggestion[];
+  count: number;
+  timestamp: string;
+  context?: {
+    current_task: string;
+    task_type: string;
+  };
+}

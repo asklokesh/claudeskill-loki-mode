@@ -4,6 +4,7 @@ Memory Storage Backend for Loki Mode
 JSON-based storage with progressive disclosure layers.
 Handles episodic, semantic, and procedural memory persistence.
 Includes importance scoring with decay and retrieval boost.
+Supports namespace-based project isolation (v5.19.0).
 """
 
 import json
@@ -27,6 +28,10 @@ except ImportError:
     ProceduralSkill = Any
 
 
+# Default namespace constant
+DEFAULT_NAMESPACE = "default"
+
+
 class MemoryStorage:
     """
     Storage backend for Loki Mode's memory system.
@@ -38,22 +43,65 @@ class MemoryStorage:
     - Vectors: Embedding storage (future)
 
     All operations are atomic and support concurrent access via file locking.
+    Supports namespace-based project isolation for memory separation.
     """
 
-    VERSION = "1.0.0"
+    VERSION = "1.1.0"
 
-    def __init__(self, base_path: str = ".loki/memory"):
+    def __init__(
+        self,
+        base_path: str = ".loki/memory",
+        namespace: Optional[str] = None,
+    ):
         """
         Initialize the memory storage backend.
 
         Args:
             base_path: Base directory for all memory storage.
                        Defaults to .loki/memory in current working directory.
+            namespace: Optional namespace for project isolation.
+                       If provided, memories are stored in base_path/{namespace}/
+                       Defaults to None (uses base_path directly for backward compat).
         """
-        self.base_path = Path(base_path)
+        self._root_path = Path(base_path)
+        self._namespace = namespace
+
+        # Calculate effective base path (with namespace if specified)
+        if namespace and namespace != DEFAULT_NAMESPACE:
+            self.base_path = self._root_path / namespace
+        else:
+            self.base_path = self._root_path
+
         self._ensure_directories()
         self._ensure_index()
         self._ensure_timeline()
+
+    @property
+    def namespace(self) -> Optional[str]:
+        """Get the current namespace."""
+        return self._namespace
+
+    @property
+    def root_path(self) -> Path:
+        """Get the root memory path (before namespace)."""
+        return self._root_path
+
+    def with_namespace(self, namespace: str) -> "MemoryStorage":
+        """
+        Create a new MemoryStorage instance with a different namespace.
+
+        This allows switching namespaces while maintaining the same root path.
+
+        Args:
+            namespace: The namespace to switch to
+
+        Returns:
+            New MemoryStorage instance for the specified namespace
+        """
+        return MemoryStorage(
+            base_path=str(self._root_path),
+            namespace=namespace,
+        )
 
     # -------------------------------------------------------------------------
     # Directory and File Management
@@ -1105,3 +1153,178 @@ class MemoryStorage:
                     updated += 1
 
         return updated
+
+    # -------------------------------------------------------------------------
+    # Namespace Management
+    # -------------------------------------------------------------------------
+
+    def list_namespaces(self) -> List[str]:
+        """
+        List all available namespaces in the memory system.
+
+        Returns:
+            List of namespace names
+        """
+        namespaces = []
+
+        # Check for namespace directories
+        if self._root_path.exists():
+            for item in self._root_path.iterdir():
+                if item.is_dir() and not item.name.startswith("."):
+                    # Check if it looks like a namespace (has memory subdirs)
+                    has_memory_dirs = any(
+                        (item / subdir).exists()
+                        for subdir in ["episodic", "semantic", "skills"]
+                    )
+                    if has_memory_dirs:
+                        namespaces.append(item.name)
+
+        # Also check if root has direct memory dirs (default namespace)
+        has_root_memory = any(
+            (self._root_path / subdir).exists()
+            for subdir in ["episodic", "semantic", "skills"]
+        )
+        if has_root_memory and DEFAULT_NAMESPACE not in namespaces:
+            namespaces.insert(0, DEFAULT_NAMESPACE)
+
+        return sorted(namespaces)
+
+    def get_namespace_stats(self, namespace: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Get statistics for a specific namespace.
+
+        Args:
+            namespace: Namespace to get stats for (uses current if None)
+
+        Returns:
+            Dictionary with episode, pattern, and skill counts
+        """
+        storage = self if namespace is None else self.with_namespace(namespace)
+
+        # Count episodes
+        episode_count = 0
+        episodic_dir = storage.base_path / "episodic"
+        if episodic_dir.exists():
+            for date_dir in episodic_dir.iterdir():
+                if date_dir.is_dir():
+                    episode_count += len(list(date_dir.glob("task-*.json")))
+
+        # Count patterns
+        pattern_count = 0
+        patterns_path = storage.base_path / "semantic" / "patterns.json"
+        if patterns_path.exists():
+            patterns_data = storage._load_json(patterns_path)
+            if patterns_data:
+                pattern_count = len(patterns_data.get("patterns", []))
+
+        # Count skills
+        skill_count = 0
+        skills_dir = storage.base_path / "skills"
+        if skills_dir.exists():
+            skill_count = len(list(skills_dir.glob("*.json")))
+
+        return {
+            "namespace": namespace or self._namespace or DEFAULT_NAMESPACE,
+            "episode_count": episode_count,
+            "pattern_count": pattern_count,
+            "skill_count": skill_count,
+            "total_count": episode_count + pattern_count + skill_count,
+            "path": str(storage.base_path),
+        }
+
+    def copy_to_namespace(
+        self,
+        target_namespace: str,
+        include_episodes: bool = True,
+        include_patterns: bool = True,
+        include_skills: bool = True,
+    ) -> Dict[str, int]:
+        """
+        Copy memories from current namespace to target namespace.
+
+        Args:
+            target_namespace: Namespace to copy to
+            include_episodes: Copy episodic memories
+            include_patterns: Copy semantic patterns
+            include_skills: Copy procedural skills
+
+        Returns:
+            Dictionary with counts of copied items
+        """
+        target = self.with_namespace(target_namespace)
+        copied = {"episodes": 0, "patterns": 0, "skills": 0}
+
+        # Copy episodes
+        if include_episodes:
+            for episode_id in self.list_episodes(limit=10000):
+                episode = self.load_episode(episode_id)
+                if episode:
+                    target.save_episode(episode)
+                    copied["episodes"] += 1
+
+        # Copy patterns
+        if include_patterns:
+            for pattern_id in self.list_patterns():
+                pattern = self.load_pattern(pattern_id)
+                if pattern:
+                    target.save_pattern(pattern)
+                    copied["patterns"] += 1
+
+        # Copy skills
+        if include_skills:
+            for skill_id in self.list_skills():
+                skill = self.load_skill(skill_id)
+                if skill:
+                    target.save_skill(skill)
+                    copied["skills"] += 1
+
+        return copied
+
+    def merge_from_namespace(
+        self,
+        source_namespace: str,
+        deduplicate: bool = True,
+    ) -> Dict[str, int]:
+        """
+        Merge memories from another namespace into current namespace.
+
+        Args:
+            source_namespace: Namespace to merge from
+            deduplicate: Skip items that already exist (by ID)
+
+        Returns:
+            Dictionary with counts of merged items
+        """
+        source = self.with_namespace(source_namespace)
+        merged = {"episodes": 0, "patterns": 0, "skills": 0}
+
+        # Get existing IDs for deduplication
+        existing_episodes = set(self.list_episodes(limit=10000)) if deduplicate else set()
+        existing_patterns = set(self.list_patterns()) if deduplicate else set()
+        existing_skills = set(self.list_skills()) if deduplicate else set()
+
+        # Merge episodes
+        for episode_id in source.list_episodes(limit=10000):
+            if episode_id not in existing_episodes:
+                episode = source.load_episode(episode_id)
+                if episode:
+                    self.save_episode(episode)
+                    merged["episodes"] += 1
+
+        # Merge patterns
+        for pattern_id in source.list_patterns():
+            if pattern_id not in existing_patterns:
+                pattern = source.load_pattern(pattern_id)
+                if pattern:
+                    self.save_pattern(pattern)
+                    merged["patterns"] += 1
+
+        # Merge skills
+        for skill_id in source.list_skills():
+            if skill_id not in existing_skills:
+                skill = source.load_skill(skill_id)
+                if skill:
+                    self.save_skill(skill)
+                    merged["skills"] += 1
+
+        return merged

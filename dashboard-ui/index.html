@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Loki Mode Dashboard UI Components Demo">
+    <meta name="theme-color" content="#d97757">
+    <title>Loki Mode - Dashboard UI Components</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23d97757' rx='15' width='100' height='100'/><text x='50' y='72' font-size='60' font-weight='bold' text-anchor='middle' fill='white'>L</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* Anthropic Design Language */
+        :root {
+            --bg-primary: #faf9f0;
+            --bg-secondary: #f5f4eb;
+            --bg-tertiary: #eeeddf;
+            --bg-card: #ffffff;
+            --accent: #d97757;
+            --accent-light: #e8956f;
+            --text-primary: #1a1a1a;
+            --text-secondary: #5c5c5c;
+            --text-muted: #8a8a8a;
+            --border: #e5e3de;
+            --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #131314;
+            --bg-secondary: #1a1a1b;
+            --bg-tertiary: #232325;
+            --bg-card: #1e1e20;
+            --accent: #d97757;
+            --accent-light: #e8956f;
+            --text-primary: #f5f5f5;
+            --text-secondary: #a1a1a6;
+            --text-muted: #6b6b70;
+            --border: #2d2d30;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            transition: background var(--transition), color var(--transition);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-light));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 18px;
+            color: white;
+        }
+
+        .logo-text h1 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .logo-text p {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .theme-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border: 1px solid var(--border);
+            transition: all var(--transition);
+        }
+
+        .theme-toggle:hover {
+            background: var(--bg-tertiary);
+        }
+
+        /* Section */
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-description {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+
+        .code-block {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--text-primary);
+            overflow-x: auto;
+            margin-bottom: 16px;
+        }
+
+        .code-block code {
+            color: var(--accent);
+        }
+
+        /* Grid layouts */
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .three-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 1024px) {
+            .two-column, .three-column {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Component wrapper */
+        .component-wrapper {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .component-label {
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+
+        /* API configuration */
+        .api-config {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            padding: 12px 16px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            margin-bottom: 24px;
+        }
+
+        .api-config label {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .api-config input {
+            flex: 1;
+            padding: 8px 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .api-config input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .api-config button {
+            padding: 8px 16px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background var(--transition);
+        }
+
+        .api-config button:hover {
+            background: var(--accent-light);
+        }
+
+        /* Event log */
+        .event-log {
+            background: #1a1a1b;
+            border-radius: 8px;
+            padding: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: #a1a1a6;
+        }
+
+        .event-log-entry {
+            padding: 4px 0;
+            border-bottom: 1px solid #2d2d30;
+        }
+
+        .event-log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .event-log-time {
+            color: #6b6b70;
+        }
+
+        .event-log-type {
+            color: var(--accent);
+            margin-left: 8px;
+        }
+
+        .event-log-data {
+            color: #e5e5e5;
+            margin-left: 8px;
+        }
+
+        /* Documentation */
+        .docs-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all var(--transition);
+        }
+
+        .docs-link:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon">L</div>
+                <div class="logo-text">
+                    <h1>Loki Mode Dashboard UI</h1>
+                    <p>Reusable Web Components</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <a href="https://github.com/asklokesh/claudeskill-loki-mode" class="docs-link" target="_blank">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                    </svg>
+                    GitHub
+                </a>
+                <button class="theme-toggle" id="theme-toggle">
+                    <svg id="theme-icon" width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none">
+                        <circle cx="12" cy="12" r="5"/>
+                        <line x1="12" y1="1" x2="12" y2="3"/>
+                        <line x1="12" y1="21" x2="12" y2="23"/>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                        <line x1="1" y1="12" x2="3" y2="12"/>
+                        <line x1="21" y1="12" x2="23" y2="12"/>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                    </svg>
+                    <span id="theme-label">Light</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- API Configuration -->
+        <div class="api-config">
+            <label>API URL:</label>
+            <input type="text" id="api-url" value="http://localhost:8420" placeholder="http://localhost:8420">
+            <button id="connect-btn">Connect</button>
+        </div>
+
+        <!-- Task Board Section -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none">
+                        <rect x="3" y="3" width="7" height="7" rx="1"/>
+                        <rect x="14" y="3" width="7" height="7" rx="1"/>
+                        <rect x="3" y="14" width="7" height="7" rx="1"/>
+                        <rect x="14" y="14" width="7" height="7" rx="1"/>
+                    </svg>
+                    Task Board
+                </h2>
+            </div>
+            <p class="section-description">
+                Kanban-style task board with drag-and-drop support. Syncs with the Loki Mode API and supports local tasks.
+            </p>
+            <div class="code-block">
+                <code>&lt;loki-task-board api-url="http://localhost:8420" project-id="1"&gt;&lt;/loki-task-board&gt;</code>
+            </div>
+            <loki-task-board id="task-board"></loki-task-board>
+        </section>
+
+        <!-- Two Column: Session Control + Log Stream -->
+        <div class="two-column">
+            <!-- Session Control Section -->
+            <section class="section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polygon points="10 8 16 12 10 16 10 8"/>
+                        </svg>
+                        Session Control
+                    </h2>
+                </div>
+                <p class="section-description">
+                    Control panel for managing Loki Mode sessions with status display and action buttons.
+                </p>
+                <div class="code-block">
+                    <code>&lt;loki-session-control api-url="http://localhost:8420"&gt;&lt;/loki-session-control&gt;</code>
+                </div>
+                <div class="component-wrapper">
+                    <div class="component-label">Full Mode</div>
+                    <loki-session-control id="session-control"></loki-session-control>
+                </div>
+                <div class="component-wrapper" style="margin-top: 16px;">
+                    <div class="component-label">Compact Mode</div>
+                    <loki-session-control id="session-control-compact" compact></loki-session-control>
+                </div>
+            </section>
+
+            <!-- Log Stream Section -->
+            <section class="section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none">
+                            <polyline points="4 17 10 11 4 5"/>
+                            <line x1="12" y1="19" x2="20" y2="19"/>
+                        </svg>
+                        Log Stream
+                    </h2>
+                </div>
+                <p class="section-description">
+                    Real-time log viewer with filtering, auto-scroll, and download capabilities.
+                </p>
+                <div class="code-block">
+                    <code>&lt;loki-log-stream api-url="http://localhost:8420" auto-scroll&gt;&lt;/loki-log-stream&gt;</code>
+                </div>
+                <loki-log-stream id="log-stream" auto-scroll max-lines="100"></loki-log-stream>
+            </section>
+        </div>
+
+        <!-- Memory Browser Section -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none">
+                        <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/>
+                    </svg>
+                    Memory Browser
+                </h2>
+            </div>
+            <p class="section-description">
+                Browse and explore the Loki Mode memory system including episodic, semantic, and procedural memories.
+            </p>
+            <div class="code-block">
+                <code>&lt;loki-memory-browser api-url="http://localhost:8420" tab="summary"&gt;&lt;/loki-memory-browser&gt;</code>
+            </div>
+            <loki-memory-browser id="memory-browser"></loki-memory-browser>
+        </section>
+
+        <!-- Learning Dashboard Section -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none">
+                        <path d="M12 20V10"/>
+                        <path d="M18 20V4"/>
+                        <path d="M6 20v-4"/>
+                    </svg>
+                    Learning Dashboard
+                </h2>
+            </div>
+            <p class="section-description">
+                Visualize learning metrics from cross-tool learning signals including preferences, error patterns, success patterns, and tool efficiency.
+            </p>
+            <div class="code-block">
+                <code>&lt;loki-learning-dashboard api-url="http://localhost:8420" time-range="7d"&gt;&lt;/loki-learning-dashboard&gt;</code>
+            </div>
+            <loki-learning-dashboard id="learning-dashboard"></loki-learning-dashboard>
+        </section>
+
+        <!-- Events Section -->
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none">
+                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                    </svg>
+                    Component Events
+                </h2>
+            </div>
+            <p class="section-description">
+                Events emitted by the components. Useful for integrating with your application.
+            </p>
+            <div class="event-log" id="event-log">
+                <div class="event-log-entry">
+                    <span class="event-log-time">--:--:--</span>
+                    <span class="event-log-type">ready</span>
+                    <span class="event-log-data">Components loaded</span>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Load components as ES modules -->
+    <script type="module">
+        import { LokiTheme } from './core/loki-theme.js';
+        import { getApiClient } from './core/loki-api-client.js';
+        import './components/loki-task-board.js';
+        import './components/loki-session-control.js';
+        import './components/loki-log-stream.js';
+        import './components/loki-memory-browser.js';
+        import './components/loki-learning-dashboard.js';
+
+        // Initialize theme
+        LokiTheme.init();
+        updateThemeUI();
+
+        // Theme toggle
+        document.getElementById('theme-toggle').addEventListener('click', () => {
+            LokiTheme.toggle();
+            updateThemeUI();
+        });
+
+        function updateThemeUI() {
+            const theme = LokiTheme.getTheme();
+            document.getElementById('theme-label').textContent = theme === 'dark' ? 'Dark' : 'Light';
+        }
+
+        // API URL configuration
+        const apiUrlInput = document.getElementById('api-url');
+        const connectBtn = document.getElementById('connect-btn');
+
+        connectBtn.addEventListener('click', () => {
+            const apiUrl = apiUrlInput.value;
+            updateComponentsApiUrl(apiUrl);
+            logEvent('config', `API URL set to ${apiUrl}`);
+        });
+
+        function updateComponentsApiUrl(apiUrl) {
+            document.getElementById('task-board').setAttribute('api-url', apiUrl);
+            document.getElementById('session-control').setAttribute('api-url', apiUrl);
+            document.getElementById('session-control-compact').setAttribute('api-url', apiUrl);
+            document.getElementById('log-stream').setAttribute('api-url', apiUrl);
+            document.getElementById('memory-browser').setAttribute('api-url', apiUrl);
+            document.getElementById('learning-dashboard').setAttribute('api-url', apiUrl);
+        }
+
+        // Event logging
+        const eventLog = document.getElementById('event-log');
+        const logStream = document.getElementById('log-stream');
+
+        function logEvent(type, data) {
+            const time = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = 'event-log-entry';
+            entry.innerHTML = `
+                <span class="event-log-time">${time}</span>
+                <span class="event-log-type">${type}</span>
+                <span class="event-log-data">${typeof data === 'object' ? JSON.stringify(data) : data}</span>
+            `;
+            eventLog.appendChild(entry);
+            eventLog.scrollTop = eventLog.scrollHeight;
+        }
+
+        // Listen to component events
+        document.getElementById('task-board').addEventListener('task-moved', (e) => {
+            logEvent('task-moved', e.detail);
+        });
+
+        document.getElementById('task-board').addEventListener('add-task', (e) => {
+            logEvent('add-task', e.detail);
+        });
+
+        document.getElementById('task-board').addEventListener('task-click', (e) => {
+            logEvent('task-click', { taskId: e.detail.task?.id });
+        });
+
+        document.getElementById('session-control').addEventListener('session-pause', (e) => {
+            logEvent('session-pause', 'Pause requested');
+        });
+
+        document.getElementById('session-control').addEventListener('session-stop', (e) => {
+            logEvent('session-stop', 'Stop requested');
+        });
+
+        document.getElementById('memory-browser').addEventListener('episode-select', (e) => {
+            logEvent('episode-select', { episodeId: e.detail?.id });
+        });
+
+        document.getElementById('memory-browser').addEventListener('pattern-select', (e) => {
+            logEvent('pattern-select', { patternId: e.detail?.id });
+        });
+
+        document.getElementById('learning-dashboard').addEventListener('metric-select', (e) => {
+            logEvent('metric-select', { type: e.detail?.type, item: e.detail?.item?.preference_key || e.detail?.item?.error_type || e.detail?.item?.pattern_name || e.detail?.item?.tool_name });
+        });
+
+        document.getElementById('learning-dashboard').addEventListener('filter-change', (e) => {
+            logEvent('filter-change', e.detail);
+        });
+
+        // Add demo logs to the log stream
+        setTimeout(() => {
+            logStream.addLog('Dashboard UI components initialized', 'success');
+            logStream.addLog('Connecting to Loki Mode API...', 'info');
+        }, 500);
+
+        setTimeout(() => {
+            logStream.addLog('WebSocket connection established', 'success');
+            logStream.addLog('Starting autonomous execution loop', 'step');
+        }, 1500);
+
+        setTimeout(() => {
+            logStream.addLog('Agent spawned: arch-001 (Opus)', 'agent');
+            logStream.addLog('RARV cycle: REASON phase started', 'step');
+        }, 2500);
+
+        // Log ready event
+        logEvent('ready', 'All components loaded successfully');
+    </script>
+</body>
+</html>

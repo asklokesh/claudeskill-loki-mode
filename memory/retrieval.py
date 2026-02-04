@@ -242,11 +242,17 @@ class MemoryRetrieval:
     similarity search (when embeddings are available) and keyword-based
     fallback search.
 
+    Supports namespace-based project isolation with:
+    - Namespace-scoped retrieval (only current namespace)
+    - Cross-namespace search (include parent/global namespaces)
+    - Namespace inheritance (child can access parent memories)
+
     Attributes:
         storage: MemoryStorage instance for file I/O
         embedding_engine: Optional embedding engine for similarity search
         vector_indices: Dictionary of VectorIndex instances per collection
         base_path: Base path for memory storage
+        namespace: Current namespace for scoped retrieval
     """
 
     def __init__(
@@ -255,6 +261,7 @@ class MemoryRetrieval:
         embedding_engine: Optional[EmbeddingEngine] = None,
         vector_indices: Optional[Dict[str, VectorIndex]] = None,
         base_path: str = ".loki/memory",
+        namespace: Optional[str] = None,
     ):
         """
         Initialize the memory retrieval system.
@@ -264,11 +271,42 @@ class MemoryRetrieval:
             embedding_engine: Optional embedding engine for similarity search
             vector_indices: Optional dict of vector indices (episodic, semantic, skills)
             base_path: Base path for memory storage directory
+            namespace: Optional namespace for scoped retrieval
         """
         self.storage = storage
         self.embedding_engine = embedding_engine
         self.vector_indices = vector_indices or {}
         self.base_path = Path(base_path)
+        self._namespace = namespace
+
+    @property
+    def namespace(self) -> Optional[str]:
+        """Get the current namespace."""
+        return self._namespace
+
+    def with_namespace(self, namespace: str) -> "MemoryRetrieval":
+        """
+        Create a new MemoryRetrieval instance with a different namespace.
+
+        Args:
+            namespace: The namespace to switch to
+
+        Returns:
+            New MemoryRetrieval instance for the specified namespace
+        """
+        # Get storage for the new namespace
+        if hasattr(self.storage, 'with_namespace'):
+            new_storage = self.storage.with_namespace(namespace)
+        else:
+            new_storage = self.storage
+
+        return MemoryRetrieval(
+            storage=new_storage,
+            embedding_engine=self.embedding_engine,
+            vector_indices=self.vector_indices,
+            base_path=str(self.base_path),
+            namespace=namespace,
+        )
 
     # -------------------------------------------------------------------------
     # Task Detection
@@ -401,6 +439,163 @@ class MemoryRetrieval:
             merged = optimize_context(merged, token_budget)
 
         return merged[:top_k]
+
+    # -------------------------------------------------------------------------
+    # Cross-Namespace Retrieval
+    # -------------------------------------------------------------------------
+
+    def retrieve_cross_namespace(
+        self,
+        context: Dict[str, Any],
+        namespaces: List[str],
+        top_k: int = 5,
+        token_budget: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Retrieve memories from multiple namespaces.
+
+        Searches across specified namespaces, merges results, and ranks
+        by relevance. Useful for finding patterns that apply across projects.
+
+        Args:
+            context: Query context (goal, task_type, phase, etc.)
+            namespaces: List of namespaces to search
+            top_k: Maximum results per namespace (then merged)
+            token_budget: Optional token budget for total results
+
+        Returns:
+            Merged and ranked list of memories with namespace annotations
+        """
+        all_results: List[Dict[str, Any]] = []
+
+        for ns in namespaces:
+            # Create retrieval instance for this namespace
+            ns_retrieval = self.with_namespace(ns)
+
+            # Retrieve from this namespace
+            ns_results = ns_retrieval.retrieve_task_aware(
+                context=context,
+                top_k=top_k,
+                token_budget=None,  # Apply budget after merge
+            )
+
+            # Annotate with namespace
+            for result in ns_results:
+                result["_namespace"] = ns
+                # Slight penalty for non-current namespace
+                if ns != self._namespace:
+                    current_score = result.get("_weighted_score", 0.5)
+                    result["_weighted_score"] = current_score * 0.9
+
+            all_results.extend(ns_results)
+
+        # Sort by weighted score
+        all_results.sort(
+            key=lambda x: x.get("_weighted_score", 0),
+            reverse=True,
+        )
+
+        # Apply token budget if specified
+        if token_budget is not None and token_budget > 0:
+            all_results = optimize_context(all_results, token_budget)
+
+        return all_results[:top_k * len(namespaces)]
+
+    def retrieve_with_inheritance(
+        self,
+        context: Dict[str, Any],
+        top_k: int = 5,
+        include_global: bool = True,
+        token_budget: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Retrieve memories following namespace inheritance chain.
+
+        Searches current namespace first, then parent namespaces,
+        finally global namespace. Results from more specific namespaces
+        are prioritized.
+
+        Args:
+            context: Query context (goal, task_type, phase, etc.)
+            top_k: Maximum results to return
+            include_global: Whether to include global namespace
+            token_budget: Optional token budget for results
+
+        Returns:
+            Merged results from inheritance chain
+        """
+        # Build namespace chain
+        namespaces = [self._namespace or "default"]
+
+        # Try to get parent namespaces from namespace manager
+        try:
+            from .namespace import NamespaceManager, GLOBAL_NAMESPACE
+            manager = NamespaceManager(str(self.base_path))
+            chain = manager.get_inheritance_chain(namespaces[0])
+            namespaces = chain
+        except ImportError:
+            # Fallback: just use current and global
+            if include_global:
+                namespaces.append("global")
+
+        if not include_global and "global" in namespaces:
+            namespaces = [ns for ns in namespaces if ns != "global"]
+
+        return self.retrieve_cross_namespace(
+            context=context,
+            namespaces=namespaces,
+            top_k=top_k,
+            token_budget=token_budget,
+        )
+
+    def search_all_namespaces(
+        self,
+        query: str,
+        top_k: int = 10,
+    ) -> List[Dict[str, Any]]:
+        """
+        Search across all available namespaces.
+
+        Useful for finding global patterns or migrating knowledge
+        between projects.
+
+        Args:
+            query: Search query string
+            top_k: Maximum results to return
+
+        Returns:
+            Results from all namespaces with namespace annotations
+        """
+        all_results: List[Dict[str, Any]] = []
+
+        # Get all namespaces from storage
+        if hasattr(self.storage, 'list_namespaces'):
+            namespaces = self.storage.list_namespaces()
+        else:
+            # Fallback: just search current
+            namespaces = [self._namespace or "default"]
+
+        for ns in namespaces:
+            ns_retrieval = self.with_namespace(ns)
+
+            # Simple keyword search in this namespace
+            for collection in ["episodic", "semantic", "skills"]:
+                results = ns_retrieval.retrieve_by_keyword(
+                    query.split(),
+                    collection,
+                )
+                for result in results:
+                    result["_namespace"] = ns
+                    result["_collection"] = collection
+                all_results.extend(results)
+
+        # Sort by score
+        all_results.sort(
+            key=lambda x: x.get("_score", 0),
+            reverse=True,
+        )
+
+        return all_results[:top_k]
 
     # -------------------------------------------------------------------------
     # Collection-Specific Retrieval

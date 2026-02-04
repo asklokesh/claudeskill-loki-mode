@@ -289,3 +289,70 @@ Deno.test("GET /api/status includes memory context", async () => {
     assertExists(pattern.confidence);
   }
 });
+
+// ============================================================
+// Suggestions Endpoint Tests
+// ============================================================
+
+Deno.test("GET /api/suggestions requires context parameter", async () => {
+  const handler = createHandler({ port: 8420, host: "localhost", cors: true, auth: false });
+  const req = createRequest("GET", "/api/suggestions");
+  const res = await handler(req);
+
+  assertEquals(res.status, 422);
+  const data = await res.json();
+  assertStringIncludes(data.error, "context");
+});
+
+Deno.test("GET /api/suggestions returns suggestions with valid context", async () => {
+  const handler = createHandler({ port: 8420, host: "localhost", cors: true, auth: false });
+  const req = createRequest("GET", "/api/suggestions?context=implement%20a%20new%20feature");
+  const res = await handler(req);
+
+  assertEquals(res.status, 200);
+  const data = await res.json();
+  assertExists(data.suggestions);
+  assertEquals(Array.isArray(data.suggestions), true);
+  assertExists(data.context);
+  assertExists(data.taskType);
+});
+
+Deno.test("GET /api/suggestions respects limit parameter", async () => {
+  const handler = createHandler({ port: 8420, host: "localhost", cors: true, auth: false });
+  const req = createRequest("GET", "/api/suggestions?context=debug%20an%20error&limit=3");
+  const res = await handler(req);
+
+  assertEquals(res.status, 200);
+  const data = await res.json();
+  assertExists(data.suggestions);
+  assertEquals(data.suggestions.length <= 3, true);
+});
+
+Deno.test("GET /api/suggestions accepts taskType parameter", async () => {
+  const handler = createHandler({ port: 8420, host: "localhost", cors: true, auth: false });
+  const req = createRequest("GET", "/api/suggestions?context=fix%20bug&taskType=debugging");
+  const res = await handler(req);
+
+  assertEquals(res.status, 200);
+  const data = await res.json();
+  assertExists(data.taskType);
+  assertEquals(data.taskType, "debugging");
+});
+
+Deno.test("GET /api/suggestions returns proper suggestion structure", async () => {
+  const handler = createHandler({ port: 8420, host: "localhost", cors: true, auth: false });
+  const req = createRequest("GET", "/api/suggestions?context=review%20code");
+  const res = await handler(req);
+
+  assertEquals(res.status, 200);
+  const data = await res.json();
+
+  // Each suggestion should have required fields if there are any
+  for (const suggestion of data.suggestions) {
+    assertExists(suggestion.id);
+    assertExists(suggestion.type);
+    assertEquals(typeof suggestion.confidence, "number");
+    assertExists(suggestion.content);
+    assertExists(suggestion.action);
+  }
+});

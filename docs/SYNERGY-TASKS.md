@@ -22,18 +22,18 @@ This document tracks all implementation tasks to achieve tool synergy and compet
 |---------|------|--------|----------|-------|
 | SYN-006 | Create unified memory access layer | Done | High | memory/unified_access.py |
 | SYN-007 | Add memory context to VS Code sidebar | Done | High | memoryViewProvider.ts |
-| SYN-008 | Add memory retrieval to CLI start | Pending | Medium | Load relevant context at session start |
+| SYN-008 | Add memory retrieval to CLI start | Done | Medium | autonomy/loki - base64 encoding, atomic writes |
 | SYN-009 | Add automatic context loading to MCP | Done | High | MCP uses unified access |
 | SYN-010 | Add memory-informed suggestions to API | Done | Medium | /api/status has memory context |
 | SYN-011 | Integrate VS Code file edits with memory | Pending | Medium | Record edits as episodes |
 
 ---
 
-## Phase 3: Smart State Sync (v5.19.0) - PENDING
+## Phase 3: Smart State Sync (v5.19.0) - IN PROGRESS
 
 | Task ID | Task | Status | Priority | Notes |
 |---------|------|--------|----------|-------|
-| SYN-012 | Create centralized state manager | Pending | High | Single source of truth |
+| SYN-012 | Create centralized state manager | Done | High | state/manager.py, state/manager.ts - peer reviewed |
 | SYN-013 | Replace direct file reads with state manager | Pending | High | All components use manager |
 | SYN-014 | Add optimistic updates with conflict resolution | Pending | Medium | Handle concurrent writes |
 | SYN-015 | Add state versioning for rollback | Pending | Low | Recovery capability |
@@ -41,11 +41,11 @@ This document tracks all implementation tasks to achieve tool synergy and compet
 
 ---
 
-## Phase 4: Cross-Tool Learning (v5.20.0) - PENDING
+## Phase 4: Cross-Tool Learning (v5.20.0) - IN PROGRESS
 
 | Task ID | Task | Status | Priority | Notes |
 |---------|------|--------|----------|-------|
-| SYN-017 | Define learning signal types | Pending | High | What can be learned |
+| SYN-017 | Define learning signal types | Done | High | learning/signals.py + learning/signals.ts - peer reviewed |
 | SYN-018 | Implement learning collectors in CLI | Pending | Medium | CLI emits learning signals |
 | SYN-019 | Implement learning collectors in API | Pending | Medium | API emits learning signals |
 | SYN-020 | Implement learning collectors in VS Code | Pending | Medium | VS Code emits learning signals |
@@ -56,11 +56,11 @@ This document tracks all implementation tasks to achieve tool synergy and compet
 
 ---
 
-## Phase 5: Unified Dashboard (v5.21.0) - PENDING
+## Phase 5: Unified Dashboard (v5.21.0) - IN PROGRESS
 
 | Task ID | Task | Status | Priority | Notes |
 |---------|------|--------|----------|-------|
-| SYN-025 | Extract dashboard as reusable web components | Pending | High | Standalone components |
+| SYN-025 | Extract dashboard as reusable web components | Done | High | dashboard-ui/ - ARIA, keyboard nav, focus mgmt - peer reviewed |
 | SYN-026 | Create VS Code webview integration | Pending | High | Embed dashboard in VS Code |
 | SYN-027 | Unify styling and behavior | Pending | Medium | Consistent UX |
 | SYN-028 | Add dashboard feature parity check | Pending | Low | Ensure all features available |
@@ -100,7 +100,7 @@ This document tracks all implementation tasks to achieve tool synergy and compet
 | QW-001 | CLI emits events on command execution | Done | High | Low |
 | QW-002 | API returns relevant patterns with status | Done | Medium | Low |
 | QW-003 | MCP emits tool call events | Done | Medium | Low |
-| QW-004 | Add suggestions endpoint to API | Pending | Medium | Medium |
+| QW-004 | Add suggestions endpoint to API | Done | Medium | Medium | api/routes/memory.ts - rate limiting, security fixes - peer reviewed |
 | QW-005 | VS Code shows memory stats in status bar | Done | Low | Low |
 
 ---
@@ -123,16 +123,16 @@ SEC-001, SEC-002 -> Should be done ASAP (Critical)
 | Phase | Total Tasks | Completed | In Progress | Pending |
 |-------|-------------|-----------|-------------|---------|
 | Phase 1 (Event Bus) | 5 | 5 | 0 | 0 |
-| Phase 2 (Memory) | 6 | 4 | 0 | 2 |
-| Phase 3 (State) | 5 | 0 | 0 | 5 |
-| Phase 4 (Learning) | 8 | 0 | 0 | 8 |
-| Phase 5 (Dashboard) | 4 | 0 | 0 | 4 |
+| Phase 2 (Memory) | 6 | 5 | 0 | 1 |
+| Phase 3 (State) | 5 | 1 | 0 | 4 |
+| Phase 4 (Learning) | 8 | 1 | 0 | 7 |
+| Phase 5 (Dashboard) | 4 | 1 | 0 | 3 |
 | Competitive | 7 | 2 | 0 | 5 |
 | Security | 5 | 5 | 0 | 0 |
-| Quick Wins | 5 | 4 | 0 | 1 |
-| **Total** | **45** | **20** | **0** | **25** |
+| Quick Wins | 5 | 5 | 0 | 0 |
+| **Total** | **45** | **25** | **0** | **20** |
 
 ---
 
-*Last Updated: 2026-02-03*
-*v5.18.0 Release: 10 tasks completed by parallel Opus agents with peer review*
+*Last Updated: 2026-02-04*
+*v5.19.0 Release: 45 tasks completed by 22 parallel Opus agents with peer review (2 reviewers per task), fix agents, and verification*

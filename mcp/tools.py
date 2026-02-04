@@ -3,17 +3,50 @@ Loki Mode MCP Tools
 
 Additional tool definitions that can be imported into the server.
 These are helper functions and utilities for the MCP tools.
+Uses StateManager for centralized state access with caching.
 """
 
 import os
+import sys
 import json
 from datetime import datetime
 from typing import Dict, Any, List, Optional
+
+# Add parent directory to path for state manager import
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Import StateManager for centralized state access
+try:
+    from state.manager import StateManager, ManagedFile, get_state_manager
+    HAS_STATE_MANAGER = True
+except ImportError:
+    HAS_STATE_MANAGER = False
+    StateManager = None
+    ManagedFile = None
+    get_state_manager = None
 
 
 def get_loki_base_path() -> str:
     """Get the base .loki directory path."""
     return os.path.join(os.getcwd(), '.loki')
+
+
+# Module-level StateManager instance
+_state_manager = None
+
+
+def _get_state_manager() -> Optional['StateManager']:
+    """Get or create the StateManager instance."""
+    global _state_manager
+    if not HAS_STATE_MANAGER:
+        return None
+    if _state_manager is None:
+        _state_manager = get_state_manager(
+            loki_dir=get_loki_base_path(),
+            enable_watch=False,
+            enable_events=False
+        )
+    return _state_manager
 
 
 def ensure_loki_initialized() -> bool:
@@ -32,7 +65,13 @@ def get_memory_path() -> str:
 
 
 def load_task_queue() -> Dict[str, Any]:
-    """Load the task queue from disk."""
+    """Load the task queue from disk using StateManager."""
+    manager = _get_state_manager()
+    if manager:
+        result = manager.get_state("state/task-queue.json")
+        if result:
+            return result
+    # Fallback to direct file read if StateManager not available
     queue_path = get_task_queue_path()
     if os.path.exists(queue_path):
         with open(queue_path, 'r') as f:
@@ -41,7 +80,12 @@ def load_task_queue() -> Dict[str, Any]:
 
 
 def save_task_queue(queue: Dict[str, Any]) -> None:
-    """Save the task queue to disk."""
+    """Save the task queue to disk using StateManager."""
+    manager = _get_state_manager()
+    if manager:
+        manager.set_state("state/task-queue.json", queue, source="mcp-tools")
+        return
+    # Fallback to direct file write if StateManager not available
     queue_path = get_task_queue_path()
     os.makedirs(os.path.dirname(queue_path), exist_ok=True)
     with open(queue_path, 'w') as f:

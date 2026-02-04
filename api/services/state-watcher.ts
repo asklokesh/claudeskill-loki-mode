@@ -2,7 +2,7 @@
  * State Watcher Service
  *
  * Watches .loki/ directory for state changes and emits events.
- * Uses Deno's built-in file watcher with debouncing.
+ * Uses StateManager for centralized state access with caching and subscriptions.
  */
 
 import {
@@ -14,6 +14,7 @@ import {
   emitHeartbeat,
 } from "./event-bus.ts";
 import type { Session, Task } from "../types/api.ts";
+import { StateManager, ManagedFile, type StateChange } from "../../state/manager.ts";
 
 interface WatchedState {
   sessions: Map<string, Session>;
@@ -30,6 +31,7 @@ class StateWatcher {
   private debounceDelay = 100; // ms
   private heartbeatInterval: number | null = null;
   private startTime: Date;
+  private stateManager: StateManager;
 
   constructor() {
     this.lokiDir = Deno.env.get("LOKI_DIR") ||
@@ -41,6 +43,12 @@ class StateWatcher {
       lastModified: new Map(),
     };
     this.startTime = new Date();
+    // Initialize StateManager with the .loki directory
+    this.stateManager = new StateManager({
+      lokiDir: this.watchDir,
+      enableWatch: true,
+      enableEvents: true,
+    });
   }
 
   /**
@@ -91,6 +99,9 @@ class StateWatcher {
     }
     this.debounceTimers.clear();
 
+    // Stop the state manager
+    this.stateManager.stop();
+
     console.log("State watcher stopped");
   }
 
@@ -117,22 +128,15 @@ class StateWatcher {
       // Sessions directory may not exist
     }
 
-    // Load current state file
-    try {
-      const stateFile = `${this.watchDir}/state.json`;
-      const content = await Deno.readTextFile(stateFile);
-      const state = JSON.parse(content);
-
-      if (state.currentSession) {
-        // Emit initial state event
-        emitLogEvent(
-          "info",
-          state.currentSession,
-          `State watcher loaded session: ${state.currentSession}`
-        );
-      }
-    } catch {
-      // State file may not exist
+    // Load current state file using StateManager
+    const stateData = this.stateManager.getState("state.json");
+    if (stateData && stateData.currentSession) {
+      // Emit initial state event
+      emitLogEvent(
+        "info",
+        stateData.currentSession as string,
+        `State watcher loaded session: ${stateData.currentSession}`
+      );
     }
   }
 
@@ -141,13 +145,15 @@ class StateWatcher {
    */
   private async loadSession(sessionId: string): Promise<void> {
     try {
-      const sessionFile = `${this.watchDir}/sessions/${sessionId}/session.json`;
-      const content = await Deno.readTextFile(sessionFile);
-      const session = JSON.parse(content) as Session;
-      this.state.sessions.set(sessionId, session);
+      // Use StateManager for session file access
+      const sessionData = this.stateManager.getState(`sessions/${sessionId}/session.json`);
+      if (sessionData) {
+        const session = sessionData as Session;
+        this.state.sessions.set(sessionId, session);
 
-      // Load tasks
-      await this.loadTasks(sessionId);
+        // Load tasks
+        await this.loadTasks(sessionId);
+      }
     } catch {
       // Session may not have a valid state file
     }
@@ -158,10 +164,11 @@ class StateWatcher {
    */
   private async loadTasks(sessionId: string): Promise<void> {
     try {
-      const tasksFile = `${this.watchDir}/sessions/${sessionId}/tasks.json`;
-      const content = await Deno.readTextFile(tasksFile);
-      const data = JSON.parse(content);
-      this.state.tasks.set(sessionId, data.tasks || []);
+      // Use StateManager for tasks file access
+      const tasksData = this.stateManager.getState(`sessions/${sessionId}/tasks.json`);
+      if (tasksData) {
+        this.state.tasks.set(sessionId, (tasksData.tasks as Task[]) || []);
+      }
     } catch {
       // Tasks file may not exist
     }
@@ -271,9 +278,12 @@ class StateWatcher {
     }
 
     try {
-      const sessionFile = `${this.watchDir}/sessions/${sessionId}/session.json`;
-      const content = await Deno.readTextFile(sessionFile);
-      const newSession = JSON.parse(content) as Session;
+      // Use StateManager to read session file
+      const sessionData = this.stateManager.getState(`sessions/${sessionId}/session.json`);
+      if (!sessionData) {
+        return;
+      }
+      const newSession = sessionData as Session;
       const oldSession = this.state.sessions.get(sessionId);
 
       this.state.sessions.set(sessionId, newSession);
@@ -311,10 +321,9 @@ class StateWatcher {
    */
   private async handleTasksChange(sessionId: string): Promise<void> {
     try {
-      const tasksFile = `${this.watchDir}/sessions/${sessionId}/tasks.json`;
-      const content = await Deno.readTextFile(tasksFile);
-      const data = JSON.parse(content);
-      const newTasks = data.tasks || [];
+      // Use StateManager to read tasks file
+      const tasksData = this.stateManager.getState(`sessions/${sessionId}/tasks.json`);
+      const newTasks = (tasksData?.tasks as Task[]) || [];
       const oldTasks = this.state.tasks.get(sessionId) || [];
 
       this.state.tasks.set(sessionId, newTasks);
@@ -325,7 +334,7 @@ class StateWatcher {
         if (!oldTaskIds.has(task.id)) {
           emitTaskEvent("task:created", sessionId, {
             taskId: task.id,
-            title: task.title || task.subject || "Untitled",
+            title: task.title || (task as unknown as { subject?: string }).subject || "Untitled",
             status: task.status || "pending",
           });
         }
@@ -339,7 +348,7 @@ class StateWatcher {
           const eventType = this.getTaskEventType(task.status);
           emitTaskEvent(eventType, sessionId, {
             taskId: task.id,
-            title: task.title || task.subject || "Untitled",
+            title: task.title || (task as unknown as { subject?: string }).subject || "Untitled",
             status: task.status,
             output: task.output,
             error: task.error,
@@ -356,14 +365,16 @@ class StateWatcher {
    */
   private async handlePhaseChange(sessionId: string): Promise<void> {
     try {
-      const phaseFile = `${this.watchDir}/sessions/${sessionId}/phase.json`;
-      const content = await Deno.readTextFile(phaseFile);
-      const data = JSON.parse(content);
+      // Use StateManager to read phase file
+      const phaseData = this.stateManager.getState(`sessions/${sessionId}/phase.json`);
+      if (!phaseData) {
+        return;
+      }
 
       emitPhaseEvent("phase:started", sessionId, {
-        phase: data.current,
-        previousPhase: data.previous,
-        progress: data.progress,
+        phase: phaseData.current as string,
+        previousPhase: phaseData.previous as string | undefined,
+        progress: phaseData.progress as number | undefined,
       });
     } catch (err) {
       console.error(`Error loading phase for ${sessionId}:`, err);
@@ -375,12 +386,15 @@ class StateWatcher {
    */
   private async handleAgentsChange(sessionId: string): Promise<void> {
     try {
-      const agentsFile = `${this.watchDir}/sessions/${sessionId}/agents.json`;
-      const content = await Deno.readTextFile(agentsFile);
-      const data = JSON.parse(content);
+      // Use StateManager to read agents file
+      const agentsData = this.stateManager.getState(`sessions/${sessionId}/agents.json`);
+      if (!agentsData) {
+        return;
+      }
 
       // Emit events for active agents
-      for (const agent of data.active || []) {
+      const activeAgents = (agentsData.active as Array<{ id: string; type: string; model?: string; task?: string }>) || [];
+      for (const agent of activeAgents) {
         eventBus.publish("agent:spawned", sessionId, {
           agentId: agent.id,
           type: agent.type,
@@ -398,14 +412,16 @@ class StateWatcher {
    */
   private async handleGlobalStateChange(): Promise<void> {
     try {
-      const stateFile = `${this.watchDir}/state.json`;
-      const content = await Deno.readTextFile(stateFile);
-      const state = JSON.parse(content);
+      // Use StateManager to read global state file
+      const stateData = this.stateManager.getState("state.json");
+      if (!stateData) {
+        return;
+      }
 
       emitLogEvent(
         "info",
-        state.currentSession || "global",
-        `Global state updated: ${JSON.stringify(state).slice(0, 100)}...`
+        (stateData.currentSession as string) || "global",
+        `Global state updated: ${JSON.stringify(stateData).slice(0, 100)}...`
       );
     } catch (err) {
       console.error("Error loading global state:", err);

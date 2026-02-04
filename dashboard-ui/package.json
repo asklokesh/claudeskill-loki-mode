@@ -1,0 +1,39 @@
+{
+  "name": "@loki-mode/dashboard-ui",
+  "version": "1.2.0",
+  "description": "Loki Mode dashboard web components",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./components/*": "./components/*",
+    "./core/*": "./core/*"
+  },
+  "scripts": {
+    "test": "npm run test:parity",
+    "test:visual": "jest --config jest.config.js tests/visual-regression.test.js",
+    "test:parity": "node scripts/check-parity.js",
+    "test:parity:json": "node scripts/check-parity.js --json",
+    "test:parity:markdown": "node scripts/check-parity.js --markdown",
+    "test:parity:report": "node scripts/check-parity.js --report parity-report.txt",
+    "test:all": "npm run test:visual && npm run test:parity"
+  },
+  "keywords": [
+    "loki-mode",
+    "dashboard",
+    "web-components",
+    "vscode",
+    "theme"
+  ],
+  "author": "Lokesh",
+  "license": "MIT",
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "jsdom": "^24.0.0"
+  },
+  "peerDependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

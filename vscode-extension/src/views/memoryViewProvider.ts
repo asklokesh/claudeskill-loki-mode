@@ -138,10 +138,10 @@ export class MemoryViewProvider implements vscode.WebviewViewProvider, vscode.Di
             const baseUrl = this._apiClient.baseUrl;
 
             const [patternsRes, episodesRes, skillsRes, economicsRes] = await Promise.allSettled([
-                fetch(\`\${baseUrl}/api/memory/patterns\`),
-                fetch(\`\${baseUrl}/api/memory/episodes\`),
-                fetch(\`\${baseUrl}/api/memory/skills\`),
-                fetch(\`\${baseUrl}/api/memory/economics\`)
+                fetch(`${baseUrl}/api/memory/patterns`),
+                fetch(`${baseUrl}/api/memory/episodes`),
+                fetch(`${baseUrl}/api/memory/skills`),
+                fetch(`${baseUrl}/api/memory/economics`)
             ]);
 
             if (patternsRes.status === 'fulfilled' && patternsRes.value.ok) {
@@ -184,7 +184,7 @@ export class MemoryViewProvider implements vscode.WebviewViewProvider, vscode.Di
     private async _showPatternDetails(patternId: string): Promise<void> {
         try {
             const baseUrl = this._apiClient.baseUrl;
-            const response = await fetch(\`\${baseUrl}/api/memory/patterns/\${patternId}\`);
+            const response = await fetch(`${baseUrl}/api/memory/patterns/${patternId}`);
             if (response.ok) {
                 const pattern = await response.json();
                 const content = JSON.stringify(pattern, null, 2);
@@ -202,7 +202,7 @@ export class MemoryViewProvider implements vscode.WebviewViewProvider, vscode.Di
     private async _showEpisodeDetails(episodeId: string): Promise<void> {
         try {
             const baseUrl = this._apiClient.baseUrl;
-            const response = await fetch(\`\${baseUrl}/api/memory/episodes/\${episodeId}\`);
+            const response = await fetch(`${baseUrl}/api/memory/episodes/${episodeId}`);
             if (response.ok) {
                 const episode = await response.json();
                 const content = JSON.stringify(episode, null, 2);
@@ -220,12 +220,12 @@ export class MemoryViewProvider implements vscode.WebviewViewProvider, vscode.Di
     private _getHtmlForWebview(webview: vscode.Webview): string {
         const nonce = getNonce();
 
-        return \`<!DOCTYPE html>
+        return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src \${webview.cspSource} 'unsafe-inline'; script-src 'nonce-\${nonce}';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
     <title>Loki Memory</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -262,7 +262,7 @@ export class MemoryViewProvider implements vscode.WebviewViewProvider, vscode.Di
     <div class="section"><div class="section-title">Recent Episodes <span class="count" id="episodeCount">0</span></div><div id="episodes"><div class="empty-state">No episodes recorded</div></div></div>
     <div class="section"><div class="section-title">Skills <span class="count" id="skillCount">0</span></div><div id="skills"><div class="empty-state">No skills learned</div></div></div>
     <div class="last-updated" id="lastUpdated">-</div>
-    <script nonce="\${nonce}">
+    <script nonce="${nonce}">
         const vscode = acquireVsCodeApi();
         document.getElementById('refreshBtn').addEventListener('click', () => { vscode.postMessage({ type: 'refresh' }); });
         window.addEventListener('message', event => { if (event.data.type === 'updateMemory') updateUI(event.data.data); });
@@ -290,6 +290,6 @@ export class MemoryViewProvider implements vscode.WebviewViewProvider, vscode.Di
         vscode.postMessage({ type: 'ready' });
     </script>
 </body>
-</html>\`;
+</html>`;
     }
 }

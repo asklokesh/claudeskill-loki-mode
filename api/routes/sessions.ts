@@ -2,9 +2,15 @@
  * Session Routes
  *
  * REST endpoints for session management.
+ *
+ * Emits learning signals:
+ * - UserPreferenceSignal on provider selection
+ * - SuccessPatternSignal on successful session operations
+ * - ErrorPatternSignal on session failures
  */
 
 import { cliBridge } from "../services/cli-bridge.ts";
+import { learningCollector } from "../services/learning-collector.ts";
 import type {
   StartSessionRequest,
   StartSessionResponse,
@@ -21,6 +27,7 @@ import {
  * POST /api/sessions - Start a new session
  */
 export async function startSession(req: Request): Promise<Response> {
+  const startTime = Date.now();
   const body = await req.json().catch(() => ({}));
 
   const data = validateBody<StartSessionRequest>(body, [], [
@@ -38,6 +45,20 @@ export async function startSession(req: Request): Promise<Response> {
     );
   }
 
+  // Emit user preference signal for provider selection
+  learningCollector.emitUserPreference(
+    "session_start",
+    "provider",
+    provider,
+    {
+      alternativesRejected: ["claude", "codex", "gemini"].filter((p) => p !== provider),
+      context: {
+        hasPrd: !!data.prdPath,
+        options: data.options,
+      },
+    }
+  );
+
   // Check for existing running session
   const sessions = await cliBridge.listSessions();
   const running = sessions.find(
@@ -45,6 +66,10 @@ export async function startSession(req: Request): Promise<Response> {
   );
 
   if (running) {
+    learningCollector.emitSessionOperation("start", running.id, false, {
+      provider,
+      errorMessage: "Session already running",
+    });
     throw new LokiApiError(
       `Session already running: ${running.id}`,
       ErrorCodes.SESSION_ALREADY_RUNNING,
@@ -58,6 +83,16 @@ export async function startSession(req: Request): Promise<Response> {
     provider,
     data.options
   );
+
+  // Emit success signal
+  learningCollector.emitSessionOperation("start", session.id, true, {
+    provider,
+    durationMs: Date.now() - startTime,
+    context: {
+      prdPath: data.prdPath,
+      options: data.options,
+    },
+  });
 
   const response: StartSessionResponse = {
     sessionId: session.id,
@@ -125,9 +160,13 @@ export async function stopSession(
   _req: Request,
   sessionId: string
 ): Promise<Response> {
+  const startTime = Date.now();
   const session = await cliBridge.getSession(sessionId);
 
   if (!session) {
+    learningCollector.emitSessionOperation("stop", sessionId, false, {
+      errorMessage: "Session not found",
+    });
     throw new LokiApiError(
       `Session not found: ${sessionId}`,
       ErrorCodes.SESSION_NOT_FOUND
@@ -135,6 +174,10 @@ export async function stopSession(
   }
 
   if (session.status !== "running" && session.status !== "starting") {
+    learningCollector.emitSessionOperation("stop", sessionId, false, {
+      errorMessage: `Session is not running: ${session.status}`,
+      context: { currentStatus: session.status },
+    });
     throw new LokiApiError(
       `Session is not running: ${session.status}`,
       ErrorCodes.CONFLICT
@@ -144,11 +187,24 @@ export async function stopSession(
   const stopped = await cliBridge.stopSession(sessionId);
 
   if (!stopped) {
+    learningCollector.emitSessionOperation("stop", sessionId, false, {
+      errorMessage: "Failed to stop session",
+      durationMs: Date.now() - startTime,
+    });
     throw new LokiApiError(
       "Failed to stop session",
       ErrorCodes.INTERNAL_ERROR
     );
   }
+
+  // Emit success signal
+  learningCollector.emitSessionOperation("stop", sessionId, true, {
+    provider: session.provider,
+    durationMs: Date.now() - startTime,
+    context: {
+      previousStatus: session.status,
+    },
+  });
 
   return successResponse({
     sessionId,

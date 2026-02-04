@@ -8,6 +8,8 @@ Exposes Loki Mode capabilities via Model Context Protocol:
 - State management
 - Metrics tracking
 
+Uses StateManager for centralized state access with caching.
+
 Usage:
     python -m mcp.server                    # STDIO mode (default)
     python -m mcp.server --transport http   # HTTP mode
@@ -30,6 +32,59 @@ try:
     EVENT_BUS_AVAILABLE = True
 except ImportError:
     EVENT_BUS_AVAILABLE = False
+
+# Import learning collector for cross-tool learning
+try:
+    from mcp.learning_collector import get_mcp_learning_collector, MCPLearningCollector
+    LEARNING_COLLECTOR_AVAILABLE = True
+except ImportError:
+    LEARNING_COLLECTOR_AVAILABLE = False
+    get_mcp_learning_collector = None
+    MCPLearningCollector = None
+
+# Import StateManager for centralized state access
+try:
+    from state.manager import StateManager, ManagedFile, get_state_manager
+    STATE_MANAGER_AVAILABLE = True
+except ImportError:
+    STATE_MANAGER_AVAILABLE = False
+    StateManager = None
+    ManagedFile = None
+    get_state_manager = None
+
+
+# Module-level StateManager instance
+_state_manager = None
+
+# Module-level LearningCollector instance
+_learning_collector = None
+
+
+def _get_learning_collector():
+    """Get or create the LearningCollector instance for MCP server."""
+    global _learning_collector
+    if not LEARNING_COLLECTOR_AVAILABLE:
+        return None
+    if _learning_collector is None:
+        from pathlib import Path
+        loki_dir = Path(os.getcwd()) / '.loki'
+        _learning_collector = get_mcp_learning_collector(loki_dir=loki_dir)
+    return _learning_collector
+
+
+def _get_mcp_state_manager():
+    """Get or create the StateManager instance for MCP server."""
+    global _state_manager
+    if not STATE_MANAGER_AVAILABLE:
+        return None
+    if _state_manager is None:
+        loki_dir = os.path.join(os.getcwd(), '.loki')
+        _state_manager = get_state_manager(
+            loki_dir=loki_dir,
+            enable_watch=False,  # MCP server doesn't need file watching
+            enable_events=False
+        )
+    return _state_manager
 
 
 # ============================================================
@@ -191,6 +246,10 @@ logger = logging.getLogger('loki-mcp')
 # EVENT EMISSION - Non-blocking tool call events
 # ============================================================
 
+# Track tool call start times for duration calculation
+_tool_call_start_times: Dict[str, float] = {}
+
+
 def _emit_tool_event_async(tool_name: str, action: str, **kwargs) -> None:
     """
     Emit a tool event asynchronously (non-blocking).
@@ -200,6 +259,25 @@ def _emit_tool_event_async(tool_name: str, action: str, **kwargs) -> None:
         action: 'start' or 'complete'
         **kwargs: Additional payload fields (parameters, result_status, error)
     """
+    import time
+
+    # Track timing for learning signals
+    call_id = f"{tool_name}_{id(kwargs)}"
+    if action == 'start':
+        _tool_call_start_times[call_id] = time.time()
+    elif action == 'complete':
+        # Calculate execution time and emit learning signal
+        start_time = _tool_call_start_times.pop(call_id, None)
+        if start_time:
+            execution_time_ms = int((time.time() - start_time) * 1000)
+            _emit_learning_signal_async(
+                tool_name=tool_name,
+                execution_time_ms=execution_time_ms,
+                result_status=kwargs.get('result_status', 'unknown'),
+                error=kwargs.get('error'),
+                parameters=kwargs.get('parameters', {})
+            )
+
     if not EVENT_BUS_AVAILABLE:
         return
 
@@ -222,6 +300,112 @@ def _emit_tool_event_async(tool_name: str, action: str, **kwargs) -> None:
             logger.debug(f"Event emission failed (non-fatal): {e}")
 
     # Run in background thread to not block the tool call
+    thread = threading.Thread(target=emit, daemon=True)
+    thread.start()
+
+
+def _emit_learning_signal_async(
+    tool_name: str,
+    execution_time_ms: int,
+    result_status: str,
+    error: Optional[str] = None,
+    parameters: Optional[Dict[str, Any]] = None
+) -> None:
+    """
+    Emit a learning signal asynchronously (non-blocking).
+
+    Emits ToolEfficiencySignal on every call, and ErrorPatternSignal on failures.
+
+    Args:
+        tool_name: Name of the MCP tool
+        execution_time_ms: Execution time in milliseconds
+        result_status: 'success' or 'error'
+        error: Error message if failed
+        parameters: Tool parameters for context
+    """
+    if not LEARNING_COLLECTOR_AVAILABLE:
+        return
+
+    def emit():
+        try:
+            collector = _get_learning_collector()
+            if not collector:
+                return
+
+            success = result_status == 'success'
+
+            # Emit tool efficiency signal
+            collector.emit_tool_efficiency(
+                tool_name=tool_name,
+                action=f"mcp_tool_call",
+                execution_time_ms=execution_time_ms,
+                success=success,
+                context={'parameters': parameters or {}},
+            )
+
+            # Emit error pattern if failed
+            if not success and error:
+                collector.emit_error_pattern(
+                    tool_name=tool_name,
+                    action=f"mcp_tool_call",
+                    error_type='MCPToolError',
+                    error_message=error,
+                    context={'parameters': parameters or {}},
+                )
+
+            # Emit success pattern for successful calls
+            if success:
+                collector.emit_success_pattern(
+                    tool_name=tool_name,
+                    action=f"mcp_tool_call",
+                    pattern_name=f"mcp_{tool_name}_success",
+                    duration_seconds=execution_time_ms // 1000,
+                    context={'parameters': parameters or {}},
+                )
+
+        except Exception as e:
+            # Never block the tool call for learning signal emission failures
+            logger.debug(f"Learning signal emission failed (non-fatal): {e}")
+
+    # Run in background thread to not block the tool call
+    thread = threading.Thread(target=emit, daemon=True)
+    thread.start()
+
+
+def _emit_context_relevance_signal(
+    tool_name: str,
+    query: str,
+    retrieved_ids: List[str],
+    context: Optional[Dict[str, Any]] = None
+) -> None:
+    """
+    Emit a context relevance learning signal for memory/resource access.
+
+    Args:
+        tool_name: Name of the MCP tool
+        query: The query used for retrieval
+        retrieved_ids: IDs of retrieved items
+        context: Additional context
+    """
+    if not LEARNING_COLLECTOR_AVAILABLE:
+        return
+
+    def emit():
+        try:
+            collector = _get_learning_collector()
+            if not collector:
+                return
+
+            collector.emit_context_relevance(
+                tool_name=tool_name,
+                action='memory_retrieval',
+                query=query,
+                retrieved_ids=retrieved_ids,
+                context=context or {},
+            )
+        except Exception as e:
+            logger.debug(f"Context relevance signal emission failed (non-fatal): {e}")
+
     thread = threading.Thread(target=emit, daemon=True)
     thread.start()
 
@@ -279,6 +463,17 @@ async def loki_memory_retrieve(
 
         context = {"goal": query, "task_type": task_type}
         results = retriever.retrieve_task_aware(context, top_k=top_k)
+
+        # Extract IDs for context relevance signal
+        retrieved_ids = [r.get('id', '') for r in results if isinstance(r, dict)]
+
+        # Emit context relevance signal for memory retrieval
+        _emit_context_relevance_signal(
+            tool_name='loki_memory_retrieve',
+            query=query,
+            retrieved_ids=retrieved_ids,
+            context={'task_type': task_type, 'top_k': top_k}
+        )
 
         result = json.dumps({
             "memories": results,
@@ -367,6 +562,19 @@ async def loki_task_queue_list() -> str:
     """
     _emit_tool_event_async('loki_task_queue_list', 'start', parameters={})
     try:
+        # Use StateManager if available
+        manager = _get_mcp_state_manager()
+        if manager and STATE_MANAGER_AVAILABLE:
+            queue = manager.get_state("state/task-queue.json")
+            if queue:
+                _emit_tool_event_async('loki_task_queue_list', 'complete', result_status='success')
+                return json.dumps(queue, default=str)
+            # If no queue found via StateManager, return empty
+            result = json.dumps({"tasks": [], "message": "No task queue found"})
+            _emit_tool_event_async('loki_task_queue_list', 'complete', result_status='success')
+            return result
+
+        # Fallback to direct file read
         queue_path = safe_path_join('.loki', 'state', 'task-queue.json')
         if not os.path.exists(queue_path):
             result = json.dumps({"tasks": [], "message": "No task queue found"})
@@ -412,16 +620,21 @@ async def loki_task_queue_add(
         parameters={'title': title, 'priority': priority, 'phase': phase}
     )
     try:
-        queue_path = safe_path_join('.loki', 'state', 'task-queue.json')
-        state_dir = safe_path_join('.loki', 'state')
-        safe_makedirs(state_dir, exist_ok=True)
+        manager = _get_mcp_state_manager()
 
-        # Load existing queue or create new
-        if os.path.exists(queue_path):
-            with safe_open(queue_path, 'r') as f:
-                queue = json.load(f)
+        # Load existing queue or create new - use StateManager if available
+        if manager and STATE_MANAGER_AVAILABLE:
+            queue = manager.get_state("state/task-queue.json", default={"tasks": [], "version": "1.0"})
         else:
-            queue = {"tasks": [], "version": "1.0"}
+            queue_path = safe_path_join('.loki', 'state', 'task-queue.json')
+            state_dir = safe_path_join('.loki', 'state')
+            safe_makedirs(state_dir, exist_ok=True)
+
+            if os.path.exists(queue_path):
+                with safe_open(queue_path, 'r') as f:
+                    queue = json.load(f)
+            else:
+                queue = {"tasks": [], "version": "1.0"}
 
         # Create new task
         task_id = f"task-{len(queue['tasks']) + 1:04d}"
@@ -437,8 +650,13 @@ async def loki_task_queue_add(
 
         queue["tasks"].append(task)
 
-        with safe_open(queue_path, 'w') as f:
-            json.dump(queue, f, indent=2)
+        # Save using StateManager if available
+        if manager and STATE_MANAGER_AVAILABLE:
+            manager.set_state("state/task-queue.json", queue, source="mcp-server")
+        else:
+            queue_path = safe_path_join('.loki', 'state', 'task-queue.json')
+            with safe_open(queue_path, 'w') as f:
+                json.dump(queue, f, indent=2)
 
         _emit_tool_event_async('loki_task_queue_add', 'complete', result_status='success')
         return json.dumps({"success": True, "task_id": task_id})
@@ -474,13 +692,22 @@ async def loki_task_queue_update(
         parameters={'task_id': task_id, 'status': status, 'priority': priority}
     )
     try:
-        queue_path = safe_path_join('.loki', 'state', 'task-queue.json')
-        if not os.path.exists(queue_path):
-            _emit_tool_event_async('loki_task_queue_update', 'complete', result_status='error', error='Task queue not found')
-            return json.dumps({"success": False, "error": "Task queue not found"})
+        manager = _get_mcp_state_manager()
 
-        with safe_open(queue_path, 'r') as f:
-            queue = json.load(f)
+        # Load queue using StateManager if available
+        if manager and STATE_MANAGER_AVAILABLE:
+            queue = manager.get_state("state/task-queue.json")
+            if not queue:
+                _emit_tool_event_async('loki_task_queue_update', 'complete', result_status='error', error='Task queue not found')
+                return json.dumps({"success": False, "error": "Task queue not found"})
+        else:
+            queue_path = safe_path_join('.loki', 'state', 'task-queue.json')
+            if not os.path.exists(queue_path):
+                _emit_tool_event_async('loki_task_queue_update', 'complete', result_status='error', error='Task queue not found')
+                return json.dumps({"success": False, "error": "Task queue not found"})
+
+            with safe_open(queue_path, 'r') as f:
+                queue = json.load(f)
 
         # Find and update task
         for task in queue["tasks"]:
@@ -491,8 +718,13 @@ async def loki_task_queue_update(
                     task["priority"] = priority
                 task["updated_at"] = datetime.utcnow().isoformat() + "Z"
 
-                with safe_open(queue_path, 'w') as f:
-                    json.dump(queue, f, indent=2)
+                # Save using StateManager if available
+                if manager and STATE_MANAGER_AVAILABLE:
+                    manager.set_state("state/task-queue.json", queue, source="mcp-server")
+                else:
+                    queue_path = safe_path_join('.loki', 'state', 'task-queue.json')
+                    with safe_open(queue_path, 'w') as f:
+                        json.dump(queue, f, indent=2)
 
                 _emit_tool_event_async('loki_task_queue_update', 'complete', result_status='success')
                 return json.dumps({"success": True, "task": task})
@@ -519,7 +751,6 @@ async def loki_state_get() -> str:
     """
     _emit_tool_event_async('loki_state_get', 'start', parameters={})
     try:
-        state_path = safe_path_join('.loki', 'state', 'autonomy-state.json')
         continuity_path = safe_path_join('.loki', 'CONTINUITY.md')
         loki_dir = safe_path_join('.loki')
 
@@ -530,9 +761,18 @@ async def loki_state_get() -> str:
             "timestamp": datetime.utcnow().isoformat() + "Z"
         }
 
-        if os.path.exists(state_path):
-            with safe_open(state_path, 'r') as f:
-                state["autonomy_state"] = json.load(f)
+        # Use StateManager for autonomy state if available
+        manager = _get_mcp_state_manager()
+        if manager and STATE_MANAGER_AVAILABLE:
+            autonomy_data = manager.get_state(ManagedFile.AUTONOMY)
+            if autonomy_data:
+                state["autonomy_state"] = autonomy_data
+        else:
+            # Fallback to direct file read
+            state_path = safe_path_join('.loki', 'state', 'autonomy-state.json')
+            if os.path.exists(state_path):
+                with safe_open(state_path, 'r') as f:
+                    state["autonomy_state"] = json.load(f)
 
         # Get memory stats
         try:
@@ -658,6 +898,15 @@ async def get_continuity() -> str:
 async def get_memory_index() -> str:
     """Get the memory index (Layer 1)"""
     try:
+        # Use StateManager if available
+        manager = _get_mcp_state_manager()
+        if manager and STATE_MANAGER_AVAILABLE:
+            index_data = manager.get_state(ManagedFile.MEMORY_INDEX)
+            if index_data:
+                return json.dumps(index_data)
+            return json.dumps({"topics": [], "message": "Index not initialized"})
+
+        # Fallback to direct file read
         index_path = safe_path_join('.loki', 'memory', 'index.json')
         if os.path.exists(index_path):
             with safe_open(index_path, 'r') as f:
@@ -671,6 +920,16 @@ async def get_memory_index() -> str:
 async def get_pending_tasks() -> str:
     """Get all pending tasks from the queue"""
     try:
+        # Use StateManager if available
+        manager = _get_mcp_state_manager()
+        if manager and STATE_MANAGER_AVAILABLE:
+            queue = manager.get_state("state/task-queue.json")
+            if queue:
+                pending = [t for t in queue.get("tasks", []) if t.get("status") == "pending"]
+                return json.dumps({"pending_tasks": pending, "count": len(pending)})
+            return json.dumps({"pending_tasks": [], "count": 0})
+
+        # Fallback to direct file read
         queue_path = safe_path_join('.loki', 'state', 'task-queue.json')
         if os.path.exists(queue_path):
             with safe_open(queue_path, 'r') as f:

@@ -14,7 +14,9 @@ import { stateWatcher } from "./services/state-watcher.ts";
 import { corsMiddleware } from "./middleware/cors.ts";
 import { authMiddleware } from "./middleware/auth.ts";
 import { errorMiddleware } from "./middleware/error.ts";
+import { timingMiddleware } from "./middleware/timing.ts";
 import { LokiApiError, ErrorCodes } from "./middleware/error.ts";
+import { learningCollector } from "./services/learning-collector.ts";
 
 // Import routes
 import {
@@ -58,7 +60,20 @@ import {
   retrieveMemories,
   consolidateMemories,
   getTokenEconomics,
+  getSuggestions,
+  getLearningSuggestions,
 } from "./routes/memory.ts";
+import {
+  getLearningMetrics,
+  getLearningTrends,
+  getLearningSignals,
+  getLatestAggregation,
+  triggerAggregation,
+  getAggregatedPreferences,
+  getAggregatedErrors,
+  getAggregatedSuccessPatterns,
+  getToolEfficiency,
+} from "./routes/learning.ts";
 
 // Server configuration
 interface ServerConfig {
@@ -203,6 +218,27 @@ const routes: Route[] = [
     pattern: /^\/api\/memory\/economics$/,
     handler: getTokenEconomics,
   },
+  {
+    method: "GET",
+    pattern: /^\/api\/suggestions$/,
+    handler: getSuggestions,
+  },
+  {
+    method: "GET",
+    pattern: /^\/api\/suggestions\/learning$/,
+    handler: getLearningSuggestions,
+  },
+
+  // Learning endpoints
+  { method: "GET", pattern: /^\/api\/learning\/metrics$/, handler: getLearningMetrics },
+  { method: "GET", pattern: /^\/api\/learning\/trends$/, handler: getLearningTrends },
+  { method: "GET", pattern: /^\/api\/learning\/signals$/, handler: getLearningSignals },
+  { method: "GET", pattern: /^\/api\/learning\/aggregation$/, handler: getLatestAggregation },
+  { method: "POST", pattern: /^\/api\/learning\/aggregate$/, handler: triggerAggregation },
+  { method: "GET", pattern: /^\/api\/learning\/preferences$/, handler: getAggregatedPreferences },
+  { method: "GET", pattern: /^\/api\/learning\/errors$/, handler: getAggregatedErrors },
+  { method: "GET", pattern: /^\/api\/learning\/success$/, handler: getAggregatedSuccessPatterns },
+  { method: "GET", pattern: /^\/api\/learning\/tools$/, handler: getToolEfficiency },
 ];
 
 /**
@@ -242,6 +278,9 @@ function createHandler(config: ServerConfig): Deno.ServeHandler {
 
   // Apply middleware in reverse order (innermost first)
   handler = errorMiddleware(handler);
+
+  // Add timing middleware for learning signals (after error handling)
+  handler = timingMiddleware(handler);
 
   if (config.auth) {
     // Skip auth for health endpoints
@@ -290,6 +329,7 @@ function printBanner(config: ServerConfig): void {
 ║    GET  /api/memory/episodes     - List episodes              ║
 ║    GET  /api/memory/patterns     - List patterns              ║
 ║    POST /api/memory/retrieve     - Query memories             ║
+║    GET  /api/suggestions         - Get task-aware suggestions ║
 ╚═══════════════════════════════════════════════════════════════╝
 `);
 }
@@ -354,6 +394,28 @@ async function main(): Promise<void> {
 
   // Start state watcher
   await stateWatcher.start();
+
+  // Register cleanup handler for learning collector
+  Deno.addSignalListener("SIGINT", async () => {
+    console.log("\nShutting down...");
+    // Flush any pending learning signals
+    const flushed = await learningCollector.flush();
+    if (flushed > 0) {
+      console.log(`Flushed ${flushed} learning signals`);
+    }
+    learningCollector.stopFlushTimer();
+    Deno.exit(0);
+  });
+
+  Deno.addSignalListener("SIGTERM", async () => {
+    console.log("\nShutting down...");
+    const flushed = await learningCollector.flush();
+    if (flushed > 0) {
+      console.log(`Flushed ${flushed} learning signals`);
+    }
+    learningCollector.stopFlushTimer();
+    Deno.exit(0);
+  });
 
   // Print banner
   printBanner(config);

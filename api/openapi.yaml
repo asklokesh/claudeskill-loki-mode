@@ -42,6 +42,12 @@ tags:
     description: Task management
   - name: Events
     description: Real-time event streaming
+  - name: Memory
+    description: Memory system endpoints
+  - name: Suggestions
+    description: Task-aware suggestions
+  - name: Learning
+    description: Learning metrics and aggregation endpoints
 
 paths:
   /health:
@@ -427,6 +433,259 @@ paths:
         '200':
           description: Event statistics
 
+  /api/suggestions:
+    get:
+      tags: [Suggestions]
+      summary: Get task-aware suggestions
+      description: |
+        Returns context-aware suggestions from the memory system based on the provided context.
+        Uses task-aware retrieval to find relevant patterns, episodes, and skills.
+
+        Rate limited to 10 requests per second per client.
+      operationId: getSuggestions
+      parameters:
+        - name: context
+          in: query
+          required: true
+          description: The current task context or goal (max 10,000 characters)
+          schema:
+            type: string
+            maxLength: 10000
+        - name: taskType
+          in: query
+          description: |
+            Type of task for optimized retrieval. Use 'auto' for automatic detection.
+          schema:
+            type: string
+            enum: [auto, debugging, implementation, testing, refactoring, planning]
+            default: auto
+        - name: limit
+          in: query
+          description: Maximum number of suggestions to return (1-50)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 5
+      responses:
+        '200':
+          description: Suggestions retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuggestionsResponse'
+        '400':
+          description: Validation error (missing context, context too long, or rate limit exceeded)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Memory system unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /api/memory:
+    get:
+      tags: [Memory]
+      summary: Get memory summary
+      description: Returns a summary of the memory system including counts and token economics
+      operationId: getMemorySummary
+      responses:
+        '200':
+          description: Memory summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemorySummary'
+
+  /api/memory/retrieve:
+    post:
+      tags: [Memory]
+      summary: Query memories
+      description: |
+        Retrieves memories matching the query using task-aware retrieval.
+        Query length is limited to 10,000 characters.
+      operationId: retrieveMemories
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query:
+                  type: string
+                  description: The search query (max 10,000 characters)
+                  maxLength: 10000
+                taskType:
+                  type: string
+                  description: Task type for optimized retrieval
+                  enum: [auto, debugging, implementation, testing, refactoring, planning]
+                  default: auto
+                topK:
+                  type: integer
+                  description: Maximum results to return (1-50)
+                  minimum: 1
+                  maximum: 50
+                  default: 5
+      responses:
+        '200':
+          description: Retrieved memories
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetrieveResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /api/learning/metrics:
+    get:
+      tags: [Learning]
+      summary: Get learning metrics
+      description: Returns aggregated learning metrics including signal counts and patterns
+      operationId: getLearningMetrics
+      parameters:
+        - name: timeRange
+          in: query
+          description: Time range for metrics
+          schema:
+            type: string
+            enum: ['1h', '24h', '7d', '30d']
+            default: '7d'
+        - name: signalType
+          in: query
+          description: Filter by signal type
+          schema:
+            type: string
+            enum: [user_preference, error_pattern, success_pattern, tool_efficiency, context_relevance]
+        - name: source
+          in: query
+          description: Filter by signal source
+          schema:
+            type: string
+            enum: [cli, api, vscode, mcp, dashboard]
+      responses:
+        '200':
+          description: Learning metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LearningMetrics'
+
+  /api/learning/trends:
+    get:
+      tags: [Learning]
+      summary: Get learning signal trends
+      description: Returns signal volume trends over time
+      operationId: getLearningTrends
+      parameters:
+        - name: timeRange
+          in: query
+          description: Time range for trends
+          schema:
+            type: string
+            enum: ['1h', '24h', '7d', '30d']
+            default: '7d'
+        - name: signalType
+          in: query
+          description: Filter by signal type
+          schema:
+            type: string
+        - name: source
+          in: query
+          description: Filter by signal source
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Trend data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LearningTrends'
+
+  /api/learning/signals:
+    get:
+      tags: [Learning]
+      summary: Get recent learning signals
+      description: Returns recent learning signals with pagination
+      operationId: getLearningSignals
+      parameters:
+        - name: timeRange
+          in: query
+          description: Time range
+          schema:
+            type: string
+            default: '7d'
+        - name: limit
+          in: query
+          description: Max signals to return
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          description: Pagination offset
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Learning signals
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  signals:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LearningSignal'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+  /api/learning/aggregate:
+    post:
+      tags: [Learning]
+      summary: Trigger aggregation
+      description: Triggers a new learning aggregation run
+      operationId: triggerAggregation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                timeWindowDays:
+                  type: integer
+                  default: 7
+                minFrequency:
+                  type: integer
+                  default: 2
+                minConfidence:
+                  type: number
+                  default: 0.5
+      responses:
+        '200':
+          description: Aggregation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  result:
+                    type: object
+
 components:
   securitySchemes:
     bearerAuth:
@@ -608,6 +867,337 @@ components:
           type: string
         data:
           type: object
+
+    Suggestion:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the suggestion
+        type:
+          type: string
+          enum: [episodic, semantic, skills, anti_patterns]
+          description: Source type of the suggestion
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: Confidence score (0-1)
+        content:
+          type: string
+          description: The suggestion content
+        action:
+          type: string
+          description: Recommended action to take
+
+    SuggestionsResponse:
+      type: object
+      properties:
+        suggestions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Suggestion'
+        context:
+          type: string
+          description: The original context (truncated to 200 chars)
+        taskType:
+          type: string
+          description: The detected or specified task type
+
+    LearningMetrics:
+      type: object
+      properties:
+        totalSignals:
+          type: integer
+          description: Total number of learning signals
+        signalsByType:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Signal counts by type
+        signalsBySource:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Signal counts by source
+        avgConfidence:
+          type: number
+          format: float
+          description: Average confidence score
+        aggregation:
+          type: object
+          properties:
+            preferences:
+              type: array
+              items:
+                $ref: '#/components/schemas/AggregatedPreference'
+            error_patterns:
+              type: array
+              items:
+                $ref: '#/components/schemas/AggregatedErrorPattern'
+            success_patterns:
+              type: array
+              items:
+                $ref: '#/components/schemas/AggregatedSuccessPattern'
+            tool_efficiencies:
+              type: array
+              items:
+                $ref: '#/components/schemas/AggregatedToolEfficiency'
+        timeRange:
+          type: string
+        since:
+          type: string
+          format: date-time
+
+    LearningTrends:
+      type: object
+      properties:
+        dataPoints:
+          type: array
+          items:
+            type: object
+            properties:
+              label:
+                type: string
+              count:
+                type: integer
+              timestamp:
+                type: string
+                format: date-time
+        maxValue:
+          type: integer
+        period:
+          type: string
+        timeRange:
+          type: string
+        signalCount:
+          type: integer
+
+    LearningSignal:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [user_preference, error_pattern, success_pattern, tool_efficiency, context_relevance]
+        source:
+          type: string
+          enum: [cli, api, vscode, mcp, dashboard]
+        action:
+          type: string
+        context:
+          type: object
+        outcome:
+          type: string
+          enum: [success, failure, partial, unknown]
+        confidence:
+          type: number
+          format: float
+        timestamp:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+
+    AggregatedPreference:
+      type: object
+      properties:
+        preference_key:
+          type: string
+        preferred_value:
+          type: string
+        frequency:
+          type: integer
+        confidence:
+          type: number
+          format: float
+        sources:
+          type: array
+          items:
+            type: string
+        alternatives_rejected:
+          type: array
+          items:
+            type: string
+        first_seen:
+          type: string
+          format: date-time
+        last_seen:
+          type: string
+          format: date-time
+
+    AggregatedErrorPattern:
+      type: object
+      properties:
+        error_type:
+          type: string
+        common_messages:
+          type: array
+          items:
+            type: string
+        frequency:
+          type: integer
+        confidence:
+          type: number
+          format: float
+        sources:
+          type: array
+          items:
+            type: string
+        resolutions:
+          type: array
+          items:
+            type: string
+        resolution_rate:
+          type: number
+          format: float
+        first_seen:
+          type: string
+          format: date-time
+        last_seen:
+          type: string
+          format: date-time
+
+    AggregatedSuccessPattern:
+      type: object
+      properties:
+        pattern_name:
+          type: string
+        common_actions:
+          type: array
+          items:
+            type: string
+        frequency:
+          type: integer
+        confidence:
+          type: number
+          format: float
+        sources:
+          type: array
+          items:
+            type: string
+        avg_duration_seconds:
+          type: number
+        preconditions:
+          type: array
+          items:
+            type: string
+        postconditions:
+          type: array
+          items:
+            type: string
+        first_seen:
+          type: string
+          format: date-time
+        last_seen:
+          type: string
+          format: date-time
+
+    AggregatedToolEfficiency:
+      type: object
+      properties:
+        tool_name:
+          type: string
+        usage_count:
+          type: integer
+        success_count:
+          type: integer
+        failure_count:
+          type: integer
+        avg_execution_time_ms:
+          type: number
+        total_tokens_used:
+          type: integer
+        success_rate:
+          type: number
+          format: float
+        efficiency_score:
+          type: number
+          format: float
+        confidence:
+          type: number
+          format: float
+        sources:
+          type: array
+          items:
+            type: string
+        alternative_tools:
+          type: array
+          items:
+            type: string
+        first_seen:
+          type: string
+          format: date-time
+        last_seen:
+          type: string
+          format: date-time
+
+    MemorySummary:
+      type: object
+      properties:
+        episodic:
+          type: object
+          properties:
+            count:
+              type: integer
+            latestDate:
+              type: string
+              format: date-time
+              nullable: true
+        semantic:
+          type: object
+          properties:
+            patterns:
+              type: integer
+            antiPatterns:
+              type: integer
+        procedural:
+          type: object
+          properties:
+            skills:
+              type: integer
+        tokenEconomics:
+          type: object
+          nullable: true
+          properties:
+            discoveryTokens:
+              type: integer
+            readTokens:
+              type: integer
+            ratio:
+              type: number
+            savingsPercent:
+              type: number
+
+    RetrieveResponse:
+      type: object
+      properties:
+        memories:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              source:
+                type: string
+              score:
+                type: number
+              content:
+                type: object
+        tokenMetrics:
+          type: object
+          properties:
+            discoveryTokens:
+              type: integer
+            readTokens:
+              type: integer
+            ratio:
+              type: number
+            savingsPercent:
+              type: number
 
 security:
   - {}

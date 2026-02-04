@@ -2,9 +2,11 @@
  * Error Handling Middleware
  *
  * Provides consistent error responses and logging.
+ * Emits ErrorPatternSignal for learning from API errors.
  */
 
 import type { ApiError } from "../types/api.ts";
+import { learningCollector } from "../services/learning-collector.ts";
 
 // Error codes
 export const ErrorCodes = {
@@ -105,7 +107,8 @@ export function errorMiddleware(
 }
 
 /**
- * Handle an error and return appropriate response
+ * Handle an error and return appropriate response.
+ * Also emits an ErrorPatternSignal for learning.
  */
 export function handleError(err: unknown, req?: Request): Response {
   // Log error for debugging
@@ -114,6 +117,31 @@ export function handleError(err: unknown, req?: Request): Response {
     : "unknown request";
 
   console.error(`Error handling ${requestInfo}:`, err);
+
+  // Emit error pattern signal for learning
+  const errorType = err instanceof LokiApiError
+    ? err.code
+    : err instanceof Error
+    ? err.name
+    : "UnknownError";
+  const errorMessage = err instanceof Error
+    ? err.message
+    : "An unexpected error occurred";
+
+  learningCollector.emitErrorPattern(
+    requestInfo,
+    errorType,
+    errorMessage,
+    {
+      stackTrace: err instanceof Error ? err.stack : undefined,
+      context: {
+        method: req?.method,
+        path: req ? new URL(req.url).pathname : undefined,
+        errorCode: err instanceof LokiApiError ? err.code : undefined,
+        statusCode: err instanceof LokiApiError ? err.status : 500,
+      },
+    }
+  );
 
   // Handle known API errors
   if (err instanceof LokiApiError) {

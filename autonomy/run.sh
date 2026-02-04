@@ -662,6 +662,40 @@ emit_event_json() {
 }
 
 #===============================================================================
+# Learning Signal Emission (SYN-018)
+# Emits learning signals for cross-tool learning system
+#===============================================================================
+
+# Path to learning signal emitter
+LEARNING_EMIT_SH="$SCRIPT_DIR/../learning/emit.sh"
+
+# Emit learning signal (non-blocking)
+# Usage: emit_learning_signal <signal_type> [options]
+emit_learning_signal() {
+    if [ -f "$LEARNING_EMIT_SH" ]; then
+        # Run in background to be non-blocking
+        (LOKI_DIR=".loki" LOKI_SKILL_DIR="$PROJECT_DIR" "$LEARNING_EMIT_SH" "$@" >/dev/null 2>&1 &)
+    fi
+}
+
+# Track iteration timing for efficiency signals
+ITERATION_START_MS=""
+record_iteration_start() {
+    ITERATION_START_MS=$(date +%s%3N 2>/dev/null || echo $(($(date +%s) * 1000)))
+}
+
+# Get iteration duration in milliseconds
+get_iteration_duration_ms() {
+    if [ -n "$ITERATION_START_MS" ]; then
+        local end_ms
+        end_ms=$(date +%s%3N 2>/dev/null || echo $(($(date +%s) * 1000)))
+        echo $((end_ms - ITERATION_START_MS))
+    else
+        echo "0"
+    fi
+}
+
+#===============================================================================
 # Complexity Tier Detection (Auto-Claude pattern)
 #===============================================================================
 
@@ -2330,6 +2364,9 @@ track_iteration_start() {
 
     mkdir -p .loki/queue
 
+    # Record iteration start time for efficiency tracking (SYN-018)
+    record_iteration_start
+
     # Emit iteration start event for dashboard
     emit_event_json "iteration_start" \
         "iteration=$iteration" \
@@ -2382,6 +2419,10 @@ track_iteration_complete() {
 
     mkdir -p .loki/queue
 
+    # Calculate iteration duration (SYN-018)
+    local duration_ms
+    duration_ms=$(get_iteration_duration_ms)
+
     # Emit iteration complete event for dashboard
     local status_str
     [ "$exit_code" = "0" ] && status_str="completed" || status_str="failed"
@@ -2390,6 +2431,44 @@ track_iteration_complete() {
         "status=$status_str" \
         "exitCode=$exit_code" \
         "provider=${PROVIDER_NAME:-claude}"
+
+    # Emit learning signals based on outcome (SYN-018)
+    if [ "$exit_code" = "0" ]; then
+        # Success pattern for completed iteration
+        emit_learning_signal success_pattern \
+            --source cli \
+            --action "iteration_complete" \
+            --pattern-name "rarv_iteration" \
+            --action-sequence '["reason", "act", "reflect", "verify"]' \
+            --duration "$((duration_ms / 1000))" \
+            --outcome success \
+            --context "{\"iteration\":$iteration,\"provider\":\"${PROVIDER_NAME:-claude}\"}"
+        # Tool efficiency signal
+        emit_learning_signal tool_efficiency \
+            --source cli \
+            --action "iteration_complete" \
+            --tool-name "${PROVIDER_NAME:-claude}" \
+            --execution-time-ms "$duration_ms" \
+            --outcome success \
+            --context "{\"iteration\":$iteration}"
+    else
+        # Error pattern for failed iteration
+        emit_learning_signal error_pattern \
+            --source cli \
+            --action "iteration_complete" \
+            --error-type "IterationFailure" \
+            --error-message "Iteration $iteration failed with exit code $exit_code" \
+            --recovery-steps '["Check logs", "Review error output", "Retry iteration"]' \
+            --context "{\"iteration\":$iteration,\"provider\":\"${PROVIDER_NAME:-claude}\",\"exit_code\":$exit_code}"
+        # Tool efficiency signal with failure
+        emit_learning_signal tool_efficiency \
+            --source cli \
+            --action "iteration_failed" \
+            --tool-name "${PROVIDER_NAME:-claude}" \
+            --execution-time-ms "$duration_ms" \
+            --outcome failure \
+            --context "{\"iteration\":$iteration,\"exit_code\":$exit_code}"
+    fi
 
     # Get task from in-progress
     local in_progress_file=".loki/queue/in-progress.json"
@@ -3759,6 +3838,81 @@ load_learnings_context() {
     echo -e "$learnings"
 }
 
+# Load pre-computed relevant learnings from CLI startup (SYN-008)
+# Reads .loki/state/memory-context.json written by load_memory_context() in CLI
+# Note: Different from get_relevant_learnings() which writes to relevant-learnings.json
+load_startup_learnings() {
+    local learnings_file=".loki/state/memory-context.json"
+    local target_dir="${TARGET_DIR:-.}"
+
+    # Check if file exists (written by CLI at startup)
+    if [ ! -f "$target_dir/$learnings_file" ]; then
+        return
+    fi
+
+    # Parse and format the pre-loaded memories with JSON schema validation
+    python3 -c "
+import sys
+import json
+
+def validate_memory_context_schema(data):
+    '''Validate JSON has expected schema for memory-context.json'''
+    # Check required top-level keys
+    if not isinstance(data, dict):
+        return False, 'Root must be an object'
+
+    required_keys = ['memory_count', 'memories']
+    for key in required_keys:
+        if key not in data:
+            return False, f'Missing required key: {key}'
+
+    # Validate types
+    if not isinstance(data.get('memory_count'), int):
+        return False, 'memory_count must be an integer'
+    if not isinstance(data.get('memories'), list):
+        return False, 'memories must be an array'
+
+    # Validate memory items
+    for i, m in enumerate(data.get('memories', [])):
+        if not isinstance(m, dict):
+            return False, f'memories[{i}] must be an object'
+        # Optional: validate expected fields exist
+        for field in ['source', 'score', 'summary']:
+            if field in m:
+                # Just check they're the right types if present
+                if field == 'score' and not isinstance(m[field], (int, float)):
+                    return False, f'memories[{i}].score must be a number'
+
+    return True, None
+
+try:
+    with open('$target_dir/$learnings_file', 'r') as f:
+        data = json.load(f)
+
+    # Validate schema before using
+    valid, error = validate_memory_context_schema(data)
+    if not valid:
+        sys.stderr.write(f'Invalid memory-context.json schema: {error}\\n')
+        sys.exit(0)
+
+    memories = data.get('memories', [])
+    if not memories:
+        sys.exit(0)
+
+    print('STARTUP LEARNINGS (pre-loaded):')
+    for m in memories[:5]:
+        source = m.get('source', 'unknown')
+        summary = m.get('summary', '')[:100]
+        score = m.get('score', 0)
+        if summary:
+            print(f'- [{source}|{score}] {summary}')
+except json.JSONDecodeError as e:
+    sys.stderr.write(f'Invalid JSON in memory-context.json: {e}\\n')
+except Exception as e:
+    pass  # Silently fail for other errors
+" 2>/dev/null
+}
+
 #===============================================================================
 # Memory System Integration
 #===============================================================================
@@ -3775,16 +3929,26 @@ retrieve_memory_context() {
     fi
 
     # Use Python to retrieve relevant context
-    python3 -c "
+    # Pass parameters via environment variables to prevent command injection
+    _LOKI_PROJECT_DIR="$PROJECT_DIR" _LOKI_TARGET_DIR="$target_dir" \
+    _LOKI_GOAL="$goal" _LOKI_PHASE="$phase" \
+    python3 << 'PYEOF' 2>/dev/null
 import sys
-sys.path.insert(0, '$PROJECT_DIR')
+import os
+
+project_dir = os.environ.get('_LOKI_PROJECT_DIR', '')
+target_dir = os.environ.get('_LOKI_TARGET_DIR', '.')
+goal = os.environ.get('_LOKI_GOAL', '')
+phase = os.environ.get('_LOKI_PHASE', '')
+
+sys.path.insert(0, project_dir)
 try:
     from memory.retrieval import MemoryRetrieval
     from memory.storage import MemoryStorage
     import json
-    storage = MemoryStorage('$target_dir/.loki/memory')
+    storage = MemoryStorage(f'{target_dir}/.loki/memory')
     retriever = MemoryRetrieval(storage)
-    context = {'goal': '''$goal''', 'phase': '$phase'}
+    context = {'goal': goal, 'phase': phase}
     results = retriever.retrieve_task_aware(context, top_k=3)
     if results:
         print('RELEVANT MEMORIES:')
@@ -3794,7 +3958,7 @@ try:
             print(f'- [{source}] {summary}')
 except Exception as e:
     pass  # Silently fail if memory not available
-" 2>/dev/null
+PYEOF
 }
 
 # Store episode trace after task completion
@@ -3811,27 +3975,41 @@ store_episode_trace() {
         return
     fi
 
-    python3 -c "
+    # Pass parameters via environment variables to prevent command injection
+    _LOKI_PROJECT_DIR="$PROJECT_DIR" _LOKI_TARGET_DIR="$target_dir" \
+    _LOKI_TASK_ID="$task_id" _LOKI_OUTCOME="$outcome" _LOKI_PHASE="$phase" \
+    _LOKI_GOAL="$goal" _LOKI_DURATION="$duration" \
+    python3 << 'PYEOF' 2>/dev/null
 import sys
-sys.path.insert(0, '$PROJECT_DIR')
+import os
+
+project_dir = os.environ.get('_LOKI_PROJECT_DIR', '')
+target_dir = os.environ.get('_LOKI_TARGET_DIR', '.')
+task_id = os.environ.get('_LOKI_TASK_ID', '')
+outcome = os.environ.get('_LOKI_OUTCOME', '')
+phase = os.environ.get('_LOKI_PHASE', '')
+goal = os.environ.get('_LOKI_GOAL', '')
+duration = os.environ.get('_LOKI_DURATION', '0')
+
+sys.path.insert(0, project_dir)
 try:
     from memory.engine import MemoryEngine
     from memory.schemas import EpisodeTrace
     from datetime import datetime, timezone
-    engine = MemoryEngine('$target_dir/.loki/memory')
+    engine = MemoryEngine(f'{target_dir}/.loki/memory')
     engine.initialize()
     trace = EpisodeTrace.create(
-        task_id='$task_id',
+        task_id=task_id,
         agent='loki-orchestrator',
-        phase='$phase',
-        goal='''$goal''',
-        outcome='$outcome',
-        duration_seconds=$duration
+        phase=phase,
+        goal=goal,
+        outcome=outcome,
+        duration_seconds=int(duration) if duration.isdigit() else 0
     )
     engine.store_episode(trace)
 except Exception as e:
     pass  # Silently fail
-" 2>/dev/null
+PYEOF
 }
 
 # Run memory consolidation pipeline
@@ -3843,20 +4021,27 @@ run_memory_consolidation() {
         return
     fi
 
-    python3 -c "
+    # Pass parameters via environment variables for consistency
+    _LOKI_PROJECT_DIR="$PROJECT_DIR" _LOKI_TARGET_DIR="$target_dir" \
+    python3 << 'PYEOF' 2>/dev/null || true
 import sys
-sys.path.insert(0, '$PROJECT_DIR')
+import os
+
+project_dir = os.environ.get('_LOKI_PROJECT_DIR', '')
+target_dir = os.environ.get('_LOKI_TARGET_DIR', '.')
+
+sys.path.insert(0, project_dir)
 try:
     from memory.consolidation import ConsolidationPipeline
     from memory.storage import MemoryStorage
-    storage = MemoryStorage('$target_dir/.loki/memory')
+    storage = MemoryStorage(f'{target_dir}/.loki/memory')
     pipeline = ConsolidationPipeline(storage)
     result = pipeline.consolidate(since_hours=24)
     if result.patterns_created > 0:
         print(f'Memory consolidation: {result.patterns_created} patterns created')
 except Exception as e:
     pass  # Silently fail
-" 2>/dev/null || true
+PYEOF
 }
 
 #===============================================================================
@@ -4035,6 +4220,16 @@ build_prompt() {
         fi
         if [ -n "$handoff" ]; then
             context_injection="$context_injection RECENT_HANDOFF: $handoff"
+        fi
+    fi
+
+    # Load pre-computed startup learnings (from CLI load_memory_context)
+    # These are loaded once at CLI start and cached in .loki/state/memory-context.json
+    local startup_learnings=""
+    if [ $iteration -eq 1 ]; then
+        startup_learnings=$(load_startup_learnings)
+        if [ -n "$startup_learnings" ]; then
+            context_injection="$context_injection $startup_learnings"
         fi
     fi
 
@@ -5046,6 +5241,32 @@ main() {
         "result=$result" \
         "provider=${PROVIDER_NAME:-claude}" \
         "iterations=$ITERATION_COUNT"
+
+    # Emit learning signal for session completion (SYN-018)
+    if [ "$result" = "0" ]; then
+        emit_learning_signal success_pattern \
+            --source cli \
+            --action "session_complete" \
+            --pattern-name "full_session" \
+            --action-sequence '["init", "setup", "run_iterations", "extract_learnings", "cleanup"]' \
+            --outcome success \
+            --context "{\"provider\":\"${PROVIDER_NAME:-claude}\",\"iterations\":$ITERATION_COUNT,\"prd\":\"${PRD_PATH:-}\"}"
+        emit_learning_signal workflow_pattern \
+            --source cli \
+            --action "session_complete" \
+            --workflow-name "loki_session" \
+            --steps '["prerequisites", "setup", "autonomous_loop", "learnings", "cleanup"]' \
+            --outcome success \
+            --context "{\"iterations\":$ITERATION_COUNT}"
+    else
+        emit_learning_signal error_pattern \
+            --source cli \
+            --action "session_failed" \
+            --error-type "SessionFailure" \
+            --error-message "Session failed with result code $result" \
+            --recovery-steps '["Check logs at .loki/logs/", "Review iteration outputs", "Check for rate limits", "Restart session"]' \
+            --context "{\"provider\":\"${PROVIDER_NAME:-claude}\",\"iterations\":$ITERATION_COUNT,\"exit_code\":$result}"
+    fi
 
     # Cleanup
     stop_dashboard

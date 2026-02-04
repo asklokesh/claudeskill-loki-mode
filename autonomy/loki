@@ -106,6 +106,7 @@ fi
 RUN_SH="$SKILL_DIR/autonomy/run.sh"
 SANDBOX_SH="$SKILL_DIR/autonomy/sandbox.sh"
 EMIT_SH="$SKILL_DIR/events/emit.sh"
+LEARNING_EMIT_SH="$SKILL_DIR/learning/emit.sh"
 LOKI_DIR=".loki"
 
 # Get version from VERSION file
@@ -124,6 +125,148 @@ emit_event() {
         # Run in background to be non-blocking
         ("$EMIT_SH" "$@" >/dev/null 2>&1 &)
     fi
+}
+
+# Emit learning signal (non-blocking) - SYN-018
+# Usage: emit_learning_signal <signal_type> [options]
+# Signal types: user_preference, error_pattern, success_pattern, tool_efficiency, workflow_pattern
+# See learning/emit.sh for full option documentation
+emit_learning_signal() {
+    if [ -f "$LEARNING_EMIT_SH" ]; then
+        # Run in background to be non-blocking
+        (LOKI_DIR="$LOKI_DIR" LOKI_SKILL_DIR="$SKILL_DIR" "$LEARNING_EMIT_SH" "$@" >/dev/null 2>&1 &)
+    fi
+}
+
+# Track session timing for efficiency signals
+SESSION_START_TIME=""
+record_session_start() {
+    SESSION_START_TIME=$(date +%s%3N 2>/dev/null || echo $(($(date +%s) * 1000)))
+}
+
+# Calculate session duration in milliseconds
+get_session_duration_ms() {
+    if [ -n "$SESSION_START_TIME" ]; then
+        local end_time
+        end_time=$(date +%s%3N 2>/dev/null || echo $(($(date +%s) * 1000)))
+        echo $((end_time - SESSION_START_TIME))
+    else
+        echo "0"
+    fi
+}
+
+# Load memory context at startup (SYN-008)
+# Retrieves task-aware memories and writes to .loki/state/memory-context.json
+# Note: Uses different file than get_relevant_learnings() in run.sh which writes to relevant-learnings.json
+# Usage: load_memory_context [prd_path]
+load_memory_context() {
+    local prd_path="${1:-}"
+    local output_file="$LOKI_DIR/state/memory-context.json"
+    local temp_file="$LOKI_DIR/state/.memory-context.json.tmp"
+
+    # Skip if explicitly disabled
+    if [[ "${LOKI_SKIP_MEMORY:-}" == "true" ]]; then
+        return 0
+    fi
+
+    # Check if memory system is available
+    if [ ! -d "$LOKI_DIR/memory" ]; then
+        return 0
+    fi
+
+    # Ensure state directory exists
+    mkdir -p "$LOKI_DIR/state"
+
+    # Extract context from PRD if available (first 500 chars)
+    # Use base64 encoding to safely pass PRD content to Python (prevents command injection)
+    local prd_context_b64=""
+    if [ -n "$prd_path" ] && [ -f "$prd_path" ]; then
+        prd_context_b64=$(head -c 500 "$prd_path" 2>/dev/null | base64)
+    fi
+
+    # Call Python memory retrieval with safe parameter passing via environment variables
+    # Export environment variables for Python script (cleaner than shell variable expansion)
+    local result
+    _LOKI_SKILL_DIR="$SKILL_DIR" _LOKI_DIR="$LOKI_DIR" _LOKI_PRD_CONTEXT_B64="$prd_context_b64" \
+    result=$(python3 << 'PYEOF' 2>/dev/null
+import sys
+import os
+import json
+import base64
+
+# Get parameters from environment
+skill_dir = os.environ.get('_LOKI_SKILL_DIR', '')
+loki_dir = os.environ.get('_LOKI_DIR', '')
+prd_context_b64 = os.environ.get('_LOKI_PRD_CONTEXT_B64', '')
+
+# Decode PRD context safely
+prd_context = ''
+if prd_context_b64:
+    try:
+        prd_context = base64.b64decode(prd_context_b64).decode('utf-8', errors='replace')
+    except Exception:
+        prd_context = ''
+
+sys.path.insert(0, skill_dir)
+try:
+    from memory.retrieval import MemoryRetrieval
+    from memory.storage import MemoryStorage
+
+    storage = MemoryStorage(f'{loki_dir}/memory')
+    retriever = MemoryRetrieval(storage)
+
+    # Build context for task-aware retrieval
+    context = {
+        'goal': prd_context if prd_context else 'Analyze codebase and improve',
+        'phase': 'startup'
+    }
+
+    # Retrieve relevant memories
+    results = retriever.retrieve_task_aware(context, top_k=5, token_budget=2000)
+
+    # Format output
+    output = {
+        'timestamp': __import__('datetime').datetime.now().isoformat(),
+        'prd_context': prd_context[:200] if prd_context else None,
+        'memory_count': len(results),
+        'memories': []
+    }
+
+    for r in results:
+        memory_item = {
+            'source': r.get('_source', 'unknown'),
+            'score': round(r.get('_weighted_score', r.get('_score', 0)), 3),
+            'summary': r.get('summary', r.get('pattern', r.get('goal', '')))[:200],
+            'id': r.get('id', '')
+        }
+        output['memories'].append(memory_item)
+
+    print(json.dumps(output, indent=2))
+except ImportError:
+    print('{"error": "Memory module not available", "memory_count": 0, "memories": []}')
+except Exception as e:
+    print(json.dumps({"error": str(e), "memory_count": 0, "memories": []}))
+PYEOF
+    )
+
+    # Write to output file using atomic write (temp file + rename)
+    if [ -n "$result" ]; then
+        echo "$result" > "$temp_file" && mv "$temp_file" "$output_file"
+
+        # Emit event
+        local memory_count=$(echo "$result" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('memory_count', 0))" 2>/dev/null || echo "0")
+        emit_event memory cli load "count=$memory_count" "prd_provided=$([[ -n "$prd_path" ]] && echo 'true' || echo 'false')"
+
+        # Print summary
+        if [ "$memory_count" -gt 0 ]; then
+            echo -e "${CYAN}Memory:${NC} Loaded $memory_count relevant learnings"
+        fi
+    else
+        # Write empty result using atomic write
+        echo '{"timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'", "memory_count": 0, "memories": [], "error": "retrieval_failed"}' > "$temp_file" && mv "$temp_file" "$output_file"
+    fi
+
+    return 0
 }
 
 # Show help
@@ -164,6 +307,7 @@ show_help() {
     echo "  --github         Enable GitHub issue import"
     echo "  --no-dashboard   Disable web dashboard"
     echo "  --sandbox        Run in Docker sandbox for isolation"
+    echo "  --skip-memory    Skip loading memory context at startup"
     echo ""
     echo "Options for 'issue':"
     echo "  --repo OWNER/REPO  Specify repository (default: auto-detect)"
@@ -212,6 +356,7 @@ cmd_start() {
                 echo "  --github              Enable GitHub issue import"
                 echo "  --no-dashboard        Disable web dashboard"
                 echo "  --sandbox             Run in Docker sandbox"
+                echo "  --skip-memory         Skip loading memory context at startup"
                 echo ""
                 echo "Examples:"
                 echo "  loki start                      # Interactive or resume existing"
@@ -261,6 +406,10 @@ cmd_start() {
                 ;;
             --sandbox)
                 export LOKI_SANDBOX_MODE=true
+                shift
+                ;;
+            --skip-memory)
+                export LOKI_SKIP_MEMORY=true
                 shift
                 ;;
             -*)
@@ -318,9 +467,14 @@ cmd_start() {
         fi
 
         echo -e "${GREEN}Starting Loki Mode in Docker sandbox...${NC}"
+        # Load memory context before sandbox start (errors don't block startup)
+        load_memory_context "$prd_file" || true
         emit_event session cli start "provider=$effective_provider" "sandbox=true" "prd_path=${prd_file:-}"
         exec "$SANDBOX_SH" start "${args[@]}"
     fi
+
+    # Load memory context before starting (errors don't block startup)
+    load_memory_context "$prd_file" || true
 
     # Show provider info
     echo -e "${GREEN}Starting Loki Mode...${NC}"
@@ -334,6 +488,30 @@ cmd_start() {
 
     # Emit session start event
     emit_event session cli start "provider=$effective_provider" "prd_path=${prd_file:-}"
+
+    # Record session start time for efficiency tracking
+    record_session_start
+
+    # Emit learning signal: user preference for provider selection (SYN-018)
+    if [ -n "$provider" ]; then
+        # User explicitly chose a provider
+        emit_learning_signal user_preference \
+            --source cli \
+            --action "provider_selection" \
+            --key "provider" \
+            --value "$provider" \
+            --rejected '["'"$([ "$provider" != "claude" ] && echo "claude" || echo "codex")'", "'"$([ "$provider" != "gemini" ] && echo "gemini" || echo "codex")'"]' \
+            --confidence 0.95
+    fi
+
+    # Emit learning signal: workflow pattern for session start
+    emit_learning_signal workflow_pattern \
+        --source cli \
+        --action "session_start" \
+        --workflow-name "loki_session" \
+        --steps '["init", "load_memory", "start_runner"]' \
+        --outcome success \
+        --context "{\"provider\":\"$effective_provider\",\"prd_path\":\"${prd_file:-}\"}"
 
     exec "$RUN_SH" "${args[@]}"
 }
@@ -355,6 +533,14 @@ cmd_stop() {
     if [ ! -d "$LOKI_DIR" ]; then
         echo -e "${YELLOW}No .loki directory found.${NC}"
         echo "No active session to stop."
+        # Emit error pattern for stop without session (SYN-018)
+        emit_learning_signal error_pattern \
+            --source cli \
+            --action "cmd_stop" \
+            --error-type "SessionNotFound" \
+            --error-message "No .loki directory found" \
+            --recovery-steps '["Run loki start first"]' \
+            --confidence 0.7
         exit 0
     fi
 
@@ -362,6 +548,14 @@ cmd_stop() {
         touch "$LOKI_DIR/STOP"
         # Emit session stop event
         emit_event session cli stop "reason=user_requested"
+        # Emit success pattern for clean stop (SYN-018)
+        emit_learning_signal success_pattern \
+            --source cli \
+            --action "cmd_stop" \
+            --pattern-name "session_stop" \
+            --action-sequence '["check_session", "send_stop_signal"]' \
+            --outcome success \
+            --confidence 0.9
         echo -e "${RED}STOP signal sent. Execution will halt immediately.${NC}"
     else
         echo -e "${YELLOW}No active session running.${NC}"
@@ -385,6 +579,14 @@ cmd_pause() {
         touch "$LOKI_DIR/PAUSE"
         # Emit session pause event
         emit_event session cli pause "reason=user_requested"
+        # Emit user preference for pause action (SYN-018)
+        emit_learning_signal user_preference \
+            --source cli \
+            --action "session_control" \
+            --key "control_action" \
+            --value "pause" \
+            --rejected '["stop", "continue"]' \
+            --confidence 0.9
         echo -e "${YELLOW}PAUSE signal sent. Execution will pause after current task.${NC}"
         echo -e "${DIM}Resume with: loki resume${NC}"
     else
@@ -417,6 +619,14 @@ cmd_resume() {
     if [ -n "$removed_signal" ]; then
         # Emit session resume event
         emit_event session cli resume "cleared_signal=$removed_signal"
+        # Emit success pattern for resume (SYN-018)
+        emit_learning_signal success_pattern \
+            --source cli \
+            --action "session_resume" \
+            --pattern-name "resume_after_$removed_signal" \
+            --action-sequence '["check_signals", "clear_signal", "resume"]' \
+            --outcome success \
+            --confidence 0.85
         if is_session_running; then
             echo -e "${GREEN}$removed_signal signal cleared. Session will resume automatically.${NC}"
         else
@@ -3158,6 +3368,265 @@ except Exception as e:
             fi
             ;;
 
+        namespace|ns)
+            # Namespace management (COMP-005)
+            local ns_cmd="${2:-detect}"
+            shift 2 2>/dev/null || true
+
+            case "$ns_cmd" in
+                detect)
+                    # Auto-detect namespace from current directory
+                    python3 -c "
+try:
+    from memory.namespace import detect_namespace
+    ns = detect_namespace()
+    print(f'Detected namespace: {ns}')
+except ImportError as e:
+    print(f'Error: memory.namespace module not found - {e}')
+except Exception as e:
+    print(f'Error: {e}')
+" 2>/dev/null
+                    ;;
+
+                list|ls)
+                    # List all namespaces
+                    python3 -c "
+try:
+    from memory.storage import MemoryStorage
+    storage = MemoryStorage('.loki/memory')
+    namespaces = storage.list_namespaces()
+    if not namespaces:
+        print('No namespaces found')
+    else:
+        print('Available namespaces:')
+        for ns in namespaces:
+            stats = storage.get_namespace_stats(ns)
+            print(f'  {ns}: {stats[\"episode_count\"]} episodes, {stats[\"pattern_count\"]} patterns, {stats[\"skill_count\"]} skills')
+except ImportError as e:
+    print(f'Error: memory.storage module not found - {e}')
+except Exception as e:
+    print(f'Error: {e}')
+" 2>/dev/null
+                    ;;
+
+                create)
+                    # Create a new namespace
+                    local name="${1:-}"
+                    local parent="${2:-}"
+
+                    if [ -z "$name" ]; then
+                        echo "Usage: loki memory namespace create <name> [parent]"
+                        exit 1
+                    fi
+
+                    LOKI_NS_NAME="$name" LOKI_NS_PARENT="$parent" python3 -c "
+import os
+try:
+    from memory.namespace import NamespaceManager
+    name = os.environ.get('LOKI_NS_NAME', '')
+    parent = os.environ.get('LOKI_NS_PARENT', '') or None
+
+    manager = NamespaceManager('.loki/memory')
+    info = manager.create_namespace(name=name, parent=parent)
+    print(f'Created namespace: {info.name}')
+    print(f'  Path: {info.path}')
+    if info.parent:
+        print(f'  Parent: {info.parent}')
+except ValueError as e:
+    print(f'Error: {e}')
+except ImportError as e:
+    print(f'Error: memory.namespace module not found - {e}')
+except Exception as e:
+    print(f'Error: {e}')
+" 2>/dev/null
+                    ;;
+
+                delete|rm)
+                    # Delete a namespace
+                    local name="${1:-}"
+                    local delete_data="${2:-}"
+
+                    if [ -z "$name" ]; then
+                        echo "Usage: loki memory namespace delete <name> [--data]"
+                        exit 1
+                    fi
+
+                    local with_data="false"
+                    if [ "$delete_data" = "--data" ]; then
+                        with_data="true"
+                    fi
+
+                    LOKI_NS_NAME="$name" LOKI_DELETE_DATA="$with_data" python3 -c "
+import os
+try:
+    from memory.namespace import NamespaceManager
+    name = os.environ.get('LOKI_NS_NAME', '')
+    delete_data = os.environ.get('LOKI_DELETE_DATA', 'false') == 'true'
+
+    manager = NamespaceManager('.loki/memory')
+    result = manager.delete_namespace(name, delete_data=delete_data)
+    if result:
+        msg = f'Deleted namespace: {name}'
+        if delete_data:
+            msg += ' (including data)'
+        print(msg)
+    else:
+        print(f'Namespace not found: {name}')
+except ValueError as e:
+    print(f'Error: {e}')
+except ImportError as e:
+    print(f'Error: memory.namespace module not found - {e}')
+except Exception as e:
+    print(f'Error: {e}')
+" 2>/dev/null
+                    ;;
+
+                stats)
+                    # Show stats for a namespace
+                    local name="${1:-}"
+
+                    if [ -z "$name" ]; then
+                        # Show current namespace stats
+                        python3 -c "
+try:
+    from memory.namespace import detect_namespace
+    from memory.storage import MemoryStorage
+    ns = detect_namespace()
+    storage = MemoryStorage('.loki/memory', namespace=ns)
+    stats = storage.get_namespace_stats()
+    print(f'Namespace: {stats[\"namespace\"]}')
+    print(f'  Path: {stats[\"path\"]}')
+    print(f'  Episodes: {stats[\"episode_count\"]}')
+    print(f'  Patterns: {stats[\"pattern_count\"]}')
+    print(f'  Skills: {stats[\"skill_count\"]}')
+    print(f'  Total: {stats[\"total_count\"]}')
+except ImportError as e:
+    print(f'Error: Required module not found - {e}')
+except Exception as e:
+    print(f'Error: {e}')
+" 2>/dev/null
+                    else
+                        LOKI_NS_NAME="$name" python3 -c "
+import os
+try:
+    from memory.storage import MemoryStorage
+    name = os.environ.get('LOKI_NS_NAME', '')
+    storage = MemoryStorage('.loki/memory', namespace=name)
+    stats = storage.get_namespace_stats()
+    print(f'Namespace: {stats[\"namespace\"]}')
+    print(f'  Path: {stats[\"path\"]}')
+    print(f'  Episodes: {stats[\"episode_count\"]}')
+    print(f'  Patterns: {stats[\"pattern_count\"]}')
+    print(f'  Skills: {stats[\"skill_count\"]}')
+    print(f'  Total: {stats[\"total_count\"]}')
+except ImportError as e:
+    print(f'Error: Required module not found - {e}')
+except Exception as e:
+    print(f'Error: {e}')
+" 2>/dev/null
+                    fi
+                    ;;
+
+                copy)
+                    # Copy from current namespace to target
+                    local target="${1:-}"
+
+                    if [ -z "$target" ]; then
+                        echo "Usage: loki memory namespace copy <target-namespace>"
+                        exit 1
+                    fi
+
+                    LOKI_NS_TARGET="$target" python3 -c "
+import os
+try:
+    from memory.namespace import detect_namespace
+    from memory.storage import MemoryStorage
+    target = os.environ.get('LOKI_NS_TARGET', '')
+
+    source_ns = detect_namespace()
+    storage = MemoryStorage('.loki/memory', namespace=source_ns)
+    result = storage.copy_to_namespace(target)
+
+    print(f'Copied from {source_ns} to {target}:')
+    print(f'  Episodes: {result[\"episodes\"]}')
+    print(f'  Patterns: {result[\"patterns\"]}')
+    print(f'  Skills: {result[\"skills\"]}')
+except ImportError as e:
+    print(f'Error: Required module not found - {e}')
+except Exception as e:
+    print(f'Error: {e}')
+" 2>/dev/null
+                    ;;
+
+                merge)
+                    # Merge from source namespace into current
+                    local source="${1:-}"
+
+                    if [ -z "$source" ]; then
+                        echo "Usage: loki memory namespace merge <source-namespace>"
+                        exit 1
+                    fi
+
+                    LOKI_NS_SOURCE="$source" python3 -c "
+import os
+try:
+    from memory.namespace import detect_namespace
+    from memory.storage import MemoryStorage
+    source = os.environ.get('LOKI_NS_SOURCE', '')
+
+    target_ns = detect_namespace()
+    storage = MemoryStorage('.loki/memory', namespace=target_ns)
+    result = storage.merge_from_namespace(source, deduplicate=True)
+
+    print(f'Merged from {source} into {target_ns}:')
+    print(f'  Episodes: {result[\"episodes\"]}')
+    print(f'  Patterns: {result[\"patterns\"]}')
+    print(f'  Skills: {result[\"skills\"]}')
+except ImportError as e:
+    print(f'Error: Required module not found - {e}')
+except Exception as e:
+    print(f'Error: {e}')
+" 2>/dev/null
+                    ;;
+
+                help|--help|-h)
+                    echo "Namespace management commands:"
+                    echo ""
+                    echo "  detect            Auto-detect namespace from current directory"
+                    echo "  list              List all available namespaces"
+                    echo "  create <name>     Create a new namespace"
+                    echo "  delete <name>     Delete a namespace (--data to also delete data)"
+                    echo "  stats [name]      Show stats for a namespace"
+                    echo "  copy <target>     Copy current namespace to target"
+                    echo "  merge <source>    Merge source namespace into current"
+                    echo ""
+                    echo "Examples:"
+                    echo "  loki memory namespace detect"
+                    echo "  loki memory namespace list"
+                    echo "  loki memory namespace create my-project"
+                    echo "  loki memory namespace create child-project parent-project"
+                    echo "  loki memory namespace stats my-project"
+                    echo "  loki memory namespace copy backup-ns"
+                    echo "  loki memory namespace merge shared-patterns"
+                    ;;
+
+                *)
+                    echo -e "${RED}Unknown namespace command: $ns_cmd${NC}"
+                    echo "Run 'loki memory namespace help' for usage."
+                    exit 1
+                    ;;
+            esac
+            ;;
+
+        --namespace|-n)
+            # Global option to specify namespace for memory commands
+            echo "Note: --namespace is a global option, use it before the subcommand:"
+            echo "  loki memory --namespace=myproject retrieve 'query'"
+            echo ""
+            echo "Or use the namespace subcommand:"
+            echo "  loki memory namespace stats myproject"
+            ;;
+
         --help|-h|help)
             echo -e "${BOLD}loki memory${NC} - Manage cross-project learnings and memory system"
             echo ""
@@ -3184,6 +3653,15 @@ except Exception as e:
             echo "  skill [name]      Show skill by name or list all skills"
             echo "  vectors [rebuild] Show vector index stats or rebuild indices"
             echo ""
+            echo "Namespace Commands (v5.19.0):"
+            echo "  namespace detect       Auto-detect namespace from current directory"
+            echo "  namespace list         List all available namespaces"
+            echo "  namespace create NAME  Create a new namespace"
+            echo "  namespace delete NAME  Delete a namespace"
+            echo "  namespace stats [NAME] Show stats for a namespace"
+            echo "  namespace copy TARGET  Copy current namespace to target"
+            echo "  namespace merge SOURCE Merge source namespace into current"
+            echo ""
             echo "Examples:"
             echo "  loki memory list"
             echo "  loki memory show mistakes --limit 10"
@@ -3202,6 +3680,11 @@ except Exception as e:
             echo "  loki memory skill"
             echo "  loki memory vectors"
             echo "  loki memory vectors rebuild"
+            echo ""
+            echo "  loki memory namespace detect"
+            echo "  loki memory namespace list"
+            echo "  loki memory namespace create my-project"
+            echo "  loki memory namespace stats"
             ;;
 
         *)
