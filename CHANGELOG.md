@@ -38,6 +38,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [5.20.6] - 2026-02-04
+
+### Fixed - Dockerfile.sandbox Build Error
+
+- Fixed COPY command in Dockerfile.sandbox (removed invalid bash redirection syntax)
+- Comprehensive testing plan executed with all CLI commands verified
+
+### Test Results Summary
+- Session: start, stop, pause, resume, status, reset - ALL PASS
+- Dashboard: start, stop, status, url, API endpoints - ALL PASS
+- Provider: show, list, info, set (claude/codex/gemini) - ALL PASS
+- Config: show, init, path - ALL PASS
+- Issue: parse, view, dry-run, URL/number formats - ALL PASS
+- Memory: list, stats, index, search - ALL PASS
+- Voice/Notify: status checks - ALL PASS
+- Sandbox: status, build, help - ALL PASS
+
+---
+
 ## [5.20.5] - 2026-02-04
 
 ### Fixed - Docker Files Missing from npm Package

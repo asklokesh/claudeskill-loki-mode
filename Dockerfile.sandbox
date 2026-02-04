@@ -162,8 +162,8 @@ COPY --chown=loki:loki providers/ ./providers/
 COPY --chown=loki:loki skills/ ./skills/
 COPY --chown=loki:loki references/ ./references/
 
-# Copy docs if they exist (optional)
-COPY --chown=loki:loki docs/ ./docs/ 2>/dev/null || true
+# Copy docs
+COPY --chown=loki:loki docs/ ./docs/
 
 # Make scripts executable
 RUN chmod +x autonomy/run.sh autonomy/loki autonomy/sandbox.sh autonomy/serve.sh 2>/dev/null || true \
