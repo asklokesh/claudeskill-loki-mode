@@ -18,8 +18,8 @@ BLOCKED_PATTERNS=(
     "dd if=/dev/zero"
 ":\s*\(\s*\)\s*\{.*:.*\|.*:.*&.*\}"
     "chmod -R 777 /"
-    "curl.*|.*bash"
-    "wget.*|.*sh"
+    "curl.*\\|.*bash"
+    "wget.*\\|.*sh"
 )
 
 # Check for blocked patterns
