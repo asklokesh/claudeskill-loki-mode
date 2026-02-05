@@ -10,6 +10,7 @@
 > - `references/memory-system.md` - Episodic/semantic/procedural memory
 > - `references/tool-orchestration.md` - NVIDIA ToolOrchestra efficiency metrics
 > - `references/quality-control.md` - Code review and guardrails
+> - `references/definition-of-done.md` - Research-backed task completion criteria
 
 ## Module Selection Rules
 
@@ -27,6 +28,7 @@
 | Scale patterns (50+ agents) | `parallel-workflows.md` + `references/cursor-learnings.md` |
 | GitHub issues, PRs, syncing | `github-integration.md` |
 | Multi-provider (Codex, Gemini) | `providers.md` |
+| Task completion, verification | `quality-gates.md` + `references/definition-of-done.md` |
 
 ## Module Descriptions
 

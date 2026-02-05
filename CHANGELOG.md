@@ -5,8 +5,9 @@ All notable changes to Loki Mode will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Executive Summary (v5.5 - v5.20)
+## Executive Summary (v5.5 - v5.21)
 
+- **Definition of Done Framework** - Research-backed 3-layer task completion criteria (Anthropic, METR, cognitive science)
 - **Security Hardening** - Fixed command injection in hooks, path traversal in MCP server
 - **Unified Memory Access** - Single interface for all tools to access memory system
 - **Importance Scoring** - Memory decay and retrieval boost for smarter context
@@ -35,6 +36,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Learning System** - Cross-tool learning with signals, aggregation, and suggestions
 - **Swarm Intelligence** - Voting, consensus, delegation patterns with BFT
 - **State Management** - Centralized state with file locking and change notifications
+
+---
+
+## [5.21.0] - 2026-02-05
+
+### Added - Definition of Done (DoD) Framework
+
+Research-backed task completion criteria based on 2025 studies from Anthropic, Google DeepMind, OpenAI, METR, and cognitive science.
+
+**Three-Layer DoD Model:**
+1. **Layer 1: Outcome Verification** - Intended state change exists in environment
+2. **Layer 2: Process Verification** - Quality gates passed, no policy violations
+3. **Layer 3: Consistency Verification** - Would pass again if re-run (pass@k reliability)
+
+**New Files:**
+- `references/definition-of-done.md` - Comprehensive framework documentation
+- `autonomy/verify_done.py` - Practical verification utility script
+- `memory/schemas.py` - Added TaskCompletionCriteria, DecisionReport, QualityGateResult schemas
+
+**Research Sources:**
+- Anthropic's Demystifying Evals for AI Agents
+- CLEAR Framework (arXiv 2511.14136) - Cost, Latency, Efficacy, Assurance, Reliability
+- Four Pillars Framework (arXiv 2512.12791) - LLM, Memory, Tools, Environment
+- METR's Task Completion Time Horizons
+- Cognitive Science Goal-Directed Behavior (Heyes & Dickinson)
+- Industry practices from Devin AI, Cursor, SWE-agent
+
+**Key Features:**
+- Mandatory task completion checklist (outcome, tests, build, static, commit, report, memory)
+- Decision report schema (WHY/WHAT/TRADE-OFFS/RISKS/TESTS/NEXT_STEPS)
+- Severity-based completion rules (Critical/High/Medium = BLOCK)
+- pass@k reliability metrics for consistency verification
+- Anti-patterns documentation (transcript-based, claim-based, overspecified verification)
+- Integration with RARV cycle's VERIFY step
 
 ---
 

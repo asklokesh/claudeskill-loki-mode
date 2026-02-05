@@ -740,3 +740,459 @@ class ProceduralSkill:
     def add_error_fix(self, error: str, fix: str) -> None:
         """Add a common error and its fix."""
         self.common_errors.append(ErrorFix(error=error, fix=fix))
+
+
+# -----------------------------------------------------------------------------
+# Definition of Done (DoD) Schemas
+# -----------------------------------------------------------------------------
+
+
+@dataclass
+class DecisionReport:
+    """
+    Decision report documenting why and how a task was completed.
+
+    Based on references/definition-of-done.md and references/quality-control.md.
+    Required for every completed task per the three-layer DoD model.
+
+    Attributes:
+        why: Problem, root cause, solution chosen, alternatives considered
+        what: Files modified, APIs changed, behavior changes, dependencies
+        trade_offs: What was gained, cost, and neutral areas
+        risks: Identified risks and mitigations
+        tests: Test results summary
+        next_steps: Follow-up actions if any
+    """
+    why: Dict[str, Any] = field(default_factory=dict)
+    what: Dict[str, Any] = field(default_factory=dict)
+    trade_offs: Dict[str, Any] = field(default_factory=dict)
+    risks: List[Dict[str, str]] = field(default_factory=list)
+    tests: Dict[str, Any] = field(default_factory=dict)
+    next_steps: List[str] = field(default_factory=list)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        return {
+            "WHY": self.why,
+            "WHAT": self.what,
+            "TRADE_OFFS": self.trade_offs,
+            "RISKS": self.risks,
+            "TESTS": self.tests,
+            "NEXT_STEPS": self.next_steps,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> DecisionReport:
+        """Create from dictionary."""
+        return cls(
+            why=data.get("WHY", data.get("why", {})),
+            what=data.get("WHAT", data.get("what", {})),
+            trade_offs=data.get("TRADE_OFFS", data.get("trade_offs", {})),
+            risks=data.get("RISKS", data.get("risks", [])),
+            tests=data.get("TESTS", data.get("tests", {})),
+            next_steps=data.get("NEXT_STEPS", data.get("next_steps", [])),
+        )
+
+    def validate(self) -> List[str]:
+        """Validate the decision report. Returns list of error messages."""
+        errors = []
+        if not self.why:
+            errors.append("DecisionReport.why is required")
+        if not self.what:
+            errors.append("DecisionReport.what is required")
+        if not self.tests:
+            errors.append("DecisionReport.tests is required")
+        return errors
+
+    def is_complete(self) -> bool:
+        """Check if the decision report has all required fields."""
+        return bool(self.why and self.what and self.tests)
+
+
+@dataclass
+class QualityGateResult:
+    """
+    Result of a single quality gate check.
+
+    Attributes:
+        gate_name: Name of the quality gate
+        passed: Whether the gate passed
+        severity: Severity if failed (critical, high, medium, low, cosmetic)
+        message: Description of result or failure reason
+        details: Additional details about the check
+    """
+    gate_name: str
+    passed: bool
+    severity: str = ""
+    message: str = ""
+    details: Dict[str, Any] = field(default_factory=dict)
+
+    VALID_SEVERITIES = ["critical", "high", "medium", "low", "cosmetic", ""]
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        return {
+            "gate": self.gate_name,
+            "passed": self.passed,
+            "severity": self.severity,
+            "message": self.message,
+            "details": self.details,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> QualityGateResult:
+        """Create from dictionary."""
+        return cls(
+            gate_name=data.get("gate", data.get("gate_name", "")),
+            passed=data.get("passed", False),
+            severity=data.get("severity", ""),
+            message=data.get("message", ""),
+            details=data.get("details", {}),
+        )
+
+    def validate(self) -> List[str]:
+        """Validate the result. Returns list of error messages."""
+        errors = []
+        if not self.gate_name:
+            errors.append("QualityGateResult.gate_name is required")
+        if self.severity and self.severity not in self.VALID_SEVERITIES:
+            errors.append(
+                f"QualityGateResult.severity must be one of: {', '.join(self.VALID_SEVERITIES)}"
+            )
+        return errors
+
+    def blocks_completion(self) -> bool:
+        """Check if this result blocks task completion."""
+        if self.passed:
+            return False
+        # Critical, high, and medium severity issues block completion
+        return self.severity in ["critical", "high", "medium"]
+
+
+@dataclass
+class TaskCompletionCriteria:
+    """
+    Complete Definition of Done (DoD) criteria for a task.
+
+    Implements the three-layer DoD model from references/definition-of-done.md:
+    - Layer 1: Outcome Verification (state change exists)
+    - Layer 2: Process Verification (quality gates passed)
+    - Layer 3: Consistency Verification (would pass again)
+
+    Attributes:
+        task_id: Unique task identifier
+        completed_at: When the task was completed
+        status: Final status (completed, failed, partial)
+
+        # Layer 1: Outcome Verification
+        outcome_verified: Whether intended state change was verified
+        tests_passed: Whether all tests pass
+        build_succeeded: Whether build/compile succeeded
+        files_created: List of files that should exist
+        state_changes: Description of environment state changes
+
+        # Layer 2: Process Verification
+        quality_gates: Results of all 7 quality gates
+        decision_report: Required decision documentation
+        git_commit_sha: Atomic git checkpoint
+        continuity_updated: Whether CONTINUITY.md was updated
+
+        # Layer 3: Consistency Verification
+        pass_at_k: Probability of success in k attempts
+        consistency_runs: Number of consistency verification runs
+        consistency_passed: Number of successful consistency runs
+
+        # Acceptance Criteria (item-specific)
+        acceptance_criteria: List of item-specific requirements
+        acceptance_met: Which acceptance criteria were satisfied
+    """
+    task_id: str
+    completed_at: Optional[datetime] = None
+    status: str = "pending"
+
+    # Layer 1: Outcome Verification
+    outcome_verified: bool = False
+    tests_passed: bool = False
+    build_succeeded: bool = False
+    files_created: List[str] = field(default_factory=list)
+    state_changes: Dict[str, Any] = field(default_factory=dict)
+
+    # Layer 2: Process Verification
+    quality_gates: List[QualityGateResult] = field(default_factory=list)
+    decision_report: Optional[DecisionReport] = None
+    git_commit_sha: Optional[str] = None
+    continuity_updated: bool = False
+
+    # Layer 3: Consistency Verification
+    pass_at_k: float = 0.0
+    consistency_runs: int = 0
+    consistency_passed: int = 0
+
+    # Acceptance Criteria (item-specific)
+    acceptance_criteria: List[str] = field(default_factory=list)
+    acceptance_met: List[str] = field(default_factory=list)
+
+    VALID_STATUSES = ["pending", "in_progress", "completed", "failed", "partial"]
+    REQUIRED_GATES = [
+        "input_guardrails",
+        "static_analysis",
+        "blind_review",
+        "anti_sycophancy",
+        "output_guardrails",
+        "severity_blocking",
+        "test_coverage",
+    ]
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {
+            "taskId": self.task_id,
+            "status": self.status,
+            "layer1_outcome": {
+                "outcome_verified": self.outcome_verified,
+                "tests_passed": self.tests_passed,
+                "build_succeeded": self.build_succeeded,
+                "files_created": self.files_created,
+                "state_changes": self.state_changes,
+            },
+            "layer2_process": {
+                "quality_gates": [g.to_dict() for g in self.quality_gates],
+                "decision_report": self.decision_report.to_dict() if self.decision_report else None,
+                "git_commit_sha": self.git_commit_sha,
+                "continuity_updated": self.continuity_updated,
+            },
+            "layer3_consistency": {
+                "pass_at_k": self.pass_at_k,
+                "consistency_runs": self.consistency_runs,
+                "consistency_passed": self.consistency_passed,
+            },
+            "acceptance": {
+                "criteria": self.acceptance_criteria,
+                "met": self.acceptance_met,
+            },
+        }
+        if self.completed_at:
+            result["completedAt"] = self.completed_at.isoformat() + "Z"
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> TaskCompletionCriteria:
+        """Create from dictionary."""
+        completed_at = None
+        if data.get("completedAt"):
+            completed_at_str = data["completedAt"]
+            if isinstance(completed_at_str, str):
+                if completed_at_str.endswith("Z"):
+                    completed_at_str = completed_at_str[:-1]
+                completed_at = datetime.fromisoformat(completed_at_str)
+
+        layer1 = data.get("layer1_outcome", {})
+        layer2 = data.get("layer2_process", {})
+        layer3 = data.get("layer3_consistency", {})
+        acceptance = data.get("acceptance", {})
+
+        decision_report = None
+        if layer2.get("decision_report"):
+            decision_report = DecisionReport.from_dict(layer2["decision_report"])
+
+        return cls(
+            task_id=data.get("taskId", data.get("task_id", "")),
+            completed_at=completed_at,
+            status=data.get("status", "pending"),
+            outcome_verified=layer1.get("outcome_verified", False),
+            tests_passed=layer1.get("tests_passed", False),
+            build_succeeded=layer1.get("build_succeeded", False),
+            files_created=layer1.get("files_created", []),
+            state_changes=layer1.get("state_changes", {}),
+            quality_gates=[
+                QualityGateResult.from_dict(g)
+                for g in layer2.get("quality_gates", [])
+            ],
+            decision_report=decision_report,
+            git_commit_sha=layer2.get("git_commit_sha"),
+            continuity_updated=layer2.get("continuity_updated", False),
+            pass_at_k=layer3.get("pass_at_k", 0.0),
+            consistency_runs=layer3.get("consistency_runs", 0),
+            consistency_passed=layer3.get("consistency_passed", 0),
+            acceptance_criteria=acceptance.get("criteria", []),
+            acceptance_met=acceptance.get("met", []),
+        )
+
+    def validate(self) -> List[str]:
+        """Validate the criteria. Returns list of error messages."""
+        errors = []
+        if not self.task_id:
+            errors.append("TaskCompletionCriteria.task_id is required")
+        if self.status not in self.VALID_STATUSES:
+            errors.append(
+                f"TaskCompletionCriteria.status must be one of: {', '.join(self.VALID_STATUSES)}"
+            )
+        if not 0.0 <= self.pass_at_k <= 1.0:
+            errors.append("TaskCompletionCriteria.pass_at_k must be between 0.0 and 1.0")
+
+        # Validate nested objects
+        for i, gate in enumerate(self.quality_gates):
+            gate_errors = gate.validate()
+            for err in gate_errors:
+                errors.append(f"quality_gates[{i}]: {err}")
+
+        if self.decision_report:
+            report_errors = self.decision_report.validate()
+            for err in report_errors:
+                errors.append(f"decision_report: {err}")
+
+        return errors
+
+    def check_layer1_outcome(self) -> tuple[bool, List[str]]:
+        """
+        Check Layer 1: Outcome Verification.
+        Returns (passed, list of failure reasons).
+        """
+        failures = []
+
+        if not self.outcome_verified:
+            failures.append("Intended state change not verified in environment")
+
+        if not self.tests_passed:
+            failures.append("Not all tests pass")
+
+        if not self.build_succeeded:
+            failures.append("Build/compile did not succeed")
+
+        return len(failures) == 0, failures
+
+    def check_layer2_process(self) -> tuple[bool, List[str]]:
+        """
+        Check Layer 2: Process Verification (quality gates).
+        Returns (passed, list of failure reasons).
+        """
+        failures = []
+
+        # Check all required gates are present
+        present_gates = {g.gate_name for g in self.quality_gates}
+        missing_gates = set(self.REQUIRED_GATES) - present_gates
+        for gate in missing_gates:
+            failures.append(f"Missing quality gate: {gate}")
+
+        # Check for blocking failures
+        for gate in self.quality_gates:
+            if gate.blocks_completion():
+                failures.append(f"Quality gate '{gate.gate_name}' failed with {gate.severity} severity: {gate.message}")
+
+        # Check decision report
+        if not self.decision_report:
+            failures.append("Missing decision report (WHY/WHAT/TRADE-OFFS/RISKS/TESTS)")
+        elif not self.decision_report.is_complete():
+            failures.append("Decision report incomplete")
+
+        # Check git commit
+        if not self.git_commit_sha:
+            failures.append("Missing git commit checkpoint")
+
+        # Check continuity update
+        if not self.continuity_updated:
+            failures.append("CONTINUITY.md not updated with outcome")
+
+        return len(failures) == 0, failures
+
+    def check_layer3_consistency(self, threshold: float = 0.8) -> tuple[bool, List[str]]:
+        """
+        Check Layer 3: Consistency Verification (pass@k reliability).
+        Returns (passed, list of failure reasons).
+
+        Args:
+            threshold: Minimum pass@k rate required (default 0.8 = 80%)
+        """
+        failures = []
+
+        if self.consistency_runs == 0:
+            # No consistency verification performed - this is optional
+            return True, []
+
+        actual_pass_rate = self.consistency_passed / self.consistency_runs
+        if actual_pass_rate < threshold:
+            failures.append(
+                f"Consistency verification failed: {actual_pass_rate*100:.0f}% pass rate "
+                f"(requires {threshold*100:.0f}%)"
+            )
+
+        return len(failures) == 0, failures
+
+    def check_acceptance_criteria(self) -> tuple[bool, List[str]]:
+        """
+        Check if all acceptance criteria are met.
+        Returns (passed, list of unmet criteria).
+        """
+        if not self.acceptance_criteria:
+            # No item-specific acceptance criteria defined
+            return True, []
+
+        unmet = [ac for ac in self.acceptance_criteria if ac not in self.acceptance_met]
+        return len(unmet) == 0, unmet
+
+    def is_done(self, require_consistency: bool = False, consistency_threshold: float = 0.8) -> tuple[bool, Dict[str, Any]]:
+        """
+        Check if the task meets all Definition of Done criteria.
+
+        Args:
+            require_consistency: Whether to require Layer 3 consistency verification
+            consistency_threshold: Minimum pass@k rate if consistency is required
+
+        Returns:
+            Tuple of (is_done: bool, report: dict with layer results)
+        """
+        layer1_passed, layer1_failures = self.check_layer1_outcome()
+        layer2_passed, layer2_failures = self.check_layer2_process()
+        layer3_passed, layer3_failures = self.check_layer3_consistency(consistency_threshold)
+        ac_passed, ac_failures = self.check_acceptance_criteria()
+
+        # Layer 3 is optional unless explicitly required
+        if not require_consistency:
+            layer3_passed = True
+            layer3_failures = []
+
+        is_done = layer1_passed and layer2_passed and layer3_passed and ac_passed
+
+        return is_done, {
+            "is_done": is_done,
+            "layer1_outcome": {
+                "passed": layer1_passed,
+                "failures": layer1_failures,
+            },
+            "layer2_process": {
+                "passed": layer2_passed,
+                "failures": layer2_failures,
+            },
+            "layer3_consistency": {
+                "passed": layer3_passed,
+                "failures": layer3_failures,
+                "required": require_consistency,
+            },
+            "acceptance_criteria": {
+                "passed": ac_passed,
+                "unmet": ac_failures,
+            },
+        }
+
+    @classmethod
+    def create_minimal(cls, task_id: str) -> TaskCompletionCriteria:
+        """Create a new TaskCompletionCriteria with minimal defaults."""
+        return cls(task_id=task_id)
+
+    def mark_complete(
+        self,
+        git_commit_sha: str,
+        decision_report: DecisionReport,
+        quality_gates: List[QualityGateResult],
+    ) -> None:
+        """
+        Mark the task as complete with required artifacts.
+
+        This is a convenience method that sets all required Layer 2 fields.
+        """
+        self.completed_at = datetime.now(timezone.utc)
+        self.status = "completed"
+        self.git_commit_sha = git_commit_sha
+        self.decision_report = decision_report
+        self.quality_gates = quality_gates
+        self.continuity_updated = True

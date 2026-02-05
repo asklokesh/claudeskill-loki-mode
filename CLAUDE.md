@@ -44,7 +44,8 @@ skills/                     # On-demand skill modules (v3.0 architecture)
   patterns-advanced.md      # OptiMind, k8s-valkey, Constitutional AI
   parallel-workflows.md     # Git worktrees, parallel streams, auto-merge
   github-integration.md     # GitHub issue import, PR creation, notifications
-references/                 # Detailed documentation (19 files)
+references/                 # Detailed documentation (20 files)
+  definition-of-done.md     # Research-backed task completion criteria (v5.21.0)
   openai-patterns.md        # OpenAI Agents SDK: guardrails, tripwires, handoffs
   lab-research-patterns.md  # DeepMind + Anthropic: Constitutional AI, debate
   production-patterns.md    # HN 2025: What actually works in production
