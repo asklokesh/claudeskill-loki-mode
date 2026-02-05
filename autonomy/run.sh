@@ -4944,6 +4944,17 @@ cleanup() {
         stop_dashboard
         stop_status_monitor
         rm -f .loki/loki.pid .loki/PAUSE 2>/dev/null
+        # Mark session.json as stopped
+        if [ -f ".loki/session.json" ]; then
+            python3 -c "
+import json
+try:
+    with open('.loki/session.json', 'r+') as f:
+        d = json.load(f); d['status'] = 'stopped'
+        f.seek(0); f.truncate(); json.dump(d, f)
+except: pass
+" 2>/dev/null || true
+        fi
         save_state ${RETRY_COUNT:-0} "interrupted" 130
         emit_event_json "session_end" "result=130" "reason=interrupted"
         log_info "State saved. Run again to resume."
@@ -5316,6 +5327,17 @@ main() {
     stop_dashboard
     stop_status_monitor
     rm -f .loki/loki.pid 2>/dev/null
+    # Mark session.json as stopped
+    if [ -f ".loki/session.json" ]; then
+        python3 -c "
+import json
+try:
+    with open('.loki/session.json', 'r+') as f:
+        d = json.load(f); d['status'] = 'stopped'
+        f.seek(0); f.truncate(); json.dump(d, f)
+except: pass
+" 2>/dev/null || true
+    fi
 
     exit $result
 }

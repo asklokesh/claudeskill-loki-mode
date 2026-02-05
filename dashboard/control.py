@@ -159,7 +159,21 @@ def get_status() -> StatusResponse:
         try:
             session_data = json.loads(session_file.read_text())
             if session_data.get("status") == "running":
-                running = True
+                # Staleness check: treat as stopped if older than 6 hours
+                started_at = session_data.get("startedAt", "")
+                if started_at:
+                    try:
+                        start_time_parsed = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
+                        age_hours = (datetime.now(timezone.utc) - start_time_parsed).total_seconds() / 3600
+                        if age_hours > 6:
+                            session_data["status"] = "stopped"
+                            session_file.write_text(json.dumps(session_data))
+                        else:
+                            running = True
+                    except (ValueError, TypeError):
+                        running = True
+                else:
+                    running = True
         except (json.JSONDecodeError, KeyError):
             pass
 
@@ -334,6 +348,16 @@ async def stop_session():
                 os.kill(pid, signal.SIGTERM)
             except (OSError, ProcessLookupError):
                 pass
+
+    # Mark session.json as stopped (skill-invoked sessions)
+    session_file = LOKI_DIR / "session.json"
+    if session_file.exists():
+        try:
+            session_data = json.loads(session_file.read_text())
+            session_data["status"] = "stopped"
+            session_file.write_text(json.dumps(session_data))
+        except (json.JSONDecodeError, KeyError):
+            pass
 
     # Emit stop event
     emit_event("session_stop", {"pid": pid, "reason": "user_request"})

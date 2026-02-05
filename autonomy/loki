@@ -572,6 +572,21 @@ cmd_stop() {
         # Also kill any orphaned loki-run temp scripts
         pkill -f "loki-run-" 2>/dev/null || true
 
+        # Mark session.json as stopped (skill-invoked sessions)
+        if [ -f "$LOKI_DIR/session.json" ]; then
+            # Use python for reliable JSON update, fall back to overwrite
+            python3 -c "
+import json, sys
+try:
+    with open('$LOKI_DIR/session.json', 'r+') as f:
+        d = json.load(f)
+        d['status'] = 'stopped'
+        f.seek(0); f.truncate()
+        json.dump(d, f)
+except: pass
+" 2>/dev/null || true
+        fi
+
         # Kill dashboard if running
         if [ -f "$LOKI_DIR/dashboard/dashboard.pid" ]; then
             local dash_pid
