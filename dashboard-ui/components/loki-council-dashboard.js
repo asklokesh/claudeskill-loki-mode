@@ -93,10 +93,10 @@ export class LokiCouncilDashboard extends LokiElement {
   async _loadData() {
     try {
       const [councilState, verdicts, convergence, agents] = await Promise.allSettled([
-        this._api.get('/api/council/state'),
-        this._api.get('/api/council/verdicts'),
-        this._api.get('/api/council/convergence'),
-        this._api.get('/api/agents'),
+        this._api._get('/api/council/state'),
+        this._api._get('/api/council/verdicts'),
+        this._api._get('/api/council/convergence'),
+        this._api._get('/api/agents'),
       ]);
 
       if (councilState.status === 'fulfilled') this._councilState = councilState.value;
@@ -120,7 +120,7 @@ export class LokiCouncilDashboard extends LokiElement {
 
   async _forceReview() {
     try {
-      await this._api.post('/api/council/force-review');
+      await this._api._post('/api/council/force-review');
       this.dispatchEvent(new CustomEvent('council-action', {
         detail: { action: 'force-review' },
         bubbles: true,
@@ -134,7 +134,7 @@ export class LokiCouncilDashboard extends LokiElement {
   async _killAgent(agentId) {
     if (!confirm(`Kill agent ${agentId}?`)) return;
     try {
-      await this._api.post(`/api/agents/${agentId}/kill`);
+      await this._api._post(`/api/agents/${agentId}/kill`);
       this.dispatchEvent(new CustomEvent('council-action', {
         detail: { action: 'kill-agent', agentId },
         bubbles: true,
@@ -148,7 +148,7 @@ export class LokiCouncilDashboard extends LokiElement {
 
   async _pauseAgent(agentId) {
     try {
-      await this._api.post(`/api/agents/${agentId}/pause`);
+      await this._api._post(`/api/agents/${agentId}/pause`);
       await this._loadData();
     } catch (err) {
       this._error = `Failed to pause agent: ${err.message}`;
@@ -158,7 +158,7 @@ export class LokiCouncilDashboard extends LokiElement {
 
   async _resumeAgent(agentId) {
     try {
-      await this._api.post(`/api/agents/${agentId}/resume`);
+      await this._api._post(`/api/agents/${agentId}/resume`);
       await this._loadData();
     } catch (err) {
       this._error = `Failed to resume agent: ${err.message}`;
