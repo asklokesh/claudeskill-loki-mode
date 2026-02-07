@@ -1,0 +1,262 @@
+name: 'Loki Mode Code Review'
+description: 'Multi-agent autonomous code review for pull requests using loki-mode'
+author: 'asklokesh'
+
+branding:
+  icon: 'eye'
+  color: 'purple'
+
+inputs:
+  mode:
+    description: 'Review mode: review, fix, or test'
+    required: false
+    default: 'review'
+  provider:
+    description: 'AI provider: claude, codex, or gemini'
+    required: false
+    default: 'claude'
+  budget_limit:
+    description: 'Max cost in USD before stopping'
+    required: false
+    default: '5.00'
+  github_token:
+    description: 'GitHub token for PR comments'
+    required: true
+  max_iterations:
+    description: 'Maximum loki iterations (lower = faster, higher = more thorough)'
+    required: false
+    default: '3'
+  node_version:
+    description: 'Node.js version to use'
+    required: false
+    default: '20'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node_version }}
+
+    - name: Install loki-mode
+      shell: bash
+      run: |
+        set -eo pipefail
+        echo "--- Installing loki-mode from npm ---"
+        npm install -g loki-mode
+        echo "Installed version: $(loki version 2>/dev/null || echo 'unknown')"
+
+    - name: Get PR diff
+      id: pr-diff
+      if: inputs.mode == 'review'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github_token }}
+      run: |
+        PR_NUMBER="${{ github.event.pull_request.number }}"
+        if [ -z "$PR_NUMBER" ]; then
+          echo "WARNING: No pull request number found. Skipping diff."
+          echo "has_diff=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        echo "--- Fetching diff for PR #${PR_NUMBER} ---"
+        DIFF_FILE="${RUNNER_TEMP}/pr-${PR_NUMBER}.diff"
+        gh pr diff "$PR_NUMBER" > "$DIFF_FILE" 2>/dev/null || true
+
+        if [ ! -s "$DIFF_FILE" ]; then
+          echo "WARNING: Empty diff. PR may have no file changes."
+          echo "has_diff=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        DIFF_LINES=$(wc -l < "$DIFF_FILE" | tr -d ' ')
+        echo "Diff has ${DIFF_LINES} lines"
+        echo "has_diff=true" >> "$GITHUB_OUTPUT"
+        echo "diff_file=${DIFF_FILE}" >> "$GITHUB_OUTPUT"
+
+    - name: Generate review PRD
+      id: review-prd
+      if: inputs.mode == 'review' && steps.pr-diff.outputs.has_diff == 'true'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github_token }}
+      run: |
+        PR_NUMBER="${{ github.event.pull_request.number }}"
+        PRD_FILE="${RUNNER_TEMP}/review-prd-${PR_NUMBER}.md"
+        DIFF_FILE="${{ steps.pr-diff.outputs.diff_file }}"
+
+        PR_TITLE=$(gh pr view "$PR_NUMBER" --json title -q '.title' 2>/dev/null || echo "PR #${PR_NUMBER}")
+        PR_BODY=$(gh pr view "$PR_NUMBER" --json body -q '.body' 2>/dev/null || echo "No description provided.")
+
+        # Truncate diff if too large (keep first 500 lines to stay within token limits)
+        DIFF_CONTENT=$(head -500 "$DIFF_FILE")
+        DIFF_TOTAL=$(wc -l < "$DIFF_FILE" | tr -d ' ')
+        TRUNCATED_NOTE=""
+        if [ "$DIFF_TOTAL" -gt 500 ]; then
+          TRUNCATED_NOTE="(Showing first 500 of ${DIFF_TOTAL} lines. Focus on the visible changes.)"
+        fi
+
+        {
+          printf '%s\n' "# Code Review: ${PR_TITLE}"
+          echo ""
+          echo "## Objective"
+          echo "Review PR #${PR_NUMBER} for code quality, bugs, security, and best practices."
+          echo ""
+          echo "## PR Description"
+          printf '%s\n' "${PR_BODY}"
+          echo ""
+          echo "## Review Checklist"
+          echo "- Identify potential bugs, logic errors, or edge cases"
+          echo "- Check for security vulnerabilities (injection, auth issues, data exposure)"
+          echo "- Evaluate code readability and maintainability"
+          echo "- Note any missing error handling or validation"
+          echo "- Flag performance concerns if applicable"
+          echo "- Check for test coverage gaps"
+          echo ""
+          echo "## Output Format"
+          echo "Provide a structured review with:"
+          echo "1. SUMMARY - One paragraph overall assessment"
+          echo "2. ISSUES - List of specific problems found (severity: critical/high/medium/low)"
+          echo "3. SUGGESTIONS - Improvements that are not blocking"
+          echo "4. VERDICT - APPROVE, REQUEST_CHANGES, or COMMENT"
+          echo ""
+          echo "## Diff ${TRUNCATED_NOTE}"
+          echo '```diff'
+          echo "${DIFF_CONTENT}"
+          echo '```'
+        } > "$PRD_FILE"
+
+        echo "PRD written to ${PRD_FILE}"
+        echo "prd_file=${PRD_FILE}" >> "$GITHUB_OUTPUT"
+
+    - name: Run loki review
+      id: loki-run
+      if: inputs.mode == 'review' && steps.pr-diff.outputs.has_diff == 'true'
+      shell: bash
+      env:
+        LOKI_PROVIDER: ${{ inputs.provider }}
+        LOKI_MAX_ITERATIONS: ${{ inputs.max_iterations }}
+        LOKI_DASHBOARD: 'false'
+        LOKI_COMPLEXITY: 'simple'
+        LOKI_BUDGET_LIMIT: ${{ inputs.budget_limit }}
+        LOKI_COUNCIL_ENABLED: 'false'
+        LOKI_SKIP_PREREQS: 'true'
+      run: |
+        PRD_FILE="${{ steps.review-prd.outputs.prd_file }}"
+        OUTPUT_FILE="${RUNNER_TEMP}/loki-review-output.txt"
+
+        echo "--- Running loki review (provider: $LOKI_PROVIDER, max_iterations: $LOKI_MAX_ITERATIONS) ---"
+
+        # Run loki and capture output; do not fail the action on non-zero exit
+        # (loki may exit non-zero on timeout, which is acceptable)
+        loki start --simple --no-dashboard --provider "$LOKI_PROVIDER" "$PRD_FILE" \
+          2>&1 | tee "$OUTPUT_FILE" || true
+
+        echo "--- Loki review completed ---"
+        echo "output_file=${OUTPUT_FILE}" >> "$GITHUB_OUTPUT"
+
+    - name: Run loki fix
+      id: loki-fix
+      if: inputs.mode == 'fix'
+      shell: bash
+      env:
+        LOKI_PROVIDER: ${{ inputs.provider }}
+        LOKI_MAX_ITERATIONS: ${{ inputs.max_iterations }}
+        LOKI_DASHBOARD: 'false'
+        LOKI_COMPLEXITY: 'simple'
+        LOKI_BUDGET_LIMIT: ${{ inputs.budget_limit }}
+        LOKI_COUNCIL_ENABLED: 'false'
+        LOKI_SKIP_PREREQS: 'true'
+      run: |
+        OUTPUT_FILE="${RUNNER_TEMP}/loki-fix-output.txt"
+
+        echo "--- Running loki in fix mode (provider: $LOKI_PROVIDER) ---"
+        loki start --simple --no-dashboard --provider "$LOKI_PROVIDER" \
+          2>&1 | tee "$OUTPUT_FILE" || true
+
+        echo "output_file=${OUTPUT_FILE}" >> "$GITHUB_OUTPUT"
+
+    - name: Run loki test
+      id: loki-test
+      if: inputs.mode == 'test'
+      shell: bash
+      env:
+        LOKI_PROVIDER: ${{ inputs.provider }}
+        LOKI_MAX_ITERATIONS: ${{ inputs.max_iterations }}
+        LOKI_DASHBOARD: 'false'
+        LOKI_COMPLEXITY: 'simple'
+        LOKI_BUDGET_LIMIT: ${{ inputs.budget_limit }}
+        LOKI_COUNCIL_ENABLED: 'false'
+        LOKI_SKIP_PREREQS: 'true'
+      run: |
+        OUTPUT_FILE="${RUNNER_TEMP}/loki-test-output.txt"
+
+        echo "--- Running loki in test mode (provider: $LOKI_PROVIDER) ---"
+        loki start --simple --no-dashboard --provider "$LOKI_PROVIDER" \
+          2>&1 | tee "$OUTPUT_FILE" || true
+
+        echo "output_file=${OUTPUT_FILE}" >> "$GITHUB_OUTPUT"
+
+    - name: Post review as PR comment
+      if: inputs.mode == 'review' && steps.pr-diff.outputs.has_diff == 'true'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github_token }}
+        ACTION_PROVIDER: ${{ inputs.provider }}
+        ACTION_MODE: ${{ inputs.mode }}
+        ACTION_MAX_ITER: ${{ inputs.max_iterations }}
+      run: |
+        PR_NUMBER="${{ github.event.pull_request.number }}"
+        OUTPUT_FILE="${{ steps.loki-run.outputs.output_file }}"
+
+        if [ -z "$PR_NUMBER" ]; then
+          echo "No PR number available. Skipping comment."
+          exit 0
+        fi
+
+        if [ ! -s "$OUTPUT_FILE" ]; then
+          echo "No review output to post."
+          exit 0
+        fi
+
+        # Extract the meaningful portion of loki output
+        # Trim to last 64000 chars to stay within GitHub comment limits (65536 max)
+        REVIEW_BODY=$(tail -c 64000 "$OUTPUT_FILE")
+
+        # Build the comment
+        COMMENT_FILE="${RUNNER_TEMP}/pr-comment.md"
+        {
+          echo "## Loki Mode Code Review"
+          echo ""
+          echo "Automated review by [loki-mode](https://github.com/asklokesh/loki-mode)"
+          echo ""
+          echo "<details>"
+          echo "<summary>Review Output</summary>"
+          echo ""
+          echo '```'
+          echo "$REVIEW_BODY"
+          echo '```'
+          echo ""
+          echo "</details>"
+          echo ""
+          echo "---"
+          echo "*Provider: ${ACTION_PROVIDER} | Mode: ${ACTION_MODE} | Max Iterations: ${ACTION_MAX_ITER}*"
+        } > "$COMMENT_FILE"
+
+        echo "--- Posting review comment to PR #${PR_NUMBER} ---"
+        gh pr comment "$PR_NUMBER" --body-file "$COMMENT_FILE" || {
+          echo "WARNING: Failed to post PR comment. The review output is available in the job logs above."
+        }
+
+    - name: Cleanup
+      if: always()
+      shell: bash
+      run: |
+        # Kill any lingering loki processes
+        pkill -f "loki-run-" 2>/dev/null || true
+        # Clean temp files
+        rm -rf "${RUNNER_TEMP}/pr-"*.diff "${RUNNER_TEMP}/review-prd-"*.md \
+               "${RUNNER_TEMP}/loki-"*-output.txt "${RUNNER_TEMP}/pr-comment.md" \
+               /tmp/loki-* 2>/dev/null || true

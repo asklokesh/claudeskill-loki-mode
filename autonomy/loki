@@ -1,7 +1,7 @@
 #!/bin/bash
 #===============================================================================
-# Loki Mode CLI Wrapper (v5.0.0)
-# Simple command-line interface for Loki Mode
+# Loki Mode CLI Wrapper
+# Command-line interface for Loki Mode
 #
 # Installation:
 #   ln -sf ~/.claude/skills/loki-mode/autonomy/loki /usr/local/bin/loki
@@ -299,6 +299,9 @@ show_help() {
     echo ""
     echo "Commands:"
     echo "  start [PRD]      Start Loki Mode (optionally with PRD file)"
+    echo "  quick \"task\"     Quick single-task mode (lightweight, 3 iterations max)"
+    echo "  demo             Run interactive demo (~60s simulated session)"
+    echo "  init             Build a PRD interactively or from templates"
     echo "  issue <url|num>  Generate PRD from GitHub issue and optionally start"
     echo "  stop             Stop execution immediately"
     echo "  pause            Pause after current session"
@@ -316,6 +319,7 @@ show_help() {
     echo "  config [cmd]     Manage configuration (show|init|edit|path)"
     echo "  memory [cmd]     Cross-project learnings (list|show|search|stats)"
     echo "  council [cmd]    Completion council (status|verdicts|convergence|force-review|report)"
+    echo "  dogfood          Show self-development statistics"
     echo "  reset [target]   Reset session state (all|retries|failed)"
     echo "  version          Show version"
     echo "  help             Show this help"
@@ -330,6 +334,7 @@ show_help() {
     echo "  --no-dashboard   Disable web dashboard"
     echo "  --sandbox        Run in Docker sandbox for isolation"
     echo "  --skip-memory    Skip loading memory context at startup"
+    echo "  --budget USD     Set cost budget limit (display in dashboard/status)"
     echo ""
     echo "Options for 'issue':"
     echo "  --repo OWNER/REPO  Specify repository (default: auto-detect)"
@@ -339,7 +344,10 @@ show_help() {
     echo "  --output FILE      Save PRD to custom path (default: .loki/prd-issue-N.md)"
     echo ""
     echo "Examples:"
-    echo "  loki start                    # Start in current directory"
+    echo "  loki demo                     # Run 60-second interactive demo"
+    echo "  loki init                     # Build a PRD interactively"
+    echo "  loki init -t saas-starter     # Start from a template"
+    echo "  loki quick \"add dark mode\"    # Quick single-task mode"
     echo "  loki start ./prd.md           # Start with PRD file"
     echo "  loki start --bg               # Start in background"
     echo "  loki start --parallel         # Start in parallel mode"
@@ -379,6 +387,7 @@ cmd_start() {
                 echo "  --no-dashboard        Disable web dashboard"
                 echo "  --sandbox             Run in Docker sandbox"
                 echo "  --skip-memory         Skip loading memory context at startup"
+                echo "  --budget USD          Cost budget limit (auto-pause when exceeded)"
                 echo ""
                 echo "Examples:"
                 echo "  loki start                      # Interactive or resume existing"
@@ -432,6 +441,28 @@ cmd_start() {
                 ;;
             --skip-memory)
                 export LOKI_SKIP_MEMORY=true
+                shift
+                ;;
+            --budget)
+                if [[ -n "${2:-}" ]]; then
+                    if ! echo "$2" | grep -qE '^[0-9]+(\.[0-9]+)?$'; then
+                        echo -e "${RED}--budget requires a numeric USD amount (e.g., --budget 5.00)${NC}"
+                        exit 1
+                    fi
+                    export LOKI_BUDGET_LIMIT="$2"
+                    shift 2
+                else
+                    echo -e "${RED}--budget requires a USD amount (e.g., --budget 5.00)${NC}"
+                    exit 1
+                fi
+                ;;
+            --budget=*)
+                local budget_val="${1#*=}"
+                if ! echo "$budget_val" | grep -qE '^[0-9]+(\.[0-9]+)?$'; then
+                    echo -e "${RED}--budget requires a numeric USD amount (e.g., --budget=5.00)${NC}"
+                    exit 1
+                fi
+                export LOKI_BUDGET_LIMIT="$budget_val"
                 shift
                 ;;
             -*)
@@ -826,6 +857,16 @@ cmd_status() {
     if [ -f "$LOKI_DIR/queue/pending.json" ]; then
         local task_count=$(jq '.tasks | length' "$LOKI_DIR/queue/pending.json" 2>/dev/null || echo "0")
         echo -e "${CYAN}Pending Tasks:${NC} $task_count"
+    fi
+
+    # Check budget
+    if [ -f "$LOKI_DIR/metrics/budget.json" ]; then
+        local budget_limit budget_used budget_remaining
+        budget_limit=$(python3 -c "import json; d=json.load(open('$LOKI_DIR/metrics/budget.json')); print(d.get('budget_limit', 0))" 2>/dev/null || echo "0")
+        budget_used=$(python3 -c "import json; d=json.load(open('$LOKI_DIR/metrics/budget.json')); print(round(d.get('budget_used', 0), 2))" 2>/dev/null || echo "0")
+        if [ "$budget_limit" != "0" ]; then
+            echo -e "${CYAN}Budget:${NC} \$$budget_used / \$$budget_limit"
+        fi
     fi
 
     # Check dashboard
@@ -2789,6 +2830,690 @@ cmd_sandbox() {
     exec "$SANDBOX_SH" "$subcommand" "$@"
 }
 
+# Demo mode - simulated session showing multi-agent orchestration
+cmd_demo() {
+    # Handle --help
+    if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+        echo -e "${BOLD}loki demo${NC} - Run interactive demo"
+        echo ""
+        echo "Simulates a full autonomous session in ~60 seconds."
+        echo "Starts the dashboard on port 57374 for real-time visualization."
+        echo ""
+        echo "Usage: loki demo"
+        return 0
+    fi
+
+    local version=$(get_version)
+    local demo_duration=60
+    local demo_prd="$SKILL_DIR/templates/simple-todo-app.md"
+
+    # Fall back to examples/ if templates/ doesn't exist yet
+    if [ ! -f "$demo_prd" ]; then
+        demo_prd="$SKILL_DIR/examples/simple-todo-app.md"
+    fi
+
+    if [ ! -f "$demo_prd" ]; then
+        echo -e "${RED}Error: Demo PRD not found${NC}"
+        echo "Expected at: $demo_prd"
+        exit 1
+    fi
+
+    echo -e "${BOLD}Loki Mode v$version - Interactive Demo${NC}"
+    echo ""
+    echo -e "${CYAN}This demo simulates a full autonomous session in ~60 seconds.${NC}"
+    echo -e "${CYAN}Watch multi-agent orchestration, quality gates, and phase transitions.${NC}"
+    echo ""
+    echo -e "PRD: ${BOLD}Simple Todo App${NC}"
+    echo -e "Dashboard: ${BLUE}http://127.0.0.1:57374${NC}"
+    echo ""
+
+    # Track if we created .loki for cleanup
+    local demo_created_loki=false
+    if [ ! -d "$LOKI_DIR" ]; then
+        demo_created_loki=true
+    fi
+
+    # Set up demo .loki directory
+    mkdir -p "$LOKI_DIR"/{queue,memory,metrics/efficiency,state,council,logs,dashboard}
+
+    # Write initial session.json
+    local demo_pid=$$
+    local start_time
+    start_time=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    cat > "$LOKI_DIR/session.json" << SESSEOF
+{
+  "status": "running",
+  "pid": $demo_pid,
+  "provider": "claude",
+  "started": "$start_time",
+  "project": "$(pwd)",
+  "mode": "demo"
+}
+SESSEOF
+    echo "$demo_pid" > "$LOKI_DIR/loki.pid"
+
+    # Start dashboard server
+    local dashboard_started=false
+    if command -v python3 &> /dev/null && [ -f "$SKILL_DIR/dashboard/server.py" ]; then
+        # Kill any existing dashboard on this port
+        local existing_pids
+        existing_pids=$(lsof -ti :57374 2>/dev/null || true)
+        if [ -n "$existing_pids" ]; then
+            echo "$existing_pids" | xargs kill 2>/dev/null || true
+            sleep 1
+        fi
+
+        LOKI_DIR="$LOKI_DIR" PYTHONPATH="$SKILL_DIR" python3 -m uvicorn dashboard.server:app \
+            --host 127.0.0.1 --port 57374 --log-level warning &>/dev/null &
+        local dash_pid=$!
+        echo "$dash_pid" > "$LOKI_DIR/dashboard/dashboard.pid"
+
+        # Wait for dashboard to be ready
+        local wait_count=0
+        while [ $wait_count -lt 10 ]; do
+            if curl -s http://127.0.0.1:57374/health &>/dev/null; then
+                dashboard_started=true
+                echo -e "${GREEN}Dashboard started${NC} at http://127.0.0.1:57374"
+                break
+            fi
+            sleep 0.5
+            wait_count=$((wait_count + 1))
+        done
+
+        if [ "$dashboard_started" = false ]; then
+            echo -e "${YELLOW}Warning: Dashboard failed to start, continuing without it${NC}"
+        fi
+    fi
+
+    echo ""
+    echo -e "${DIM}------- Demo Session Starting -------${NC}"
+    echo ""
+
+    # Define demo phases and their durations
+    local phases=("PLANNING" "ARCHITECTURE" "DEVELOPMENT" "TESTING" "CODE_REVIEW" "QUALITY_ASSURANCE" "DEPLOYMENT_PREP")
+    local phase_durations=(6 6 15 10 8 8 7)
+    local agents=("planner" "architect" "frontend-dev" "backend-dev" "test-engineer" "reviewer-1" "reviewer-2" "reviewer-3" "qa-engineer" "deploy-engineer")
+    local tasks=("Analyze PRD requirements" "Design system architecture" "Scaffold React frontend" "Create Express API server" "Set up SQLite database" "Implement todo CRUD operations" "Write unit tests" "Run code review (3 reviewers)" "Quality gate validation" "Prepare deployment artifacts")
+
+    local iteration=1
+    local completed_tasks=0
+    local total_tasks=${#tasks[@]}
+    local elapsed=0
+    local task_idx=0
+
+    # Cleanup handler (guard against double-run)
+    local _demo_cleaned=false
+    cleanup_demo() {
+        if [ "$_demo_cleaned" = true ]; then return; fi
+        _demo_cleaned=true
+        echo ""
+        echo -e "${DIM}------- Demo Session Complete -------${NC}"
+        echo ""
+
+        # Summary
+        echo -e "${BOLD}Session Summary${NC}"
+        echo -e "  Phases completed:  ${#phases[@]}/${#phases[@]}"
+        echo -e "  Tasks completed:   $total_tasks/$total_tasks"
+        echo -e "  Quality gates:     7/7 passed"
+        echo -e "  Agents dispatched: ${#agents[@]}"
+        echo -e "  Iterations:        $iteration"
+        echo -e "  Duration:          ${elapsed}s"
+        echo ""
+        echo -e "${GREEN}All quality gates passed. Project ready for deployment.${NC}"
+        echo ""
+        echo -e "${CYAN}Ready to try it for real?${NC}"
+        echo -e "  loki start ./prd.md        Start with your own PRD"
+        echo -e "  loki init                  Build a PRD interactively"
+        echo -e "  loki quick \"add feature\"   Quick single-task mode"
+        echo ""
+
+        # Mark session stopped
+        if [ -f "$LOKI_DIR/session.json" ]; then
+            python3 -c "
+import json
+with open('$LOKI_DIR/session.json', 'r') as f:
+    d = json.load(f)
+d['status'] = 'stopped'
+with open('$LOKI_DIR/session.json', 'w') as f:
+    json.dump(d, f, indent=2)
+" 2>/dev/null || true
+        fi
+
+        # Kill dashboard
+        if [ -f "$LOKI_DIR/dashboard/dashboard.pid" ]; then
+            local dpid
+            dpid=$(cat "$LOKI_DIR/dashboard/dashboard.pid" 2>/dev/null)
+            if [ -n "$dpid" ]; then
+                kill "$dpid" 2>/dev/null || true
+            fi
+        fi
+        # Also kill by port
+        local port_pids
+        port_pids=$(lsof -ti :57374 2>/dev/null || true)
+        if [ -n "$port_pids" ]; then
+            echo "$port_pids" | xargs kill 2>/dev/null || true
+        fi
+
+        # Clean up demo artifacts if we created .loki
+        if [ "$demo_created_loki" = true ] && [ -d "$LOKI_DIR" ]; then
+            rm -rf "$LOKI_DIR"
+        fi
+    }
+
+    trap cleanup_demo EXIT INT TERM
+
+    # Run through phases
+    for phase_idx in "${!phases[@]}"; do
+        local phase="${phases[$phase_idx]}"
+        local duration="${phase_durations[$phase_idx]}"
+
+        echo -e "${BOLD}[$phase]${NC} Phase $((phase_idx + 1))/${#phases[@]}"
+
+        # Write dashboard state for this phase
+        _write_demo_state "$phase" "$iteration" "$completed_tasks" "$total_tasks" "$elapsed"
+
+        # Simulate work within this phase
+        local phase_elapsed=0
+        while [ $phase_elapsed -lt $duration ]; do
+            # Show task progress
+            if [ $task_idx -lt $total_tasks ]; then
+                local task="${tasks[$task_idx]}"
+                local agent="${agents[$((task_idx % ${#agents[@]}))]}"
+                echo -e "  ${CYAN}[agent:$agent]${NC} $task"
+
+                # Write task to queue
+                echo "{\"id\":\"task-$task_idx\",\"title\":\"$task\",\"status\":\"completed\",\"agent\":\"$agent\"}" \
+                    > "$LOKI_DIR/queue/task-$task_idx.json" 2>/dev/null
+
+                completed_tasks=$((completed_tasks + 1))
+                task_idx=$((task_idx + 1))
+            fi
+
+            # Quality gate checks at specific phases
+            if [ "$phase" = "CODE_REVIEW" ]; then
+                echo -e "  ${GREEN}[gate]${NC} Blind review: 3/3 reviewers approve"
+                sleep 1
+                echo -e "  ${GREEN}[gate]${NC} Anti-sycophancy check: devil's advocate triggered"
+                sleep 1
+            elif [ "$phase" = "QUALITY_ASSURANCE" ]; then
+                echo -e "  ${GREEN}[gate]${NC} Static analysis: 0 issues"
+                sleep 1
+                echo -e "  ${GREEN}[gate]${NC} Test coverage: 87% (threshold: 80%)"
+                sleep 1
+                echo -e "  ${GREEN}[gate]${NC} Security scan: no vulnerabilities"
+                sleep 1
+            fi
+
+            iteration=$((iteration + 1))
+            local step_sleep=2
+            if [ $((duration - phase_elapsed)) -lt 3 ]; then
+                step_sleep=1
+            fi
+            sleep $step_sleep
+            phase_elapsed=$((phase_elapsed + step_sleep))
+            elapsed=$((elapsed + step_sleep))
+
+            # Update dashboard state
+            _write_demo_state "$phase" "$iteration" "$completed_tasks" "$total_tasks" "$elapsed"
+        done
+
+        echo ""
+    done
+
+    # Final state - completion council
+    echo -e "${BOLD}[COMPLETION_COUNCIL]${NC} Evaluating project completion..."
+    _write_demo_state "COMPLETION_COUNCIL" "$iteration" "$total_tasks" "$total_tasks" "$elapsed"
+    sleep 2
+    echo -e "  ${GREEN}[council]${NC} Member 1: COMPLETE (all acceptance criteria met)"
+    sleep 1
+    echo -e "  ${GREEN}[council]${NC} Member 2: COMPLETE (tests passing, code reviewed)"
+    sleep 1
+    echo -e "  ${GREEN}[council]${NC} Member 3: COMPLETE (deployment artifacts ready)"
+    sleep 1
+    echo -e "  ${GREEN}[verdict]${NC} Unanimous: PROJECT COMPLETE (3/3 votes)"
+
+    # Write final state
+    _write_demo_state "COMPLETE" "$iteration" "$total_tasks" "$total_tasks" "$elapsed"
+
+    exit 0
+}
+
+# Helper: write dashboard-state.json during demo
+_write_demo_state() {
+    local phase="$1" iteration="$2" completed="$3" total="$4" elapsed="$5"
+    local running_agents=$((RANDOM % 3 + 1))
+    local pending=$((total - completed))
+    local temp_file="$LOKI_DIR/.dashboard-state.json.tmp"
+
+    cat > "$temp_file" << STATEEOF
+{
+  "status": "running",
+  "mode": "demo",
+  "phase": "$phase",
+  "iteration": $iteration,
+  "complexity": "standard",
+  "provider": "claude",
+  "current_task": "",
+  "pending_tasks": $pending,
+  "completed_tasks": $completed,
+  "failed_tasks": 0,
+  "running_agents": $running_agents,
+  "total_agents": 10,
+  "uptime_seconds": $elapsed,
+  "version": "$(get_version)",
+  "agents": [],
+  "council": {
+    "enabled": true,
+    "last_verdict": null,
+    "convergence_score": 0
+  }
+}
+STATEEOF
+    mv "$temp_file" "$LOKI_DIR/dashboard-state.json" 2>/dev/null
+}
+
+# Quick mode - lightweight single-task execution
+cmd_quick() {
+    if [ $# -eq 0 ]; then
+        echo -e "${RED}Error: No task description provided${NC}"
+        echo ""
+        echo "Usage: loki quick \"description of what to do\""
+        echo ""
+        echo "Examples:"
+        echo "  loki quick \"add dark mode to this React app\""
+        echo "  loki quick \"fix the login bug in auth.js\""
+        echo "  loki quick \"add input validation to the signup form\""
+        echo "  loki quick \"write unit tests for the API endpoints\""
+        exit 1
+    fi
+
+    local task_desc="$*"
+    local version=$(get_version)
+
+    echo -e "${BOLD}Loki Mode v$version - Quick Mode${NC}"
+    echo ""
+    echo -e "${CYAN}Task:${NC} $task_desc"
+    echo -e "${DIM}Running lightweight execution (3 iterations max, no quality council)${NC}"
+    echo ""
+
+    # Create quick PRD from task description
+    mkdir -p "$LOKI_DIR"
+    local quick_prd="$LOKI_DIR/quick-prd.md"
+    cat > "$quick_prd" << QPRDEOF
+# Quick Task
+
+## Overview
+$task_desc
+
+## Requirements
+- Complete the task described above
+- Follow existing code patterns and conventions
+- Write tests if applicable
+- Do not break existing functionality
+
+## Success Criteria
+- Task is completed as described
+- No errors or regressions introduced
+- Code follows project conventions
+
+## Constraints
+- This is a quick single-task execution
+- Keep changes minimal and focused
+- Do not refactor unrelated code
+
+---
+
+**Mode:** Quick (lightweight, single-task)
+QPRDEOF
+
+    echo -e "${GREEN}Quick PRD generated${NC} at $quick_prd"
+    echo ""
+
+    # Set lightweight execution environment
+    export LOKI_MAX_ITERATIONS=3
+    export LOKI_COMPLEXITY=simple
+    export LOKI_COUNCIL_ENABLED=false
+    export LOKI_PHASE_CODE_REVIEW=false
+    export LOKI_PHASE_PERFORMANCE=false
+    export LOKI_PHASE_ACCESSIBILITY=false
+    export LOKI_PHASE_REGRESSION=false
+    export LOKI_PHASE_UAT=false
+    export LOKI_PHASE_WEB_RESEARCH=false
+
+    # Record start for efficiency tracking
+    record_session_start
+
+    # Emit event
+    emit_event session cli quick_start "task=$(echo "$task_desc" | head -c 100)"
+
+    # Run the orchestrator with quick settings
+    exec "$RUN_SH" "$quick_prd"
+}
+
+# Interactive PRD builder
+cmd_init() {
+    local version=$(get_version)
+    local output_file="./prd.md"
+    local template=""
+    local start_after=false
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --output|-o)
+                if [[ -n "${2:-}" ]]; then
+                    output_file="$2"
+                    shift 2
+                else
+                    echo -e "${RED}--output requires a file path${NC}"
+                    exit 1
+                fi
+                ;;
+            --template|-t)
+                if [[ -n "${2:-}" ]]; then
+                    template="$2"
+                    shift 2
+                else
+                    echo -e "${RED}--template requires a template name${NC}"
+                    exit 1
+                fi
+                ;;
+            --start|-s)
+                start_after=true
+                shift
+                ;;
+            --list-templates)
+                _list_templates
+                exit 0
+                ;;
+            --help|-h)
+                echo -e "${BOLD}loki init${NC} - Interactive PRD builder"
+                echo ""
+                echo "Usage: loki init [options]"
+                echo ""
+                echo "Options:"
+                echo "  --output, -o FILE       Output file (default: ./prd.md)"
+                echo "  --template, -t NAME     Start from a template"
+                echo "  --start, -s             Start loki mode after generating PRD"
+                echo "  --list-templates        List available templates"
+                echo ""
+                echo "Examples:"
+                echo "  loki init                         Interactive PRD builder"
+                echo "  loki init -t saas-starter         Start from SaaS template"
+                echo "  loki init -o docs/requirements.md Custom output path"
+                echo "  loki init --start                 Build PRD and start immediately"
+                exit 0
+                ;;
+            *)
+                echo -e "${RED}Unknown option: $1${NC}"
+                exit 1
+                ;;
+        esac
+    done
+
+    # If template specified, copy it
+    if [ -n "$template" ]; then
+        local template_file=""
+        # Check templates/ directory
+        for dir in "$SKILL_DIR/templates" "$SKILL_DIR/examples"; do
+            if [ -f "$dir/$template.md" ]; then
+                template_file="$dir/$template.md"
+                break
+            elif [ -f "$dir/${template}" ]; then
+                template_file="$dir/${template}"
+                break
+            fi
+        done
+
+        if [ -z "$template_file" ]; then
+            echo -e "${RED}Template not found: $template${NC}"
+            echo ""
+            _list_templates
+            exit 1
+        fi
+
+        cp "$template_file" "$output_file"
+        echo -e "${GREEN}Created${NC} $output_file from template: $template"
+        echo -e "${DIM}Edit the file to customize it for your project${NC}"
+
+        if [ "$start_after" = true ]; then
+            echo ""
+            echo -e "${CYAN}Starting Loki Mode...${NC}"
+            exec "$0" start "$output_file"
+        fi
+        exit 0
+    fi
+
+    # Interactive mode
+    echo -e "${BOLD}Loki Mode v$version - PRD Builder${NC}"
+    echo ""
+    echo -e "${CYAN}Answer a few questions to generate your PRD.${NC}"
+    echo ""
+
+    # Project name
+    echo -e -n "${BOLD}Project name:${NC} "
+    read -r project_name
+    if [ -z "$project_name" ]; then
+        echo -e "${RED}Project name is required${NC}"
+        exit 1
+    fi
+
+    # Description
+    echo -e -n "${BOLD}One-line description:${NC} "
+    read -r description
+
+    # Project type
+    echo ""
+    echo -e "${BOLD}Project type:${NC}"
+    echo "  1) Web application (full-stack)"
+    echo "  2) REST API (backend only)"
+    echo "  3) CLI tool"
+    echo "  4) Landing page (static)"
+    echo "  5) Mobile app (React Native)"
+    echo "  6) Browser extension"
+    echo "  7) Other"
+    echo -e -n "Choose [1-7]: "
+    read -r type_choice
+
+    local project_type=""
+    local default_stack=""
+    case "$type_choice" in
+        1) project_type="Web Application"; default_stack="Next.js + TypeScript + Prisma + PostgreSQL" ;;
+        2) project_type="REST API"; default_stack="Node.js + Express + TypeScript + SQLite" ;;
+        3) project_type="CLI Tool"; default_stack="Node.js + TypeScript + Commander.js" ;;
+        4) project_type="Landing Page"; default_stack="HTML + CSS + JavaScript (no framework)" ;;
+        5) project_type="Mobile App"; default_stack="React Native + TypeScript + Expo" ;;
+        6) project_type="Browser Extension"; default_stack="Chrome Manifest V3 + TypeScript" ;;
+        7) project_type="Custom"; default_stack="" ;;
+        *) project_type="Web Application"; default_stack="Next.js + TypeScript + Prisma + PostgreSQL" ;;
+    esac
+
+    # Tech stack
+    echo ""
+    if [ -n "$default_stack" ]; then
+        echo -e -n "${BOLD}Tech stack${NC} [${DIM}$default_stack${NC}]: "
+        read -r tech_stack
+        if [ -z "$tech_stack" ]; then
+            tech_stack="$default_stack"
+        fi
+    else
+        echo -e -n "${BOLD}Tech stack:${NC} "
+        read -r tech_stack
+    fi
+
+    # Features
+    echo ""
+    echo -e "${BOLD}Key features${NC} (enter one per line, empty line to finish):"
+    local features=()
+    local feat_num=1
+    while true; do
+        echo -e -n "  ${feat_num}. "
+        read -r feature
+        if [ -z "$feature" ]; then
+            break
+        fi
+        features+=("$feature")
+        feat_num=$((feat_num + 1))
+        if [ $feat_num -gt 10 ]; then
+            echo -e "${DIM}  (max 10 features)${NC}"
+            break
+        fi
+    done
+
+    if [ ${#features[@]} -eq 0 ]; then
+        echo -e "${RED}At least one feature is required${NC}"
+        exit 1
+    fi
+
+    # Out of scope
+    echo ""
+    echo -e "${BOLD}Out of scope${NC} (enter one per line, empty line to finish):"
+    local exclusions=()
+    local exc_num=1
+    while true; do
+        echo -e -n "  ${exc_num}. "
+        read -r exclusion
+        if [ -z "$exclusion" ]; then
+            break
+        fi
+        exclusions+=("$exclusion")
+        exc_num=$((exc_num + 1))
+        if [ $exc_num -gt 10 ]; then
+            break
+        fi
+    done
+
+    # Generate PRD
+    {
+        echo "# PRD: $project_name"
+        echo ""
+        echo "## Overview"
+        echo "$description"
+        echo ""
+        echo "## Project Type"
+        echo "$project_type"
+        echo ""
+        echo "## Target Users"
+        echo "Developers and end-users who need $description"
+        echo ""
+        echo "## Features"
+        echo ""
+        echo "### MVP Features"
+        local i=1
+        for feat in "${features[@]}"; do
+            echo "$i. **$(echo "$feat" | awk '{print toupper(substr($0,1,1)) substr($0,2)}')** - $feat"
+            i=$((i + 1))
+        done
+        echo ""
+        echo "## Tech Stack"
+        echo "- $tech_stack"
+        echo ""
+        echo "## Requirements"
+        echo "- All features functional and tested"
+        echo "- Clean, well-structured code"
+        echo "- Error handling with user feedback"
+        echo "- Input validation where applicable"
+        echo ""
+        echo "## Testing"
+        echo "- Unit tests for core functionality"
+        echo "- Integration tests for API endpoints (if applicable)"
+        echo "- Manual testing checklist"
+        echo ""
+        echo "## Out of Scope"
+        if [ ${#exclusions[@]} -gt 0 ]; then
+            for exc in "${exclusions[@]}"; do
+                echo "- $exc"
+            done
+        else
+            echo "- Authentication (unless specified in features)"
+            echo "- Cloud deployment"
+            echo "- Performance optimization"
+        fi
+        echo ""
+        echo "## Success Criteria"
+        echo "- All MVP features working"
+        echo "- Tests passing"
+        echo "- No console errors"
+        echo "- Code review passes"
+        echo ""
+        echo "---"
+        echo ""
+        echo "**Generated by:** loki init v$(get_version)"
+    } > "$output_file"
+
+    echo ""
+    echo -e "${GREEN}PRD generated:${NC} $output_file"
+    echo ""
+
+    if [ "$start_after" = true ]; then
+        echo -e "${CYAN}Starting Loki Mode...${NC}"
+        exec "$0" start "$output_file"
+    else
+        echo "Next steps:"
+        echo -e "  1. Review and edit: ${BOLD}$output_file${NC}"
+        echo -e "  2. Start Loki Mode: ${BOLD}loki start $output_file${NC}"
+    fi
+}
+
+# Dogfooding statistics
+cmd_dogfood() {
+    # Handle --help
+    if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+        echo -e "${BOLD}loki dogfood${NC} - Show self-development statistics"
+        echo ""
+        echo "Shows what percentage of loki-mode code was written by loki-mode itself."
+        echo ""
+        echo "Usage: loki dogfood [--json]"
+        echo ""
+        echo "Options:"
+        echo "  --json    Output in JSON format"
+        return 0
+    fi
+
+    local stats_script="$SKILL_DIR/scripts/dogfood-stats.sh"
+    if [ ! -f "$stats_script" ]; then
+        echo -e "${RED}Error: dogfood-stats.sh not found${NC}"
+        exit 1
+    fi
+
+    local json_flag=""
+    if [[ "${1:-}" == "--json" ]]; then
+        json_flag="--json"
+    fi
+
+    bash "$stats_script" $json_flag
+}
+
+# List available templates
+_list_templates() {
+    echo -e "${BOLD}Available Templates${NC}"
+    echo ""
+    local found=false
+    declare -A seen_names
+    for dir in "$SKILL_DIR/templates" "$SKILL_DIR/examples"; do
+        if [ -d "$dir" ]; then
+            for f in "$dir"/*.md; do
+                if [ -f "$f" ] && [ "$(basename "$f")" != "README.md" ]; then
+                    local name=$(basename "$f" .md)
+                    # Skip duplicates (templates/ takes priority over examples/)
+                    if [[ -n "${seen_names[$name]:-}" ]]; then
+                        continue
+                    fi
+                    seen_names[$name]=1
+                    local title=$(head -1 "$f" | sed -E 's/^#+ *//')
+                    echo -e "  ${CYAN}$name${NC} - $title"
+                    found=true
+                fi
+            done
+        fi
+    done
+    if [ "$found" = false ]; then
+        echo "  No templates found"
+    fi
+    echo ""
+    echo "Usage: loki init --template <name>"
+}
+
 # Main command dispatcher
 main() {
     if [ $# -eq 0 ]; then
@@ -2802,6 +3527,15 @@ main() {
     case "$command" in
         start)
             cmd_start "$@"
+            ;;
+        quick)
+            cmd_quick "$@"
+            ;;
+        demo)
+            cmd_demo "$@"
+            ;;
+        init)
+            cmd_init "$@"
             ;;
         stop)
             cmd_stop
@@ -2853,6 +3587,9 @@ main() {
             ;;
         council)
             cmd_council "$@"
+            ;;
+        dogfood)
+            cmd_dogfood "$@"
             ;;
         projects)
             cmd_projects "$@"

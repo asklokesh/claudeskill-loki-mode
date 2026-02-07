@@ -1655,6 +1655,125 @@ async def stop_session():
 
 
 # =============================================================================
+# Cost Visibility API
+# =============================================================================
+
+# Standard API pricing per million tokens (USD)
+_MODEL_PRICING = {
+    "opus":   {"input": 15.00, "output": 75.00},
+    "sonnet": {"input": 3.00,  "output": 15.00},
+    "haiku":  {"input": 0.25,  "output": 1.25},
+}
+
+
+def _calculate_model_cost(model: str, input_tokens: int, output_tokens: int) -> float:
+    """Calculate USD cost for a model's token usage."""
+    pricing = _MODEL_PRICING.get(model.lower(), _MODEL_PRICING.get("sonnet", {}))
+    input_cost = (input_tokens / 1_000_000) * pricing.get("input", 3.00)
+    output_cost = (output_tokens / 1_000_000) * pricing.get("output", 15.00)
+    return input_cost + output_cost
+
+
+@app.get("/api/cost")
+async def get_cost():
+    """Get cost visibility data from .loki/metrics/efficiency/ and budget.json."""
+    loki_dir = _get_loki_dir()
+    efficiency_dir = loki_dir / "metrics" / "efficiency"
+    budget_file = loki_dir / "metrics" / "budget.json"
+
+    total_input = 0
+    total_output = 0
+    estimated_cost = 0.0
+    by_phase: dict = {}
+    by_model: dict = {}
+    budget_limit = None
+    budget_used = 0.0
+    budget_remaining = None
+
+    # Read efficiency files (one JSON file per iteration/task)
+    if efficiency_dir.exists():
+        for eff_file in sorted(efficiency_dir.glob("*.json")):
+            try:
+                data = json.loads(eff_file.read_text())
+
+                inp = data.get("input_tokens", 0)
+                out = data.get("output_tokens", 0)
+                model = data.get("model", "sonnet").lower()
+                phase = data.get("phase", "unknown")
+
+                total_input += inp
+                total_output += out
+
+                cost = data.get("cost_usd")
+                if cost is None:
+                    cost = _calculate_model_cost(model, inp, out)
+                estimated_cost += cost
+
+                # Aggregate by phase
+                if phase not in by_phase:
+                    by_phase[phase] = {"input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0}
+                by_phase[phase]["input_tokens"] += inp
+                by_phase[phase]["output_tokens"] += out
+                by_phase[phase]["cost_usd"] += cost
+
+                # Aggregate by model
+                if model not in by_model:
+                    by_model[model] = {"input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0}
+                by_model[model]["input_tokens"] += inp
+                by_model[model]["output_tokens"] += out
+                by_model[model]["cost_usd"] += cost
+            except (json.JSONDecodeError, KeyError, TypeError):
+                pass
+
+    # Also check dashboard-state.json for token data if efficiency dir is empty
+    if total_input == 0 and total_output == 0:
+        state_file = loki_dir / "dashboard-state.json"
+        if state_file.exists():
+            try:
+                state = json.loads(state_file.read_text())
+                tokens = state.get("tokens", {})
+                total_input = tokens.get("input", 0)
+                total_output = tokens.get("output", 0)
+                model = state.get("model", "sonnet").lower()
+                if total_input > 0 or total_output > 0:
+                    estimated_cost = _calculate_model_cost(model, total_input, total_output)
+                    if model not in by_model:
+                        by_model[model] = {
+                            "input_tokens": total_input,
+                            "output_tokens": total_output,
+                            "cost_usd": estimated_cost,
+                        }
+            except (json.JSONDecodeError, KeyError):
+                pass
+
+    # Read budget configuration
+    if budget_file.exists():
+        try:
+            budget_data = json.loads(budget_file.read_text())
+            budget_limit = budget_data.get("limit")
+            if budget_limit is not None:
+                budget_used = estimated_cost
+                budget_remaining = max(0.0, budget_limit - budget_used)
+        except (json.JSONDecodeError, KeyError):
+            pass
+
+    return {
+        "total_input_tokens": total_input,
+        "total_output_tokens": total_output,
+        "estimated_cost_usd": round(estimated_cost, 4),
+        "by_phase": by_phase,
+        "by_model": {k: {
+            "input_tokens": v["input_tokens"],
+            "output_tokens": v["output_tokens"],
+            "cost_usd": round(v["cost_usd"], 4),
+        } for k, v in by_model.items()},
+        "budget_limit": budget_limit,
+        "budget_used": round(budget_used, 4) if budget_limit is not None else None,
+        "budget_remaining": round(budget_remaining, 4) if budget_remaining is not None else None,
+    }
+
+
+# =============================================================================
 # Completion Council API (v5.25.0)
 # =============================================================================
 

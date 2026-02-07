@@ -486,6 +486,10 @@ function generateStandaloneHTML(bundleCode) {
           <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
           Council
         </button>
+        <button class="nav-link" data-section="cost" id="nav-cost">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+          Cost
+        </button>
       </nav>
 
       <div class="sidebar-footer">
@@ -546,6 +550,14 @@ function generateStandaloneHTML(bundleCode) {
         </div>
         <loki-council-dashboard id="council-dashboard"></loki-council-dashboard>
       </div>
+
+      <!-- Cost Dashboard -->
+      <div class="section-page" id="page-cost">
+        <div class="section-page-header">
+          <h2 class="section-page-title">Cost</h2>
+        </div>
+        <loki-cost-dashboard id="cost-dashboard"></loki-cost-dashboard>
+      </div>
     </main>
   </div>
 
@@ -590,7 +602,8 @@ document.addEventListener('DOMContentLoaded', function() {
       'log-stream',
       'memory-browser',
       'learning-dashboard',
-      'council-dashboard'
+      'council-dashboard',
+      'cost-dashboard'
     ];
     components.forEach(function(id) {
       var el = document.getElementById(id);
@@ -676,11 +689,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
   sectionPages.forEach(function(page) { observer.observe(page); });
 
-  // Keyboard shortcuts: Cmd/Ctrl + 1-6
+  // Keyboard shortcuts: Cmd/Ctrl + 1-7
   document.addEventListener('keydown', function(e) {
-    if ((e.metaKey || e.ctrlKey) && e.key >= '1' && e.key <= '6') {
+    if ((e.metaKey || e.ctrlKey) && e.key >= '1' && e.key <= '7') {
       e.preventDefault();
-      var sections = ['overview', 'tasks', 'logs', 'memory', 'learning', 'council'];
+      var sections = ['overview', 'tasks', 'logs', 'memory', 'learning', 'council', 'cost'];
       switchSection(sections[parseInt(e.key) - 1]);
     }
   });

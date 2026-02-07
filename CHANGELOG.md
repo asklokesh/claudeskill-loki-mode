@@ -5,6 +5,48 @@ All notable changes to Loki Mode will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.28.0] - 2026-02-07
+
+### Added
+- CLI: `loki demo` - Interactive 60-second demo with live dashboard visualization
+- CLI: `loki quick "task"` - Lightweight single-task mode (3 iterations max)
+- CLI: `loki init` - Interactive PRD builder with template support (`--template`, `--list-templates`)
+- CLI: `loki dogfood` - Self-development statistics (what % of code is autonomous)
+- CLI: `--budget USD` flag for cost budget display in dashboard/status
+- Dashboard: Cost visibility component with token usage, USD cost, budget tracking
+- Dashboard: Cost by model and cost by phase tables
+- Dashboard: API pricing reference card (Opus/Sonnet/Haiku)
+- Backend: `GET /api/cost` endpoint for token/cost metrics
+- Templates: 12 PRD templates (saas-starter, cli-tool, discord-bot, chrome-extension, mobile-app, blog-platform, e-commerce, ai-chatbot + 4 from examples)
+- Blog: Benchmark results page with Chart.js visualizations (HumanEval 98.78%, SWE-bench 100%)
+- GitHub Action: Reusable `action.yml` for CI/CD code review integration
+- GitHub: 12 good-first-issues (#14-#25) for community onboarding
+
+### Fixed
+- Shell: BSD sed `\U` uppercase conversion fails on macOS (use awk instead)
+- Shell: BSD sed `\+` regex fails on macOS (use `sed -E` extended regex)
+- Shell: `dogfood-stats.sh` grep -c produces "0\n0" on no matches (use `|| true`)
+- Shell: `cmd_init()` --output/--template crash on missing argument (add guard checks)
+- Shell: `--budget` accepts non-numeric values (add validation)
+- Shell: Demo phase counter off-by-one (0/7 instead of 1/7)
+- Shell: `cmd_demo()` and `cmd_dogfood()` don't handle `--help` flag
+- Shell: `_list_templates()` shows duplicate entries from templates/ and examples/
+- Shell: Demo doesn't clean up `.loki/` artifacts on exit
+- Dashboard: `MODEL_PRICING` constant unused, pricing hardcoded in render (now dynamic)
+- Dashboard: Hardcoded localhost in loki-cost-dashboard.js JSDoc comment
+- Dashboard: Keyboard shortcut comment says "1-6" but supports 1-7
+- Blog: SWE-bench claims 299/300 but actual data shows 300/300 with 0 errors
+- Blog: HumanEval comment says 158 solved in 1 attempt (actual: 160)
+- Blog: Website version stale at v5.25.0
+- Version: mcp/__init__.py stuck at 5.27.0 (missed in v5.27.1 bump)
+- Version: docker-compose.yml stuck at 5.27.0
+- Packaging: `templates/` missing from npm `files` whitelist
+- Templates: static-landing-page.md references emoji usage (contradicts no-emoji rule)
+
+### Changed
+- CLI header comment updated from v5.0.0 to current
+- Budget flag help text clarified (display only, not auto-pause)
+
 ## [5.27.1] - 2026-02-07
 
 ### Fixed

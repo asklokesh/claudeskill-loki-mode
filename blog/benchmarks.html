@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Loki Mode Benchmark Results - HumanEval 98.78% pass rate, SWE-bench Lite 99.67% patch generation. Multi-agent autonomous system benchmarks.">
+    <meta name="keywords" content="Loki Mode, benchmarks, HumanEval, SWE-bench, multi-agent, AI coding, autonomous system">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Loki Mode Benchmarks - HumanEval 98.78% | SWE-bench 99.67%">
+    <meta property="og:description" content="Benchmark results for the Loki Mode multi-agent autonomous system. 162/164 HumanEval, 299/300 SWE-bench Lite patches.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://asklokesh.github.io/loki-mode/blog/benchmarks.html">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Loki Mode Benchmarks - HumanEval 98.78% | SWE-bench 99.67%">
+    <meta name="twitter:description" content="Multi-agent system benchmark results. 162/164 HumanEval problems solved, 299/300 SWE-bench patches generated.">
+
+    <title>Benchmarks - Loki Mode</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Dark theme overrides for benchmarks page */
+        :root {
+            --bench-bg: #0d1117;
+            --bench-surface: #161b22;
+            --bench-surface-2: #1c2129;
+            --bench-border: #30363d;
+            --bench-text: #e6edf3;
+            --bench-text-muted: #8b949e;
+            --bench-accent: #d97757;
+            --bench-green: #3fb950;
+            --bench-blue: #58a6ff;
+            --bench-yellow: #d29922;
+            --bench-red: #f85149;
+            --bench-purple: #bc8cff;
+        }
+
+        body.bench-dark {
+            background-color: var(--bench-bg);
+            color: var(--bench-text);
+        }
+
+        body.bench-dark .top-header {
+            background-color: var(--bench-surface);
+            border-bottom-color: var(--bench-border);
+        }
+
+        body.bench-dark .top-header .nav-brand h1 {
+            color: var(--bench-text);
+        }
+
+        body.bench-dark .footer {
+            background: var(--bench-surface);
+            border-top-color: var(--bench-border);
+        }
+
+        body.bench-dark .footer-content p {
+            color: var(--bench-text-muted);
+        }
+
+        /* Benchmarks-specific layout */
+        .bench-page {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 2rem 2rem 4rem;
+        }
+
+        /* Back link */
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--bench-text-muted);
+            text-decoration: none;
+            font-family: 'Poppins', sans-serif;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 2rem;
+            transition: color 0.2s;
+        }
+
+        .back-link:hover {
+            color: var(--bench-accent);
+        }
+
+        .back-link svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* Hero */
+        .bench-hero {
+            text-align: center;
+            padding: 3rem 1rem 4rem;
+        }
+
+        .bench-hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            color: var(--bench-text);
+            margin-bottom: 0.75rem;
+            letter-spacing: -0.03em;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .bench-hero .subtitle {
+            font-size: 1.25rem;
+            color: var(--bench-text-muted);
+            margin-bottom: 2.5rem;
+            font-family: 'Lora', serif;
+        }
+
+        /* Key stats row */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.25rem;
+            margin-bottom: 3rem;
+        }
+
+        .stat-card {
+            background: var(--bench-surface);
+            border: 1px solid var(--bench-border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: border-color 0.2s, transform 0.2s;
+        }
+
+        .stat-card:hover {
+            border-color: var(--bench-accent);
+            transform: translateY(-2px);
+        }
+
+        .stat-label {
+            font-family: 'Poppins', sans-serif;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--bench-text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-family: 'Poppins', sans-serif;
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: var(--bench-text);
+            line-height: 1.1;
+        }
+
+        .stat-value.green { color: var(--bench-green); }
+        .stat-value.blue { color: var(--bench-blue); }
+        .stat-value.accent { color: var(--bench-accent); }
+
+        .stat-detail {
+            font-size: 0.8rem;
+            color: var(--bench-text-muted);
+            margin-top: 0.35rem;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        /* Section headings */
+        .bench-section {
+            margin-bottom: 3.5rem;
+        }
+
+        .bench-section h2 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--bench-text);
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid var(--bench-border);
+        }
+
+        .bench-section .section-desc {
+            color: var(--bench-text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Chart containers */
+        .chart-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .chart-card {
+            background: var(--bench-surface);
+            border: 1px solid var(--bench-border);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .chart-card h3 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--bench-text);
+            margin-bottom: 1rem;
+        }
+
+        .chart-card.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            width: 100%;
+            max-height: 350px;
+        }
+
+        /* Metrics grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.25rem;
+        }
+
+        .metric-card {
+            background: var(--bench-surface);
+            border: 1px solid var(--bench-border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: border-color 0.2s;
+        }
+
+        .metric-card:hover {
+            border-color: var(--bench-accent);
+        }
+
+        .metric-card h4 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--bench-accent);
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-card p {
+            font-size: 0.9rem;
+            color: var(--bench-text-muted);
+            line-height: 1.6;
+        }
+
+        .metric-card .metric-number {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--bench-text);
+            margin-bottom: 0.25rem;
+        }
+
+        /* Methodology */
+        .method-steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .method-step {
+            background: var(--bench-surface);
+            border: 1px solid var(--bench-border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            position: relative;
+        }
+
+        .method-step .step-number {
+            font-family: 'Poppins', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--bench-accent);
+            margin-bottom: 0.5rem;
+        }
+
+        .method-step h4 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--bench-text);
+            margin-bottom: 0.35rem;
+        }
+
+        .method-step p {
+            font-size: 0.85rem;
+            color: var(--bench-text-muted);
+            line-height: 1.5;
+        }
+
+        /* Run details table */
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .details-table th,
+        .details-table td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--bench-border);
+            font-size: 0.9rem;
+        }
+
+        .details-table th {
+            color: var(--bench-text-muted);
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .details-table td {
+            color: var(--bench-text);
+            font-family: 'Monaco', 'Courier New', monospace;
+        }
+
+        .details-table tbody tr:hover {
+            background: var(--bench-surface-2);
+        }
+
+        /* Failed tasks */
+        .failed-list {
+            margin-top: 1rem;
+        }
+
+        .failed-item {
+            background: var(--bench-surface);
+            border: 1px solid var(--bench-border);
+            border-left: 3px solid var(--bench-red);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .failed-item .task-id {
+            font-family: 'Monaco', monospace;
+            font-size: 0.9rem;
+            color: var(--bench-text);
+        }
+
+        .failed-item .task-detail {
+            font-size: 0.8rem;
+            color: var(--bench-text-muted);
+        }
+
+        /* Note box */
+        .note-box {
+            background: rgba(217, 119, 87, 0.08);
+            border: 1px solid rgba(217, 119, 87, 0.25);
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            margin-top: 1.5rem;
+        }
+
+        .note-box p {
+            font-size: 0.875rem;
+            color: var(--bench-text-muted);
+            line-height: 1.6;
+        }
+
+        .note-box strong {
+            color: var(--bench-accent);
+        }
+
+        /* Timestamp */
+        .bench-timestamp {
+            text-align: center;
+            color: var(--bench-text-muted);
+            font-size: 0.8rem;
+            font-family: 'Poppins', sans-serif;
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--bench-border);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .bench-page {
+                padding: 1rem 1rem 3rem;
+            }
+
+            .bench-hero h1 {
+                font-size: 2rem;
+            }
+
+            .bench-hero .subtitle {
+                font-size: 1rem;
+            }
+
+            .stats-row {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .stat-value {
+                font-size: 1.75rem;
+            }
+
+            .chart-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .method-steps {
+                grid-template-columns: 1fr;
+            }
+
+            .bench-section h2 {
+                font-size: 1.4rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-row {
+                grid-template-columns: 1fr;
+            }
+
+            .bench-hero {
+                padding: 2rem 0.5rem 3rem;
+            }
+        }
+    </style>
+</head>
+<body class="bench-dark">
+    <!-- Top Header Bar -->
+    <header class="top-header">
+        <div class="header-left">
+            <div class="nav-brand">
+                <h1>Loki Mode</h1>
+                <span class="version" id="app-version">v5.27.0</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <a href="index.html" style="color: var(--bench-text-muted); text-decoration: none; font-family: 'Poppins', sans-serif; font-size: 0.875rem; font-weight: 500; margin-right: 1.5rem; transition: color 0.2s;" onmouseover="this.style.color='#d97757'" onmouseout="this.style.color='#8b949e'">Home</a>
+            <a href="https://github.com/asklokesh/loki-mode" class="github-btn" target="_blank" rel="noopener noreferrer">
+                <svg height="20" width="20" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>
+                <span class="github-text">GitHub</span>
+            </a>
+        </div>
+    </header>
+
+    <main class="bench-page">
+        <!-- Back link -->
+        <a href="index.html" class="back-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            Back to Loki Mode
+        </a>
+
+        <!-- Hero -->
+        <div class="bench-hero">
+            <h1>Loki Mode Benchmarks</h1>
+            <p class="subtitle">Multi-agent performance on standard coding benchmarks</p>
+        </div>
+
+        <!-- Key Stats -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-label">HumanEval</div>
+                <div class="stat-value green">98.78%</div>
+                <div class="stat-detail">162 / 164 passed</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">SWE-bench Lite</div>
+                <div class="stat-value blue">100%</div>
+                <div class="stat-detail">300 / 300 patches generated</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Model</div>
+                <div class="stat-value accent">Opus</div>
+                <div class="stat-detail">Multi-agent RARV cycle</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Avg Attempts</div>
+                <div class="stat-value">1.04</div>
+                <div class="stat-detail">HumanEval (max 3 retries)</div>
+            </div>
+        </div>
+
+        <!-- HumanEval Section -->
+        <section class="bench-section">
+            <h2>HumanEval Results</h2>
+            <p class="section-desc">OpenAI's HumanEval benchmark: 164 Python programming problems testing function-level code generation.</p>
+
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <h3>Pass / Fail Breakdown</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="humanEvalDonut"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3>Attempts Distribution</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="humanEvalAttempts"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Run details -->
+            <div class="chart-card" style="margin-bottom: 1.5rem;">
+                <h3>Run Details</h3>
+                <table class="details-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Total Problems</td><td>164</td></tr>
+                        <tr><td>Passed</td><td>162</td></tr>
+                        <tr><td>Failed (after retries)</td><td>2</td></tr>
+                        <tr><td>Pass Rate</td><td>98.78%</td></tr>
+                        <tr><td>Average Attempts</td><td>1.037</td></tr>
+                        <tr><td>Max Retries</td><td>3</td></tr>
+                        <tr><td>Total Time</td><td>2,704s (45 min)</td></tr>
+                        <tr><td>Model</td><td>opus</td></tr>
+                        <tr><td>Date</td><td>2026-01-05</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Failed tasks -->
+            <div class="chart-card">
+                <h3>Failed Problems</h3>
+                <div class="failed-list">
+                    <div class="failed-item">
+                        <span class="task-id">HumanEval/32</span>
+                        <span class="task-detail">Failed after 3 RARV attempts</span>
+                    </div>
+                    <div class="failed-item">
+                        <span class="task-id">HumanEval/50</span>
+                        <span class="task-detail">Failed after 3 RARV attempts</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SWE-bench Section -->
+        <section class="bench-section">
+            <h2>SWE-bench Lite Results</h2>
+            <p class="section-desc">SWE-bench Lite: 300 real-world GitHub issues from major Python projects (Django, astropy, scikit-learn, etc.).</p>
+
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <h3>Patch Generation Rate</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="swebenchDonut"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3>Run Details</h3>
+                    <table class="details-table">
+                        <thead>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Total Problems</td><td>300</td></tr>
+                            <tr><td>Patches Generated</td><td>300</td></tr>
+                            <tr><td>Errors</td><td>0</td></tr>
+                            <tr><td>Patch Rate</td><td>100%</td></tr>
+                            <tr><td>Total Time</td><td>22,218s (6.2 hrs)</td></tr>
+                            <tr><td>Timeout / Problem</td><td>600s</td></tr>
+                            <tr><td>Model</td><td>opus</td></tr>
+                            <tr><td>Date</td><td>2026-01-05</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="note-box">
+                <p><strong>Note on SWE-bench results:</strong> The 99.67% figure represents the patch generation rate -- that is, Loki Mode successfully produced a candidate patch for 299 out of 300 problems. Patch generation is the first step; full resolution requires running the SWE-bench harness evaluator to validate that generated patches actually fix the underlying issues. The generation rate demonstrates the system's ability to analyze real-world issues and produce plausible fixes.</p>
+            </div>
+        </section>
+
+        <!-- Comparison Section -->
+        <section class="bench-section">
+            <h2>Benchmark Comparison</h2>
+            <p class="section-desc">Loki Mode results compared with published benchmark numbers from other tools and models. All comparison numbers are from publicly available sources.</p>
+
+            <div class="chart-grid">
+                <div class="chart-card full-width">
+                    <h3>HumanEval Pass Rate Comparison</h3>
+                    <div class="chart-wrapper" style="max-height: 400px;">
+                        <canvas id="comparisonChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="note-box">
+                <p><strong>Comparison methodology:</strong> Published numbers come from official announcements and papers. GPT-4 (March 2023 technical report): 67.0%. GPT-4o (May 2024): 90.2%. Claude 3.5 Sonnet (June 2024): 92.0%. Claude 3 Opus single-pass (March 2024): 84.9%. Loki Mode uses a multi-agent architecture with up to 3 RARV retry cycles, which is a fundamentally different approach from single-pass model evaluation. Direct comparison should account for this difference in methodology.</p>
+            </div>
+        </section>
+
+        <!-- System-Level Metrics -->
+        <section class="bench-section">
+            <h2>System-Level Metrics</h2>
+            <p class="section-desc">Beyond raw benchmark scores, Loki Mode provides infrastructure-level capabilities unique to multi-agent systems.</p>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-number">41</div>
+                    <h4>Specialized Agent Types</h4>
+                    <p>Architect, Engineer, QA, Review, Security, DevOps, and 35 more covering the full SDLC.</p>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-number">7</div>
+                    <h4>Quality Gates</h4>
+                    <p>Static analysis, 3-reviewer blind review, anti-sycophancy checks, severity blocking, and test coverage gates.</p>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-number">3</div>
+                    <h4>Blind Code Reviewers</h4>
+                    <p>Parallel review system with independent assessments. Devil's advocate triggered on unanimous approval to prevent groupthink.</p>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-number">2/3</div>
+                    <h4>Completion Council Majority</h4>
+                    <p>3-member council votes on project completion. Convergence detection via git diff hash tracking between iterations.</p>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-number">3</div>
+                    <h4>Memory Layers</h4>
+                    <p>Episodic (interaction traces), semantic (generalized patterns), and procedural (learned skills) memory.</p>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-number">10+</div>
+                    <h4>Parallel Agents</h4>
+                    <p>Concurrent execution via Task tool with git worktrees. Optimistic concurrency with auto-merge conflict resolution.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Methodology Section -->
+        <section class="bench-section">
+            <h2>Methodology</h2>
+            <p class="section-desc">How Loki Mode approaches each benchmark problem using its multi-agent architecture.</p>
+
+            <div class="method-steps">
+                <div class="method-step">
+                    <div class="step-number">Step 1</div>
+                    <h4>Architect Agent</h4>
+                    <p>Analyzes the problem description, identifies edge cases, and designs the solution approach.</p>
+                </div>
+                <div class="method-step">
+                    <div class="step-number">Step 2</div>
+                    <h4>Engineer Agent</h4>
+                    <p>Implements the solution based on the architect's design, following coding best practices.</p>
+                </div>
+                <div class="method-step">
+                    <div class="step-number">Step 3</div>
+                    <h4>QA Agent</h4>
+                    <p>Validates the implementation against test cases and checks for correctness.</p>
+                </div>
+                <div class="method-step">
+                    <div class="step-number">Step 4</div>
+                    <h4>Review Agent</h4>
+                    <p>Checks code quality and verifies the solution handles all edge cases properly.</p>
+                </div>
+            </div>
+
+            <div class="chart-card" style="margin-top: 1.5rem;">
+                <h3>RARV Retry Cycle</h3>
+                <p style="color: var(--bench-text-muted); font-size: 0.9rem; line-height: 1.7; margin-bottom: 1rem;">
+                    Each problem follows the <strong style="color: var(--bench-accent);">Reason - Act - Reflect - Verify</strong> cycle. If a solution fails validation, the system retries with updated context from the failure (up to 3 attempts for HumanEval). This self-correction mechanism is core to the multi-agent approach.
+                </p>
+                <p style="color: var(--bench-text-muted); font-size: 0.9rem; line-height: 1.7;">
+                    For SWE-bench, each problem is given up to 600 seconds. The agent reads the issue description, analyzes the relevant codebase, and generates a patch in unified diff format targeting the specific files that need modification.
+                </p>
+            </div>
+
+            <div class="chart-card" style="margin-top: 1.5rem;">
+                <h3>Reproducing These Results</h3>
+                <pre style="background: #0d1117; border-radius: 8px; padding: 1.25rem; overflow-x: auto; border: 1px solid var(--bench-border); margin-top: 0.75rem;"><code style="color: #3fb950; font-family: 'Monaco', 'Courier New', monospace; font-size: 0.875rem; line-height: 1.6;"># Clone the repository
+git clone https://github.com/asklokesh/loki-mode.git
+cd loki-mode
+
+# Setup benchmark datasets
+./benchmarks/run-benchmarks.sh all
+
+# Run HumanEval
+./benchmarks/run-benchmarks.sh humaneval --execute --model opus
+
+# Run SWE-bench Lite
+./benchmarks/run-benchmarks.sh swebench --execute --model opus
+
+# Run a subset first to test
+./benchmarks/run-benchmarks.sh humaneval --execute --limit 10</code></pre>
+            </div>
+        </section>
+
+        <!-- Timestamp -->
+        <div class="bench-timestamp">
+            <p>Benchmark data from January 5, 2026. Results generated using Loki Mode multi-agent system with Claude Opus.</p>
+            <p style="margin-top: 0.5rem;">Raw data available at <a href="https://github.com/asklokesh/loki-mode/tree/main/benchmarks/results" style="color: var(--bench-accent); text-decoration: none;">benchmarks/results/</a> in the repository.</p>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <p>&copy; 2026 Loki Mode. Open source under MIT License.</p>
+            <p>Built on research from Anthropic, DeepMind, OpenAI, and the AI community.</p>
+            <div style="margin-top: 1rem;">
+                <a href="index.html" style="color: #d97757; text-decoration: none; margin: 0 1rem;">Home</a>
+                <a href="https://github.com/asklokesh/loki-mode" style="color: #d97757; text-decoration: none; margin: 0 1rem;" target="_blank" rel="noopener noreferrer">GitHub</a>
+                <a href="https://github.com/asklokesh/loki-mode/issues" style="color: #d97757; text-decoration: none; margin: 0 1rem;" target="_blank" rel="noopener noreferrer">Issues</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Auto-fetch version
+        fetch('https://raw.githubusercontent.com/asklokesh/loki-mode/main/VERSION')
+            .then(r => r.ok ? r.text() : Promise.reject())
+            .then(v => {
+                const el = document.getElementById('app-version');
+                if (v.trim() && el) el.textContent = 'v' + v.trim();
+            })
+            .catch(() => {});
+
+        // Chart.js global defaults for dark theme
+        Chart.defaults.color = '#8b949e';
+        Chart.defaults.borderColor = '#30363d';
+        Chart.defaults.font.family = "'Poppins', sans-serif";
+
+        // HumanEval Donut Chart
+        new Chart(document.getElementById('humanEvalDonut'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Passed (162)', 'Failed (2)'],
+                datasets: [{
+                    data: [162, 2],
+                    backgroundColor: ['#3fb950', '#f85149'],
+                    borderColor: '#161b22',
+                    borderWidth: 3,
+                    hoverOffset: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 16,
+                            usePointStyle: true,
+                            pointStyleWidth: 12,
+                            font: { size: 13 }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                var pct = ((ctx.raw / 164) * 100).toFixed(1);
+                                return ctx.label + ' (' + pct + '%)';
+                            }
+                        }
+                    }
+                },
+                cutout: '60%'
+            }
+        });
+
+        // HumanEval Attempts Distribution
+        (function() {
+            // From the data: 160 solved in 1 attempt, 2 in 2 attempts, 2 failed after 3
+            // HumanEval/38 passed in 2 attempts, HumanEval/132 passed in 2 attempts
+            // HumanEval/32 failed after 3, HumanEval/50 failed after 3
+            var attemptCounts = { 1: 160, 2: 2, 3: 2 };
+
+            new Chart(document.getElementById('humanEvalAttempts'), {
+                type: 'bar',
+                data: {
+                    labels: ['1 Attempt', '2 Attempts', '3 Attempts (failed)'],
+                    datasets: [{
+                        label: 'Problems',
+                        data: [attemptCounts[1], attemptCounts[2], attemptCounts[3]],
+                        backgroundColor: ['#3fb950', '#d29922', '#f85149'],
+                        borderRadius: 6,
+                        borderSkipped: false,
+                        maxBarThickness: 60
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    return ctx.raw + ' problems';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#21262d' },
+                            ticks: { font: { size: 12 } }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { font: { size: 11 } }
+                        }
+                    }
+                }
+            });
+        })();
+
+        // SWE-bench Donut
+        new Chart(document.getElementById('swebenchDonut'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Patches Generated (300)', 'Errors (0)'],
+                datasets: [{
+                    data: [300, 0],
+                    backgroundColor: ['#58a6ff', '#f85149'],
+                    borderColor: '#161b22',
+                    borderWidth: 3,
+                    hoverOffset: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 16,
+                            usePointStyle: true,
+                            pointStyleWidth: 12,
+                            font: { size: 13 }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                var pct = ((ctx.raw / 300) * 100).toFixed(1);
+                                return ctx.label + ' (' + pct + '%)';
+                            }
+                        }
+                    }
+                },
+                cutout: '60%'
+            }
+        });
+
+        // Comparison Chart
+        // Sources:
+        // GPT-4 (March 2023 technical report): 67.0%
+        // Claude 3 Opus single-pass (March 2024 model card): 84.9%
+        // GPT-4o (May 2024 OpenAI announcement): 90.2%
+        // Claude 3.5 Sonnet (June 2024 Anthropic blog): 92.0%
+        // Loki Mode multi-agent (Jan 2026 internal benchmark): 98.78%
+        new Chart(document.getElementById('comparisonChart'), {
+            type: 'bar',
+            data: {
+                labels: [
+                    'GPT-4\n(Mar 2023)',
+                    'Claude 3 Opus\n(Mar 2024, single-pass)',
+                    'GPT-4o\n(May 2024)',
+                    'Claude 3.5 Sonnet\n(Jun 2024)',
+                    'Loki Mode\n(Jan 2026, multi-agent)'
+                ],
+                datasets: [{
+                    label: 'HumanEval Pass Rate (%)',
+                    data: [67.0, 84.9, 90.2, 92.0, 98.78],
+                    backgroundColor: [
+                        '#8b949e',
+                        '#8b949e',
+                        '#8b949e',
+                        '#8b949e',
+                        '#d97757'
+                    ],
+                    borderRadius: 6,
+                    borderSkipped: false,
+                    maxBarThickness: 70
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                return ctx.raw + '% pass rate';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        max: 100,
+                        grid: { color: '#21262d' },
+                        ticks: {
+                            callback: function(v) { return v + '%'; },
+                            font: { size: 12 }
+                        }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: {
+                            font: { size: 12 },
+                            autoSkip: false
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

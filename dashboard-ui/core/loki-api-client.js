@@ -837,6 +837,17 @@ export class LokiApiClient extends EventTarget {
   }
 
   // ============================================
+  // Cost API
+  // ============================================
+
+  /**
+   * Get cost visibility data (tokens, estimated USD, budget)
+   */
+  async getCost() {
+    return this._get('/api/cost');
+  }
+
+  // ============================================
   // Session Control API
   // ============================================
 
