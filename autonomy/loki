@@ -55,9 +55,12 @@ find_skill_dir() {
     local script_dir
     script_dir=$(dirname "$script_path")
 
+    # Check script's own parent first (most likely current), then installed skill, then cwd
+    local script_parent
+    script_parent="$(cd "$script_dir/.." 2>/dev/null && pwd)"
     local dirs=(
+        "$script_parent"
         "$HOME/.claude/skills/loki-mode"
-        "$script_dir/.."
         "."
     )
 
@@ -444,6 +447,18 @@ cmd_start() {
 
     if [ -n "$prd_file" ]; then
         args+=("$prd_file")
+    else
+        # No PRD file specified -- warn and confirm before consuming API credits
+        echo -e "${YELLOW}Warning: No PRD file specified.${NC}"
+        echo "Loki Mode will start autonomous execution in the current directory"
+        echo "without a requirements document."
+        echo ""
+        echo -e "This will consume API credits. Continue? [y/N] \c"
+        read -r confirm
+        if [[ ! "$confirm" =~ ^[Yy] ]]; then
+            echo "Aborted. Usage: loki start <path-to-prd.md>"
+            exit 0
+        fi
     fi
 
     # Load saved provider if not specified on command line
@@ -604,15 +619,16 @@ cmd_stop() {
         if [ -f "$LOKI_DIR/session.json" ]; then
             # Use python for reliable JSON update, fall back to overwrite
             python3 -c "
-import json, sys
+import json, sys, os
 try:
-    with open('$LOKI_DIR/session.json', 'r+') as f:
+    p = os.path.join(sys.argv[1], 'session.json')
+    with open(p, 'r+') as f:
         d = json.load(f)
         d['status'] = 'stopped'
         f.seek(0); f.truncate()
         json.dump(d, f)
 except: pass
-" 2>/dev/null || true
+" "$LOKI_DIR" 2>/dev/null || true
         fi
 
         # Clean up control files
@@ -692,15 +708,31 @@ cmd_pause() {
 cmd_resume() {
     if [ ! -d "$LOKI_DIR" ]; then
         echo -e "${YELLOW}No .loki directory found.${NC}"
-        echo "Nothing to resume. Start a session with: loki start"
+        echo "No session to resume. Start a session with: loki start"
         exit 0
     fi
 
+    # Check if there is anything to resume before touching signal files
+    local has_pause_signal=false
+    local has_stop_signal=false
+    [ -f "$LOKI_DIR/PAUSE" ] && has_pause_signal=true
+    [ -f "$LOKI_DIR/STOP" ] && has_stop_signal=true
+    local session_running=false
+    is_session_running && session_running=true
+
+    # If nothing is paused/stopped and no session is running, exit early
+    if ! $has_pause_signal && ! $has_stop_signal && ! $session_running; then
+        echo -e "${YELLOW}No session to resume.${NC}"
+        echo "Start a session with: loki start"
+        exit 0
+    fi
+
+    # Clear the signal file if one exists
     local removed_signal=""
-    if [ -f "$LOKI_DIR/PAUSE" ]; then
+    if $has_pause_signal; then
         rm -f "$LOKI_DIR/PAUSE"
         removed_signal="PAUSE"
-    elif [ -f "$LOKI_DIR/STOP" ]; then
+    elif $has_stop_signal; then
         rm -f "$LOKI_DIR/STOP"
         removed_signal="STOP"
     fi
@@ -716,19 +748,15 @@ cmd_resume() {
             --action-sequence '["check_signals", "clear_signal", "resume"]' \
             --outcome success \
             --confidence 0.85
-        if is_session_running; then
+        if $session_running; then
             echo -e "${GREEN}$removed_signal signal cleared. Session will resume automatically.${NC}"
         else
             echo -e "${GREEN}$removed_signal signal cleared.${NC}"
             echo "Session is not running. Start with: loki start"
         fi
     else
-        if is_session_running; then
-            echo -e "${CYAN}Session is running normally.${NC}"
-        else
-            echo -e "${YELLOW}No pause/stop signals found.${NC}"
-            echo "Session is not running. Start with: loki start"
-        fi
+        # Session is running but no signals to clear
+        echo -e "${CYAN}Session is running normally. Nothing to resume.${NC}"
     fi
 }
 
@@ -2855,14 +2883,15 @@ cmd_reset() {
                 # Reset only retry count
                 if command -v python3 &> /dev/null; then
                     python3 -c "
-import json
-with open('$LOKI_DIR/autonomy-state.json', 'r') as f:
+import json, sys, os
+p = os.path.join(sys.argv[1], 'autonomy-state.json')
+with open(p, 'r') as f:
     state = json.load(f)
 state['retryCount'] = 0
 state['status'] = 'reset'
-with open('$LOKI_DIR/autonomy-state.json', 'w') as f:
+with open(p, 'w') as f:
     json.dump(state, f, indent=4)
-" 2>/dev/null
+" "$LOKI_DIR" 2>/dev/null
                     echo -e "${GREEN}Retry count reset to 0${NC}"
                 else
                     rm -f "$LOKI_DIR/autonomy-state.json"
@@ -2970,11 +2999,12 @@ cmd_memory() {
                     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
                     if [ -f "$learnings_dir/patterns.jsonl" ]; then
                         python3 -c "
-import json
-limit = $limit
-project_filter = '$project'
+import json, sys, os
+limit = int(sys.argv[1])
+project_filter = sys.argv[2]
+filepath = os.path.join(sys.argv[3], 'patterns.jsonl')
 count = 0
-with open('$learnings_dir/patterns.jsonl', 'r') as f:
+with open(filepath, 'r') as f:
     for line in f:
         if count >= limit:
             break
@@ -2988,7 +3018,7 @@ with open('$learnings_dir/patterns.jsonl', 'r') as f:
         except: pass
 if count == 0:
     print('(empty - no patterns recorded)')
-" 2>/dev/null
+" "$limit" "$project" "$learnings_dir" 2>/dev/null
                     else
                         echo "(empty - no patterns recorded)"
                     fi
@@ -2999,11 +3029,12 @@ if count == 0:
                     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
                     if [ -f "$learnings_dir/mistakes.jsonl" ]; then
                         python3 -c "
-import json
-limit = $limit
-project_filter = '$project'
+import json, sys, os
+limit = int(sys.argv[1])
+project_filter = sys.argv[2]
+filepath = os.path.join(sys.argv[3], 'mistakes.jsonl')
 count = 0
-with open('$learnings_dir/mistakes.jsonl', 'r') as f:
+with open(filepath, 'r') as f:
     for line in f:
         if count >= limit:
             break
@@ -3017,7 +3048,7 @@ with open('$learnings_dir/mistakes.jsonl', 'r') as f:
         except: pass
 if count == 0:
     print('(empty - no mistakes recorded)')
-" 2>/dev/null
+" "$limit" "$project" "$learnings_dir" 2>/dev/null
                     else
                         echo "(empty - no mistakes recorded)"
                     fi
@@ -3028,11 +3059,12 @@ if count == 0:
                     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
                     if [ -f "$learnings_dir/successes.jsonl" ]; then
                         python3 -c "
-import json
-limit = $limit
-project_filter = '$project'
+import json, sys, os
+limit = int(sys.argv[1])
+project_filter = sys.argv[2]
+filepath = os.path.join(sys.argv[3], 'successes.jsonl')
 count = 0
-with open('$learnings_dir/successes.jsonl', 'r') as f:
+with open(filepath, 'r') as f:
     for line in f:
         if count >= limit:
             break
@@ -3046,7 +3078,7 @@ with open('$learnings_dir/successes.jsonl', 'r') as f:
         except: pass
 if count == 0:
     print('(empty - no successes recorded)')
-" 2>/dev/null
+" "$limit" "$project" "$learnings_dir" 2>/dev/null
                     else
                         echo "(empty - no successes recorded)"
                     fi

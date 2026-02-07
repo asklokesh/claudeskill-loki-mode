@@ -517,6 +517,7 @@ MAX_WORKTREES=${LOKI_MAX_WORKTREES:-5}
 MAX_PARALLEL_SESSIONS=${LOKI_MAX_PARALLEL_SESSIONS:-3}
 PARALLEL_TESTING=${LOKI_PARALLEL_TESTING:-true}
 PARALLEL_DOCS=${LOKI_PARALLEL_DOCS:-true}
+TARGET_DIR="${LOKI_TARGET_DIR:-$(pwd)}"
 PARALLEL_BLOG=${LOKI_PARALLEL_BLOG:-false}
 AUTO_MERGE=${LOKI_AUTO_MERGE:-true}
 
@@ -626,15 +627,14 @@ emit_event() {
     # Build JSON event with proper escaping
     local json_event
     json_event=$(python3 -c "
-import json
-import sys
+import json, sys
 event = {
-    'timestamp': '$timestamp',
-    'type': '$event_type',
-    'data': '''$event_data'''
+    'timestamp': sys.argv[1],
+    'type': sys.argv[2],
+    'data': sys.argv[3]
 }
 print(json.dumps(event))
-" 2>/dev/null)
+" "$timestamp" "$event_type" "$event_data" 2>/dev/null)
 
     # Fallback to simple JSON if python fails
     if [ -z "$json_event" ]; then
@@ -1117,15 +1117,13 @@ import_github_issues() {
         # Append to pending.json with temp file cleanup on error
         local temp_file
         temp_file=$(mktemp)
-        # shellcheck disable=SC2064
-        trap "rm -f '$temp_file'" RETURN
         if jq ".tasks += [$task_json]" "$pending_file" > "$temp_file" && mv "$temp_file" "$pending_file"; then
             log_info "Imported issue #$number: $title"
             task_count=$((task_count + 1))
         else
             log_warn "Failed to import issue #$number"
-            rm -f "$temp_file"
         fi
+        rm -f "$temp_file"
     done < <(echo "$issues" | jq -c '.[]')
 
     log_info "Imported $task_count issues from GitHub"
@@ -2242,13 +2240,13 @@ set_phase() {
         # Update orchestrator state
         if [ -f "$orch_file" ]; then
             python3 -c "
-import json
-with open('$orch_file', 'r') as f:
+import json, sys
+with open(sys.argv[1], 'r') as f:
     data = json.load(f)
-data['currentPhase'] = '$new_phase'
-with open('$orch_file', 'w') as f:
+data['currentPhase'] = sys.argv[2]
+with open(sys.argv[1], 'w') as f:
     json.dump(data, f, indent=2)
-" 2>/dev/null || true
+" "$orch_file" "$new_phase" 2>/dev/null || true
         fi
     fi
 
@@ -5453,5 +5451,7 @@ except (json.JSONDecodeError, OSError): pass
     exit $result
 }
 
-# Run main
-main "$@"
+# Run main only when executed directly (not when sourced by loki CLI)
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi
