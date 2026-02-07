@@ -283,13 +283,13 @@ All CLI flags have been verified against actual CLI help output:
 
 | Provider | Flag | Verified Version | Notes |
 |----------|------|------------------|-------|
-| Claude | `--dangerously-skip-permissions` | v2.1.19 | Autonomous mode |
+| Claude | `--dangerously-skip-permissions` | v2.1.34 | Autonomous mode |
 | Codex | `--full-auto` | v0.98.0 | Recommended; legacy: `exec --dangerously-bypass-approvals-and-sandbox` |
-| Gemini | `--approval-mode=yolo` | v0.25.2 | `-p` flag is DEPRECATED |
+| Gemini | `--approval-mode=yolo` | v0.27.3 | `-p` flag is DEPRECATED |
 
 ### Gemini Note
 
-The `-p` prompt flag is deprecated in Gemini CLI v0.25.2. Loki Mode uses positional prompts instead:
+The `-p` prompt flag is deprecated in Gemini CLI v0.27.3. Loki Mode uses positional prompts instead:
 
 ```bash
 # Correct (v5.1.0+)

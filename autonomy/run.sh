@@ -3232,7 +3232,7 @@ check_staged_autonomy() {
 
     rm -f ".loki/signals/PLAN_APPROVED"
     audit_log "STAGED_AUTONOMY_APPROVED" "plan=$plan_file"
-    log_success "Plan approved, continuing execution..."
+    log_info "Plan approved, continuing execution..."
 }
 
 check_command_allowed() {
@@ -4429,9 +4429,8 @@ run_autonomous() {
         fi
 
         # Check for human intervention (PAUSE, HUMAN_INPUT.md, STOP)
-        local intervention_result
-        intervention_result=$(check_human_intervention; echo $?)
-        intervention_result=${intervention_result##*$'\n'}  # Get exit code
+        check_human_intervention
+        local intervention_result=$?
         case $intervention_result in
             1) continue ;;  # PAUSE handled, restart loop
             2) return 0 ;;  # STOP requested
@@ -4745,7 +4744,6 @@ if __name__ == "__main__":
                 local exit_code=1
                 ;;
         esac
-        set -e
 
         echo ""
         echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

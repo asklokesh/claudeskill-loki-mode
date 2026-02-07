@@ -7,7 +7,7 @@ Loki Mode v5.0.0 supports three AI providers for autonomous execution.
 > **CLI Flags Verified:** The autonomous mode flags have been verified against actual CLI help output:
 > - Claude: `--dangerously-skip-permissions` (verified)
 > - Codex: `--full-auto` (recommended, v0.98.0) or `exec --dangerously-bypass-approvals-and-sandbox` (legacy)
-> - Gemini: `--approval-mode=yolo` (v0.25.2+) - Note: `-p` prompt flag is deprecated, using positional prompts
+> - Gemini: `--approval-mode=yolo` (v0.27.3+) - Note: `-p` prompt flag is deprecated, using positional prompts
 
 | Feature | Claude Code | OpenAI Codex | Gemini CLI |
 |---------|-------------|--------------|------------|

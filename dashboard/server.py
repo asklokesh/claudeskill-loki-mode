@@ -1825,7 +1825,7 @@ def run_server(host: str = None, port: int = None) -> None:
     if host is None:
         host = os.environ.get("LOKI_DASHBOARD_HOST", "0.0.0.0")
     if port is None:
-        port = int(os.environ.get("LOKI_DASHBOARD_PORT", "8420"))
+        port = int(os.environ.get("LOKI_DASHBOARD_PORT", "57374"))
     uvicorn.run(app, host=host, port=port)
 
 

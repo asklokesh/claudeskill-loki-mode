@@ -153,7 +153,7 @@ gemini auth
 ### Invocation
 
 ```bash
-# Autonomous mode (verified v0.25.2)
+# Autonomous mode (verified v0.27.3)
 gemini --approval-mode=yolo "Your prompt here"
 
 # Note: -p flag is DEPRECATED - use positional prompts instead

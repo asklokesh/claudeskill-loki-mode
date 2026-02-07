@@ -47,6 +47,10 @@ docs/*.gif
 docs/*.pptx
 docs/screenshots/
 
+# Python test files (exclude from all subdirectories)
+**/test_*.py
+**/tests/
+
 # Dashboard frontend source (keep server.py only)
 dashboard/frontend/
 dashboard/.venv/

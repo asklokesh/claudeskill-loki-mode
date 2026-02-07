@@ -108,11 +108,11 @@ council_track_iteration() {
 
     # Track git diff (code changes between iterations)
     local current_diff_hash
-    current_diff_hash=$(git diff --stat HEAD 2>/dev/null | md5sum 2>/dev/null | cut -d' ' -f1 || echo "unknown")
+    current_diff_hash=$(git diff --stat HEAD 2>/dev/null | (md5sum 2>/dev/null || md5 -r 2>/dev/null) | cut -d' ' -f1 || echo "unknown")
 
     # Also check staged changes
     local staged_hash
-    staged_hash=$(git diff --cached --stat 2>/dev/null | md5sum 2>/dev/null | cut -d' ' -f1 || echo "unknown")
+    staged_hash=$(git diff --cached --stat 2>/dev/null | (md5sum 2>/dev/null || md5 -r 2>/dev/null) | cut -d' ' -f1 || echo "unknown")
 
     local combined_hash="${current_diff_hash}-${staged_hash}"
 
@@ -297,7 +297,7 @@ with open(state_file, 'w') as f:
         local contrarian_verdict
         contrarian_verdict=$(council_devils_advocate "$evidence_file" "$vote_dir")
         local contrarian_vote
-        contrarian_vote=$(echo "$contrarian_verdict" | grep -oE "VOTE:(APPROVE|REJECT)" | head -1 | cut -d: -f2)
+        contrarian_vote=$(echo "$contrarian_verdict" | grep -oE "VOTE:\s*(APPROVE|REJECT)" | grep -oE "APPROVE|REJECT" | head -1)
 
         if [ "$contrarian_vote" = "REJECT" ]; then
             log_warn "Anti-sycophancy: Devil's advocate REJECTED unanimous approval"
@@ -441,6 +441,7 @@ council_member_review() {
     local evidence
     evidence=$(cat "$evidence_file" 2>/dev/null || echo "No evidence available")
 
+    local verdict=""
     local role_instruction=""
     case "$role" in
         requirements_verifier)
