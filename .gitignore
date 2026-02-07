@@ -7,7 +7,7 @@
 node_modules/
 *.log
 *.tgz
-package-lock.json
+/package-lock.json
 
 # Python
 __pycache__/
