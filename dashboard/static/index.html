@@ -2832,19 +2832,18 @@ var LokiDashboard=(()=>{var N=Object.defineProperty;var se=Object.getOwnProperty
           <span class="signals-count">${this._signals.length}</span>
         </div>
         <div class="signals-list">
-          ${this._signals.slice(0,10).map(e=>`
+          ${this._signals.slice(0,10).map(e=>{let t=e.data||{},a=e.type||"unknown",i=t.action||e.action||a,s=t.source||e.source||"-",r=t.outcome||e.outcome||"-",n=e.timestamp?new Date(e.timestamp).toLocaleTimeString():"-";return`
             <div class="signal-item">
-              <div class="signal-type ${e.type}">${e.type.replace("_"," ")}</div>
+              <div class="signal-type ${a}">${a.replace("_"," ")}</div>
               <div class="signal-content">
-                <span class="signal-action">${this._escapeHtml(e.action)}</span>
-                <span class="signal-source">${e.source}</span>
+                <span class="signal-action">${this._escapeHtml(i)}</span>
+                <span class="signal-source">${s}</span>
               </div>
               <div class="signal-meta">
-                <span class="signal-outcome ${e.outcome}">${e.outcome}</span>
-                <span class="signal-time">${new Date(e.timestamp).toLocaleTimeString()}</span>
+                <span class="signal-outcome ${r}">${r}</span>
+                <span class="signal-time">${n}</span>
               </div>
-            </div>
-          `).join("")}
+            </div>`}).join("")}
         </div>
       </div>
     `}_renderDetailPanel(){if(!this._selectedMetric)return"";let{type:e,item:t}=this._selectedMetric,a="";switch(e){case"preference":a=`

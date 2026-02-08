@@ -38,6 +38,6 @@
 
 ---
 
-**Version:** 5.28.0
+**Version:** 5.28.1
 
 [GitHub](https://github.com/asklokesh/loki-mode) | [npm](https://www.npmjs.com/package/loki-mode)

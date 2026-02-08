@@ -76,6 +76,7 @@ council_init() {
     cat > "$COUNCIL_STATE_DIR/state.json" << 'COUNCIL_EOF'
 {
     "initialized": true,
+    "enabled": true,
     "total_votes": 0,
     "approve_votes": 0,
     "reject_votes": 0,

@@ -21,4 +21,4 @@ try:
 except ImportError:
     __all__ = ['mcp']
 
-__version__ = '5.28.0'
+__version__ = '5.28.1'

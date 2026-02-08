@@ -494,19 +494,26 @@ export class LokiLearningDashboard extends LokiElement {
           <span class="signals-count">${this._signals.length}</span>
         </div>
         <div class="signals-list">
-          ${this._signals.slice(0, 10).map(s => `
+          ${this._signals.slice(0, 10).map(s => {
+            const data = s.data || {};
+            const type = s.type || 'unknown';
+            const action = data.action || s.action || type;
+            const source = data.source || s.source || '-';
+            const outcome = data.outcome || s.outcome || '-';
+            const ts = s.timestamp ? new Date(s.timestamp).toLocaleTimeString() : '-';
+            return `
             <div class="signal-item">
-              <div class="signal-type ${s.type}">${s.type.replace('_', ' ')}</div>
+              <div class="signal-type ${type}">${type.replace('_', ' ')}</div>
               <div class="signal-content">
-                <span class="signal-action">${this._escapeHtml(s.action)}</span>
-                <span class="signal-source">${s.source}</span>
+                <span class="signal-action">${this._escapeHtml(action)}</span>
+                <span class="signal-source">${source}</span>
               </div>
               <div class="signal-meta">
-                <span class="signal-outcome ${s.outcome}">${s.outcome}</span>
-                <span class="signal-time">${new Date(s.timestamp).toLocaleTimeString()}</span>
+                <span class="signal-outcome ${outcome}">${outcome}</span>
+                <span class="signal-time">${ts}</span>
               </div>
-            </div>
-          `).join('')}
+            </div>`;
+          }).join('')}
         </div>
       </div>
     `;

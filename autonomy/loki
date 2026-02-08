@@ -1280,7 +1280,7 @@ cmd_dashboard_start() {
 
     # Start the dashboard server in background
     # LOKI_SKILL_DIR tells server.py where to find static files
-    LOKI_SKILL_DIR="$SKILL_DIR" PYTHONPATH="$SKILL_DIR" LOKI_DASHBOARD_HOST="$host" LOKI_DASHBOARD_PORT="$port" \
+    LOKI_DIR="$LOKI_DIR" LOKI_SKILL_DIR="$SKILL_DIR" PYTHONPATH="$SKILL_DIR" LOKI_DASHBOARD_HOST="$host" LOKI_DASHBOARD_PORT="$port" \
         nohup "$python_cmd" -m dashboard.server > "$log_file" 2>&1 &
     local new_pid=$!
 
@@ -3853,13 +3853,11 @@ if count == 0:
             echo -e "${BOLD}Search Results for: $query${NC}"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-            local query_escaped="${query//\'/\'\\\'\'}"
-            python3 -c "
-import json
-import os
+            LOKI_SEARCH_QUERY="$query" LOKI_LEARNINGS_DIR="$learnings_dir" python3 -c "
+import json, os
 
-learnings_dir = '$learnings_dir'
-query = '${query_escaped}'.lower()
+learnings_dir = os.environ['LOKI_LEARNINGS_DIR']
+query = os.environ['LOKI_SEARCH_QUERY'].lower()
 
 for filename in ['patterns.jsonl', 'mistakes.jsonl', 'successes.jsonl']:
     filepath = os.path.join(learnings_dir, filename)

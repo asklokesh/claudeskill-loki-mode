@@ -1467,7 +1467,7 @@ create_worktree() {
 
         # Initialize environment (detect and run appropriate install)
         (
-            cd "$worktree_path"
+            cd "$worktree_path" || exit 1
             if [ -f "package.json" ]; then
                 npm install --silent 2>/dev/null || true
             elif [ -f "requirements.txt" ]; then
@@ -1558,7 +1558,7 @@ spawn_worktree_session() {
     log_step "Spawning ${PROVIDER_DISPLAY_NAME:-Claude} session: $stream_name"
 
     (
-        cd "$worktree_path"
+        cd "$worktree_path" || exit 1
         # Provider-specific invocation for parallel sessions
         case "${PROVIDER_NAME:-claude}" in
             claude)
@@ -1695,7 +1695,7 @@ merge_feature() {
     log_step "Merging feature: $feature"
 
     (
-        cd "$TARGET_DIR"
+        cd "$TARGET_DIR" || exit 1
 
         # Ensure we're on main
         git checkout main 2>/dev/null
@@ -2411,6 +2411,7 @@ write_dashboard_state() {
     "path": "$project_path"
   },
   "mode": "$mode",
+  "provider": "${PROVIDER_NAME:-claude}",
   "phase": "$current_phase",
   "complexity": "$complexity",
   "iteration": $ITERATION_COUNT,
@@ -2565,6 +2566,30 @@ track_iteration_complete() {
             --outcome failure \
             --context "{\"iteration\":$iteration,\"exit_code\":$exit_code}"
     fi
+
+    # Write efficiency tracking file for /api/cost endpoint
+    mkdir -p .loki/metrics/efficiency
+    local model_tier="sonnet"
+    if [ "${PROVIDER_NAME:-claude}" = "claude" ]; then
+        model_tier="sonnet"
+    elif [ "${PROVIDER_NAME:-claude}" = "codex" ]; then
+        model_tier="gpt-5.3-codex"
+    elif [ "${PROVIDER_NAME:-claude}" = "gemini" ]; then
+        model_tier="gemini-3-pro"
+    fi
+    local phase="$current_phase"
+    [ -z "$phase" ] && phase=$(python3 -c "import json; print(json.load(open('.loki/state/orchestrator.json')).get('currentPhase', 'unknown'))" 2>/dev/null || echo "unknown")
+    cat > ".loki/metrics/efficiency/iteration-${iteration}.json" << EFF_EOF
+{
+  "iteration": $iteration,
+  "model": "$model_tier",
+  "phase": "$phase",
+  "duration_ms": $duration_ms,
+  "provider": "${PROVIDER_NAME:-claude}",
+  "status": "$status_str",
+  "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+}
+EFF_EOF
 
     # Get task from in-progress
     local in_progress_file=".loki/queue/in-progress.json"
@@ -3589,11 +3614,16 @@ start_dashboard() {
         # Check if it's our own dashboard
         local existing_pid=$(lsof -ti :$DASHBOARD_PORT 2>/dev/null | head -1)
         if [ -n "$existing_pid" ]; then
-            # Kill existing dashboard on this port
-            log_step "Killing existing dashboard on port $DASHBOARD_PORT..."
-            kill "$existing_pid" 2>/dev/null || true
-            sleep 1
-            break
+            # Only kill if it's a Python/uvicorn dashboard process
+            local proc_cmd=$(ps -p "$existing_pid" -o comm= 2>/dev/null || true)
+            if [[ "$proc_cmd" == *python* ]] || [[ "$proc_cmd" == *uvicorn* ]]; then
+                log_step "Killing existing dashboard on port $DASHBOARD_PORT (PID: $existing_pid)..."
+                kill "$existing_pid" 2>/dev/null || true
+                sleep 1
+                break
+            else
+                log_info "Port $DASHBOARD_PORT in use by non-dashboard process ($proc_cmd), skipping..."
+            fi
         fi
         ((DASHBOARD_PORT++))
         if [ "$DASHBOARD_PORT" -gt 65535 ]; then

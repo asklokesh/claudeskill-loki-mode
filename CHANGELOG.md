@@ -5,6 +5,29 @@ All notable changes to Loki Mode will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.28.1] - 2026-02-08
+
+### Fixed
+- Critical: `_LOKI_DIR` cached at import time in server.py -- stale for long-running dashboard (30 refs replaced with per-request calls)
+- Critical: Learning aggregation field names mismatched between API and frontend (key vs preference_key, type vs error_type, etc.)
+- Critical: Task titles invisible -- server read `payload.action` but run.sh writes flat `title` field
+- Critical: `loki dashboard start` missing `LOKI_DIR` env var -- dashboard couldn't find session data
+- Critical: No code wrote `.loki/metrics/efficiency/` files -- `/api/cost` always returned empty
+- Medium: Learning signals frontend expected fields raw events lacked -- added fallbacks
+- Medium: `avgConfidence` hardcoded to 0 -- now computed from event confidence values
+- Medium: Memory consolidation response missing `patternsCreated/patternsMerged/episodesProcessed` fields
+- Medium: Council `state.json` missing `enabled` field (worked by accident)
+- Medium: Memory search code injection via shell-interpolated query -- now uses env var
+- Medium: `run.sh` killed any process on dashboard port without verifying it was a dashboard
+- Medium: `cd` without error handling in 3 worktree/parallel subshells
+- Low: Dead-letter and failed queue tasks invisible in `/api/tasks` endpoint
+
+### Added
+- `provider` field in `dashboard-state.json` for multi-provider visibility
+- Efficiency tracking files written per iteration for `/api/cost` data
+- `/api/pricing` endpoint with multi-provider support (Claude, Codex, Gemini)
+- Correct model pricing: Opus 4.6 $5/$25, Haiku 4.5 $1/$5, GPT-5.3 Codex, Gemini 3 Pro/Flash
+
 ## [5.28.0] - 2026-02-07
 
 ### Added

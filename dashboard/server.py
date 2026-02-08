@@ -539,7 +539,7 @@ async def list_tasks(
                     payload = task.get("payload", {})
                     all_tasks.append({
                         "id": task_id,
-                        "title": payload.get("action", task.get("type", "Task")),
+                        "title": task.get("title", payload.get("action", task.get("type", "Task"))),
                         "description": payload.get("description", ""),
                         "status": mapped_status,
                         "priority": payload.get("priority", "medium"),
@@ -556,6 +556,8 @@ async def list_tasks(
             ("pending.json", "pending"),
             ("in-progress.json", "in_progress"),
             ("completed.json", "done"),
+            ("failed.json", "done"),
+            ("dead-letter.json", "done"),
         ]:
             fpath = queue_dir / queue_file
             if fpath.exists():
@@ -1139,13 +1141,10 @@ def _sanitize_agent_id(agent_id: str) -> str:
         )
     return agent_id
 
-_LOKI_DIR = _get_loki_dir()
-
-
 @app.get("/api/memory/summary")
 async def get_memory_summary():
     """Get memory system summary from .loki/memory/."""
-    memory_dir = _LOKI_DIR / "memory"
+    memory_dir = _get_loki_dir() / "memory"
     summary = {
         "episodic": {"count": 0, "latestDate": None},
         "semantic": {"patterns": 0, "antiPatterns": 0},
@@ -1206,7 +1205,7 @@ async def get_memory_summary():
 @app.get("/api/memory/episodes")
 async def list_episodes(limit: int = 50):
     """List episodic memory entries."""
-    ep_dir = _LOKI_DIR / "memory" / "episodic"
+    ep_dir = _get_loki_dir() / "memory" / "episodic"
     episodes = []
     if ep_dir.exists():
         files = sorted(ep_dir.glob("*.json"), reverse=True)[:limit]
@@ -1221,7 +1220,7 @@ async def list_episodes(limit: int = 50):
 @app.get("/api/memory/episodes/{episode_id}")
 async def get_episode(episode_id: str):
     """Get a specific episodic memory entry."""
-    ep_dir = _LOKI_DIR / "memory" / "episodic"
+    ep_dir = _get_loki_dir() / "memory" / "episodic"
     if not ep_dir.exists():
         raise HTTPException(status_code=404, detail="Episode not found")
     # Try direct filename match
@@ -1238,7 +1237,7 @@ async def get_episode(episode_id: str):
 @app.get("/api/memory/patterns")
 async def list_patterns():
     """List semantic patterns."""
-    sem_dir = _LOKI_DIR / "memory" / "semantic"
+    sem_dir = _get_loki_dir() / "memory" / "semantic"
     patterns_file = sem_dir / "patterns.json"
     if patterns_file.exists():
         try:
@@ -1262,7 +1261,7 @@ async def get_pattern(pattern_id: str):
 @app.get("/api/memory/skills")
 async def list_skills():
     """List procedural skills."""
-    skills_dir = _LOKI_DIR / "memory" / "skills"
+    skills_dir = _get_loki_dir() / "memory" / "skills"
     skills = []
     if skills_dir.exists():
         for f in sorted(skills_dir.glob("*.json")):
@@ -1276,7 +1275,7 @@ async def list_skills():
 @app.get("/api/memory/skills/{skill_id}")
 async def get_skill(skill_id: str):
     """Get a specific procedural skill."""
-    skills_dir = _LOKI_DIR / "memory" / "skills"
+    skills_dir = _get_loki_dir() / "memory" / "skills"
     if not skills_dir.exists():
         raise HTTPException(status_code=404, detail="Skill not found")
     for f in skills_dir.glob("*.json"):
@@ -1292,7 +1291,7 @@ async def get_skill(skill_id: str):
 @app.get("/api/memory/economics")
 async def get_token_economics():
     """Get token usage economics."""
-    econ_file = _LOKI_DIR / "memory" / "token_economics.json"
+    econ_file = _get_loki_dir() / "memory" / "token_economics.json"
     if econ_file.exists():
         try:
             return json.loads(econ_file.read_text())
@@ -1304,7 +1303,7 @@ async def get_token_economics():
 @app.post("/api/memory/consolidate")
 async def consolidate_memory(hours: int = 24):
     """Trigger memory consolidation (stub - returns current state)."""
-    return {"status": "ok", "message": f"Consolidation for last {hours}h", "consolidated": 0}
+    return {"status": "ok", "message": f"Consolidation for last {hours}h", "consolidated": 0, "patternsCreated": 0, "patternsMerged": 0, "episodesProcessed": 0}
 
 
 @app.post("/api/memory/retrieve")
@@ -1316,7 +1315,7 @@ async def retrieve_memory(query: dict = None):
 @app.get("/api/memory/index")
 async def get_memory_index():
     """Get memory index (Layer 1 - lightweight discovery)."""
-    index_file = _LOKI_DIR / "memory" / "index.json"
+    index_file = _get_loki_dir() / "memory" / "index.json"
     if index_file.exists():
         try:
             return json.loads(index_file.read_text())
@@ -1328,7 +1327,7 @@ async def get_memory_index():
 @app.get("/api/memory/timeline")
 async def get_memory_timeline():
     """Get memory timeline (Layer 2 - progressive disclosure)."""
-    timeline_file = _LOKI_DIR / "memory" / "timeline.json"
+    timeline_file = _get_loki_dir() / "memory" / "timeline.json"
     if timeline_file.exists():
         try:
             return json.loads(timeline_file.read_text())
@@ -1371,7 +1370,7 @@ async def get_learning_metrics(
         "success_patterns": [],
         "tool_efficiencies": [],
     }
-    agg_file = _LOKI_DIR / "metrics" / "aggregation.json"
+    agg_file = _get_loki_dir() / "metrics" / "aggregation.json"
     if agg_file.exists():
         try:
             agg_data = json.loads(agg_file.read_text())
@@ -1386,7 +1385,7 @@ async def get_learning_metrics(
         "totalSignals": len(events),
         "signalsByType": by_type,
         "signalsBySource": by_source,
-        "avgConfidence": 0,
+        "avgConfidence": round(sum(e.get("data", {}).get("confidence", 0) for e in events) / max(len(events), 1), 4),
         "aggregation": aggregation,
     }
 
@@ -1431,7 +1430,7 @@ async def get_learning_signals(
 @app.get("/api/learning/aggregation")
 async def get_learning_aggregation():
     """Get latest learning aggregation result."""
-    agg_file = _LOKI_DIR / "metrics" / "aggregation.json"
+    agg_file = _get_loki_dir() / "metrics" / "aggregation.json"
     if agg_file.exists():
         try:
             return json.loads(agg_file.read_text())
@@ -1443,7 +1442,7 @@ async def get_learning_aggregation():
 @app.post("/api/learning/aggregate")
 async def trigger_aggregation():
     """Aggregate learning signals from events.jsonl into structured metrics."""
-    events_file = _LOKI_DIR / "events.jsonl"
+    events_file = _get_loki_dir() / "events.jsonl"
     preferences: dict = {}
     error_patterns: dict = {}
     success_patterns: dict = {}
@@ -1491,17 +1490,19 @@ async def trigger_aggregation():
             pass
 
     # Build structured result
-    pref_list = [{"key": k, "count": v} for k, v in sorted(preferences.items(), key=lambda x: -x[1])]
-    error_list = [{"type": k, "count": v} for k, v in sorted(error_patterns.items(), key=lambda x: -x[1])]
-    success_list = [{"name": k, "count": v} for k, v in sorted(success_patterns.items(), key=lambda x: -x[1])]
+    pref_list = [{"preference_key": k, "preferred_value": k, "frequency": v, "confidence": min(1.0, v / 10)} for k, v in sorted(preferences.items(), key=lambda x: -x[1])]
+    error_list = [{"error_type": k, "resolution_rate": 0.0, "frequency": v, "confidence": min(1.0, v / 10)} for k, v in sorted(error_patterns.items(), key=lambda x: -x[1])]
+    success_list = [{"pattern_name": k, "avg_duration_seconds": 0, "frequency": v, "confidence": min(1.0, v / 10)} for k, v in sorted(success_patterns.items(), key=lambda x: -x[1])]
     tool_list = []
     for tname, stats in sorted(tool_stats.items(), key=lambda x: -x[1]["count"]):
         avg_ms = stats["total_ms"] / stats["count"] if stats["count"] else 0
+        sr = round(stats["successes"] / stats["count"], 4) if stats["count"] else 0
         tool_list.append({
-            "tool": tname,
+            "tool_name": tname,
+            "efficiency_score": sr,
             "count": stats["count"],
-            "avg_duration_ms": round(avg_ms, 2),
-            "success_rate": round(stats["successes"] / stats["count"], 4) if stats["count"] else 0,
+            "avg_execution_time_ms": round(avg_ms, 2),
+            "success_rate": sr,
         })
 
     result = {
@@ -1513,7 +1514,7 @@ async def trigger_aggregation():
     }
 
     # Write to metrics directory
-    metrics_dir = _LOKI_DIR / "metrics"
+    metrics_dir = _get_loki_dir() / "metrics"
     metrics_dir.mkdir(parents=True, exist_ok=True)
     try:
         (metrics_dir / "aggregation.json").write_text(json.dumps(result, indent=2))
@@ -1574,7 +1575,7 @@ def _parse_time_range(time_range: str) -> Optional[datetime]:
 
 def _read_events(time_range: str = "7d") -> list:
     """Read events from .loki/events.jsonl with time filter."""
-    events_file = _LOKI_DIR / "events.jsonl"
+    events_file = _get_loki_dir() / "events.jsonl"
     if not events_file.exists():
         return []
 
@@ -1607,7 +1608,7 @@ def _read_events(time_range: str = "7d") -> list:
 @app.post("/api/control/pause")
 async def pause_session():
     """Pause the current session by creating PAUSE file."""
-    pause_file = _LOKI_DIR / "PAUSE"
+    pause_file = _get_loki_dir() / "PAUSE"
     pause_file.parent.mkdir(parents=True, exist_ok=True)
     pause_file.write_text(datetime.now().isoformat())
     return {"success": True, "message": "Session paused"}
@@ -1617,7 +1618,7 @@ async def pause_session():
 async def resume_session():
     """Resume a paused session by removing PAUSE/STOP files."""
     for fname in ["PAUSE", "STOP"]:
-        fpath = _LOKI_DIR / fname
+        fpath = _get_loki_dir() / fname
         try:
             fpath.unlink(missing_ok=True)
         except Exception:
@@ -1628,12 +1629,12 @@ async def resume_session():
 @app.post("/api/control/stop")
 async def stop_session():
     """Stop the session by creating STOP file and sending SIGTERM."""
-    stop_file = _LOKI_DIR / "STOP"
+    stop_file = _get_loki_dir() / "STOP"
     stop_file.parent.mkdir(parents=True, exist_ok=True)
     stop_file.write_text(datetime.now().isoformat())
 
     # Try to kill the process
-    pid_file = _LOKI_DIR / "loki.pid"
+    pid_file = _get_loki_dir() / "loki.pid"
     if pid_file.exists():
         try:
             pid = int(pid_file.read_text().strip())
@@ -1642,7 +1643,7 @@ async def stop_session():
             pass
 
     # Mark session.json as stopped
-    session_file = _LOKI_DIR / "session.json"
+    session_file = _get_loki_dir() / "session.json"
     if session_file.exists():
         try:
             sd = json.loads(session_file.read_text())
@@ -1882,7 +1883,7 @@ async def get_pricing():
 @app.get("/api/council/state")
 async def get_council_state():
     """Get current Completion Council state."""
-    state_file = _LOKI_DIR / "council" / "state.json"
+    state_file = _get_loki_dir() / "council" / "state.json"
     if state_file.exists():
         try:
             return json.loads(state_file.read_text())
@@ -1894,7 +1895,7 @@ async def get_council_state():
 @app.get("/api/council/verdicts")
 async def get_council_verdicts(limit: int = 20):
     """Get council vote history (decision log)."""
-    state_file = _LOKI_DIR / "council" / "state.json"
+    state_file = _get_loki_dir() / "council" / "state.json"
     verdicts = []
     if state_file.exists():
         try:
@@ -1904,7 +1905,7 @@ async def get_council_verdicts(limit: int = 20):
             pass
 
     # Also read individual vote files for detail
-    votes_dir = _LOKI_DIR / "council" / "votes"
+    votes_dir = _get_loki_dir() / "council" / "votes"
     detailed_verdicts = []
     if votes_dir.exists():
         for vote_dir in sorted(votes_dir.iterdir(), reverse=True):
@@ -1943,7 +1944,7 @@ async def get_council_verdicts(limit: int = 20):
 @app.get("/api/council/convergence")
 async def get_council_convergence():
     """Get convergence tracking data for visualization."""
-    convergence_file = _LOKI_DIR / "council" / "convergence.log"
+    convergence_file = _get_loki_dir() / "council" / "convergence.log"
     data_points = []
     if convergence_file.exists():
         try:
@@ -1965,7 +1966,7 @@ async def get_council_convergence():
 @app.get("/api/council/report")
 async def get_council_report():
     """Get the final council completion report."""
-    report_file = _LOKI_DIR / "council" / "report.md"
+    report_file = _get_loki_dir() / "council" / "report.md"
     if report_file.exists():
         return {"report": report_file.read_text()}
     return {"report": None}
@@ -1974,7 +1975,7 @@ async def get_council_report():
 @app.post("/api/council/force-review")
 async def force_council_review():
     """Force an immediate council review (writes signal file)."""
-    signal_dir = _LOKI_DIR / "signals"
+    signal_dir = _get_loki_dir() / "signals"
     signal_dir.mkdir(parents=True, exist_ok=True)
     (signal_dir / "COUNCIL_REVIEW_REQUESTED").write_text(
         datetime.now().isoformat()
@@ -1989,7 +1990,7 @@ async def force_council_review():
 @app.get("/api/agents")
 async def get_agents():
     """Get all active and recent agents."""
-    agents_file = _LOKI_DIR / "state" / "agents.json"
+    agents_file = _get_loki_dir() / "state" / "agents.json"
     agents = []
     if agents_file.exists():
         try:
@@ -2011,7 +2012,7 @@ async def get_agents():
 
     # Fallback: read agents from dashboard-state.json if agents.json is empty
     if not agents:
-        state_file = _LOKI_DIR / "dashboard-state.json"
+        state_file = _get_loki_dir() / "dashboard-state.json"
         if state_file.exists():
             try:
                 state = json.loads(state_file.read_text())
@@ -2045,7 +2046,7 @@ async def get_agents():
 @app.post("/api/agents/{agent_id}/kill")
 async def kill_agent(agent_id: str):
     """Kill a specific agent by ID."""
-    agents_file = _LOKI_DIR / "state" / "agents.json"
+    agents_file = _get_loki_dir() / "state" / "agents.json"
     if not agents_file.exists():
         raise HTTPException(404, "No agents file found")
 
@@ -2092,7 +2093,7 @@ async def kill_agent(agent_id: str):
 async def pause_agent(agent_id: str):
     """Pause a specific agent by writing a pause signal."""
     agent_id = _sanitize_agent_id(agent_id)
-    signal_dir = _LOKI_DIR / "signals"
+    signal_dir = _get_loki_dir() / "signals"
     signal_dir.mkdir(parents=True, exist_ok=True)
     (signal_dir / f"PAUSE_AGENT_{agent_id}").write_text(
         datetime.now().isoformat()
@@ -2104,7 +2105,7 @@ async def pause_agent(agent_id: str):
 async def resume_agent(agent_id: str):
     """Resume a paused agent."""
     agent_id = _sanitize_agent_id(agent_id)
-    signal_file = _LOKI_DIR / "signals" / f"PAUSE_AGENT_{agent_id}"
+    signal_file = _get_loki_dir() / "signals" / f"PAUSE_AGENT_{agent_id}"
     try:
         signal_file.unlink(missing_ok=True)
     except Exception:
@@ -2115,7 +2116,7 @@ async def resume_agent(agent_id: str):
 @app.get("/api/logs")
 async def get_logs(lines: int = 100):
     """Get recent log entries from session log files."""
-    log_dir = _LOKI_DIR / "logs"
+    log_dir = _get_loki_dir() / "logs"
     entries = []
 
     # Regex for full timestamp: [2026-02-07T01:32:00] [INFO] msg  or  2026-02-07 01:32:00 INFO msg
