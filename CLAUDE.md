@@ -150,38 +150,39 @@ Prompt: "Review the following claims for factual accuracy.
         Flag anything that cannot be verified."
 ```
 
-### Test and Resource Cleanup (CRITICAL)
+### Test and Resource Cleanup (MANDATORY - NEVER SKIP)
 
-**Always clean up before completing any task:**
+**Before reporting ANY task as done, run ALL cleanup steps below. No exceptions.**
 
-1. **Kill test processes** - No orphaned processes should remain
+1. **Kill spawned processes** (dashboard servers, test runners, etc.):
    ```bash
+   lsof -ti:57374 | xargs kill -9 2>/dev/null || true
    pkill -f "loki-run-" 2>/dev/null || true
-   pkill -f "test-" 2>/dev/null || true
    ```
 
-2. **Remove temp files** - Clean /tmp of any test artifacts
+2. **Remove temp files**:
    ```bash
-   rm -rf /tmp/loki-* /tmp/package /tmp/*.tgz 2>/dev/null || true
+   rm -rf /tmp/loki-* /tmp/test-* /tmp/package /tmp/*.tgz 2>/dev/null || true
    ```
 
-3. **Clean test directories** - Remove any test data created during testing
-   ```bash
-   rm -rf /tmp/test-* /tmp/*-test 2>/dev/null || true
-   ```
-
-4. **Verify cleanup** - Confirm no resources remain
+3. **Verify cleanup** (MUST run, not optional):
    ```bash
    ps -ef | grep -E "(loki|test)" | grep -v grep || echo "Clean"
    ls /tmp/loki-* /tmp/test-* 2>&1 | grep -v "No such file" || echo "Clean"
    ```
 
-**This applies to:**
-- Unit tests and integration tests
-- npm pack/install testing
-- Process spawning tests
-- Any file/directory creation for testing
-- Background processes started for verification
+4. **Report cleanup status** to user in task completion message
+
+### Git Commit Workflow (MANDATORY - FOLLOWS GLOBAL CLAUDE.md)
+
+**When user says "commit" or "commit and push", follow this exact sequence:**
+
+1. Run `git diff --stat` to show changed files
+2. List each file with a 1-line description of the change
+3. Suggest commit message in a code block
+4. **STOP and WAIT for user approval** before executing `git commit`
+5. Stage files individually by name (never `git add -A` or `git add .`)
+6. Only after user confirms, commit and push if requested
 
 ### When Modifying SKILL.md
 - Keep under 500 lines (currently ~190)
