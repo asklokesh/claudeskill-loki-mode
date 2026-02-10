@@ -6,7 +6,7 @@
   <meta name="description" content="Loki Mode Dashboard - Self-contained autonomous AI system monitor">
   <meta name="theme-color" content="#8b5cf6">
   <title>Loki Mode Dashboard</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%238b5cf6' rx='15' width='100' height='100'/><text x='50' y='72' font-size='60' font-weight='bold' text-anchor='middle' fill='white'>L</text></svg>">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'><path d='M16 6C8 6 2 16 2 16s6 10 14 10 14-10 14-10S24 6 16 6z' fill='none' stroke='%237c3aed' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/><circle cx='16' cy='16' r='5' fill='%237c3aed'/><circle cx='16' cy='16' r='2' fill='%23fff'/></svg>">
   <style>
     /* CSS Reset and Base Styles */
     :root {
@@ -351,6 +351,105 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.2); }
+
+    /* Keyboard Shortcuts Help Overlay */
+    .shortcuts-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .shortcuts-overlay.visible {
+      display: flex;
+    }
+
+    .shortcuts-dialog {
+      background: var(--loki-bg-card);
+      border: 1px solid var(--loki-border);
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 480px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .shortcuts-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--loki-border);
+    }
+
+    .shortcuts-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--loki-text-primary);
+    }
+
+    .shortcuts-close {
+      background: none;
+      border: none;
+      color: var(--loki-text-muted);
+      cursor: pointer;
+      padding: 4px;
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .shortcuts-close:hover {
+      color: var(--loki-text-primary);
+    }
+
+    .shortcuts-group {
+      margin-bottom: 16px;
+    }
+
+    .shortcuts-group-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--loki-text-muted);
+      margin-bottom: 8px;
+    }
+
+    .shortcut-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 0;
+    }
+
+    .shortcut-keys {
+      display: flex;
+      gap: 4px;
+    }
+
+    .shortcut-key {
+      display: inline-block;
+      padding: 2px 8px;
+      background: var(--loki-bg-tertiary);
+      border: 1px solid var(--loki-border);
+      border-radius: 4px;
+      font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--loki-text-primary);
+      min-width: 24px;
+      text-align: center;
+    }
+
+    .shortcut-desc {
+      font-size: 13px;
+      color: var(--loki-text-secondary);
+    }
   </style>
 </head>
 <body>
@@ -475,6 +574,39 @@
         <loki-cost-dashboard id="cost-dashboard"></loki-cost-dashboard>
       </div>
     </main>
+  </div>
+
+  <!-- Keyboard Shortcuts Help Overlay -->
+  <div class="shortcuts-overlay" id="shortcuts-overlay">
+    <div class="shortcuts-dialog">
+      <div class="shortcuts-header">
+        <span class="shortcuts-title">Keyboard Shortcuts</span>
+        <button class="shortcuts-close" id="shortcuts-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="shortcuts-group">
+        <div class="shortcuts-group-title">Navigation</div>
+        <div class="shortcut-row"><span class="shortcut-desc">Overview</span><span class="shortcut-keys"><kbd class="shortcut-key">1</kbd></span></div>
+        <div class="shortcut-row"><span class="shortcut-desc">Tasks</span><span class="shortcut-keys"><kbd class="shortcut-key">2</kbd></span></div>
+        <div class="shortcut-row"><span class="shortcut-desc">Logs</span><span class="shortcut-keys"><kbd class="shortcut-key">3</kbd></span></div>
+        <div class="shortcut-row"><span class="shortcut-desc">Memory</span><span class="shortcut-keys"><kbd class="shortcut-key">4</kbd></span></div>
+        <div class="shortcut-row"><span class="shortcut-desc">Learning</span><span class="shortcut-keys"><kbd class="shortcut-key">5</kbd></span></div>
+        <div class="shortcut-row"><span class="shortcut-desc">Council</span><span class="shortcut-keys"><kbd class="shortcut-key">6</kbd></span></div>
+        <div class="shortcut-row"><span class="shortcut-desc">Cost</span><span class="shortcut-keys"><kbd class="shortcut-key">7</kbd></span></div>
+      </div>
+      <div class="shortcuts-group">
+        <div class="shortcuts-group-title">Session</div>
+        <div class="shortcut-row"><span class="shortcut-desc">Pause session</span><span class="shortcut-keys"><kbd class="shortcut-key">p</kbd></span></div>
+        <div class="shortcut-row"><span class="shortcut-desc">Resume session</span><span class="shortcut-keys"><kbd class="shortcut-key">r</kbd></span></div>
+        <div class="shortcut-row"><span class="shortcut-desc">Stop session</span><span class="shortcut-keys"><kbd class="shortcut-key">s</kbd></span></div>
+      </div>
+      <div class="shortcuts-group">
+        <div class="shortcuts-group-title">General</div>
+        <div class="shortcut-row"><span class="shortcut-desc">Toggle theme</span><span class="shortcut-keys"><kbd class="shortcut-key">t</kbd></span></div>
+        <div class="shortcut-row"><span class="shortcut-desc">Focus API URL</span><span class="shortcut-keys"><kbd class="shortcut-key">/</kbd></span></div>
+        <div class="shortcut-row"><span class="shortcut-desc">Show shortcuts</span><span class="shortcut-keys"><kbd class="shortcut-key">?</kbd></span></div>
+        <div class="shortcut-row"><span class="shortcut-desc">Close overlay</span><span class="shortcut-keys"><kbd class="shortcut-key">Esc</kbd></span></div>
+      </div>
+    </div>
   </div>
 
   <!-- Inlined JavaScript Bundle -->
@@ -4744,6 +4876,116 @@ document.addEventListener('DOMContentLoaded', function() {
       e.preventDefault();
       var sections = ['overview', 'tasks', 'logs', 'memory', 'learning', 'council', 'cost'];
       switchSection(sections[parseInt(e.key) - 1]);
+    }
+  });
+
+  // --- Keyboard Shortcuts (Issue #18) ---
+  var shortcutsOverlay = document.getElementById('shortcuts-overlay');
+  var shortcutsClose = document.getElementById('shortcuts-close');
+
+  function toggleShortcutsOverlay() {
+    shortcutsOverlay.classList.toggle('visible');
+  }
+
+  function closeShortcutsOverlay() {
+    shortcutsOverlay.classList.remove('visible');
+  }
+
+  shortcutsClose.addEventListener('click', closeShortcutsOverlay);
+
+  // Close overlay when clicking outside the dialog
+  shortcutsOverlay.addEventListener('click', function(e) {
+    if (e.target === shortcutsOverlay) {
+      closeShortcutsOverlay();
+    }
+  });
+
+  document.addEventListener('keydown', function(e) {
+    // Skip shortcuts when typing in input, textarea, or select elements
+    var tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable) {
+      // Allow Escape to blur input fields
+      if (e.key === 'Escape') {
+        e.target.blur();
+      }
+      return;
+    }
+
+    // Skip if modifier keys are held (let browser defaults work)
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+    var sections = ['overview', 'tasks', 'logs', 'memory', 'learning', 'council', 'cost'];
+
+    switch (e.key) {
+      // Section navigation: 1-7
+      case '1': case '2': case '3': case '4': case '5': case '6': case '7':
+        e.preventDefault();
+        switchSection(sections[parseInt(e.key) - 1]);
+        break;
+
+      // Help overlay
+      case '?':
+        e.preventDefault();
+        toggleShortcutsOverlay();
+        break;
+
+      // Close overlays
+      case 'Escape':
+        if (shortcutsOverlay.classList.contains('visible')) {
+          e.preventDefault();
+          closeShortcutsOverlay();
+        }
+        break;
+
+      // Focus API URL input
+      case '/':
+        e.preventDefault();
+        apiUrlInput.focus();
+        apiUrlInput.select();
+        break;
+
+      // Theme toggle
+      case 't':
+        e.preventDefault();
+        LokiDashboard.UnifiedThemeManager.toggle();
+        updateThemeLabel();
+        break;
+
+      // Session controls
+      case 'p':
+        e.preventDefault();
+        var sessionCtrl = document.getElementById('session-control');
+        if (sessionCtrl) {
+          var pauseBtn = sessionCtrl.shadowRoot && sessionCtrl.shadowRoot.getElementById('pause-btn');
+          if (pauseBtn && !pauseBtn.disabled) {
+            pauseBtn.click();
+          }
+        }
+        break;
+
+      case 'r':
+        e.preventDefault();
+        var sessionCtrl2 = document.getElementById('session-control');
+        if (sessionCtrl2) {
+          var resumeBtn = sessionCtrl2.shadowRoot && sessionCtrl2.shadowRoot.getElementById('resume-btn');
+          if (resumeBtn) {
+            resumeBtn.click();
+          }
+        }
+        break;
+
+      case 's':
+        e.preventDefault();
+        var sessionCtrl3 = document.getElementById('session-control');
+        if (sessionCtrl3) {
+          var stopBtn = sessionCtrl3.shadowRoot && sessionCtrl3.shadowRoot.getElementById('stop-btn');
+          if (stopBtn && !stopBtn.disabled) {
+            if (window.confirm('Are you sure you want to stop the session?')) {
+              stopBtn.click();
+            }
+          }
+        }
+        break;
     }
   });
 
