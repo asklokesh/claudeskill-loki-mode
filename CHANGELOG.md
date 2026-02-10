@@ -5,6 +5,24 @@ All notable changes to Loki Mode will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.31.0] - 2026-02-09
+
+### Added
+- Shell completion support for bash and zsh (community contribution by @jpreyesm03)
+- 28 commands with 15 subcommand groups in completions
+- `loki completions [bash|zsh]` subcommand to output completion scripts
+- Shell completions documentation in INSTALLATION.md
+- Claude Code CLI auto-installation in GitHub Action (install_claude input)
+- `--yes/-y` flag for skip-confirmation in loki start
+- `LOKI_PRD_FILE` environment variable support as fallback for PRD path
+- `LOKI_AUTO_CONFIRM` and `CI` environment variable auto-confirm in CI environments
+- `prd_file`, `auto_confirm`, `budget` (alias), `install_claude` inputs to GitHub Action
+- Comprehensive Action inputs documentation table in README
+
+### Changed
+- GitHub Action budget handling improved with proper --budget flag construction
+- GitHub Action example workflow with clearer prerequisites documentation
+
 ## [5.30.0] - 2026-02-09
 
 ### Added
