@@ -17,6 +17,9 @@ function _loki {
                 council)
                     _loki_council
                     ;;
+                compound)
+                    _loki_compound
+                    ;;
                 provider)
                     _loki_provider
                     ;;
@@ -25,6 +28,37 @@ function _loki {
                     ;;
                 config)
                     _loki_config
+                    ;;
+                dashboard)
+                    _loki_dashboard
+                    ;;
+                sandbox)
+                    _loki_sandbox
+                    ;;
+                notify)
+                    _loki_notify
+                    ;;
+                enterprise)
+                    _loki_enterprise
+                    ;;
+                projects)
+                    _loki_projects
+                    ;;
+                voice)
+                    _loki_voice
+                    ;;
+                reset)
+                    _loki_reset
+                    ;;
+                logs)
+                    _arguments \
+                        '--follow[Follow logs in real-time]' \
+                        '-f[Follow logs in real-time]' \
+                        '--lines[Number of lines]:number:' \
+                        '-n[Number of lines]:number:'
+                    ;;
+                issue)
+                    _loki_issue
                     ;;
                 completions)
                     _arguments '1:shell:(bash zsh)'
@@ -37,18 +71,34 @@ function _loki {
 function _loki_commands {
     local -a commands
     commands=(
-        'start:Start Loki Mode' 
-        'stop:Stop execution' 
-        'pause:Pause execution' 
-        'resume:Resume execution' 
-        'status:Show status' 
-        'dashboard:Open dashboard' 
-        'import:Import GitHub issues' 
-        'council:Council commands' 
-        'memory:Memory commands' 
-        'provider:Provider commands' 
-        'config:Config commands' 
-        'completions:Output completions' 
+        'start:Start Loki Mode'
+        'quick:Quick single-task mode'
+        'demo:Interactive 60-second demo'
+        'init:Interactive PRD builder'
+        'stop:Stop execution'
+        'pause:Pause execution'
+        'resume:Resume execution'
+        'status:Show status'
+        'dashboard:Dashboard commands'
+        'logs:View session logs'
+        'serve:Start API server'
+        'api:API server commands'
+        'sandbox:Docker sandbox commands'
+        'notify:Notification commands'
+        'import:Import GitHub issues'
+        'issue:GitHub issue commands'
+        'config:Config commands'
+        'provider:Provider commands'
+        'reset:Reset session state'
+        'memory:Memory commands'
+        'compound:Knowledge compounding commands'
+        'council:Completion council commands'
+        'dogfood:Self-development statistics'
+        'projects:Project registry commands'
+        'enterprise:Enterprise feature commands'
+        'voice:Voice input commands'
+        'version:Show version'
+        'completions:Output shell completions'
         'help:Show help'
     )
     _describe -t commands 'loki command' commands
@@ -59,42 +109,193 @@ function _loki_start {
         '--provider[AI provider]:provider name:(claude codex gemini)' \
         '--parallel[Parallel mode]' \
         '--background[Background mode]' \
+        '--bg[Background mode]' \
+        '--simple[Force simple complexity]' \
+        '--complex[Force complex complexity]' \
+        '--github[Enable GitHub issue import]' \
+        '--no-dashboard[Disable web dashboard]' \
+        '--sandbox[Run in Docker sandbox]' \
+        '--skip-memory[Skip loading memory context]' \
+        '--yes[Skip confirmation prompts]' \
+        '-y[Skip confirmation prompts]' \
+        '--budget[Cost budget limit in USD]:amount:' \
         '--max-iterations[Max iterations]:number:' \
-        '*:PRD File:_files' 
-        # ^ This line enables file completion for arguments!
+        '*:PRD File:_files'
 }
 
 function _loki_council {
-    # _values is wrong here; we use _describe for subcommands
     local -a council_cmds
     council_cmds=(
-        'status:Council status' 
-        'verdicts:Show verdicts' 
-        'convergence:Check convergence' 
-        'force-review:Force a manual review' 
-        'report:Generate report' 
-        'config:Council configuration' 
+        'status:Council status'
+        'verdicts:Show verdicts'
+        'convergence:Check convergence'
+        'force-review:Force a manual review'
+        'report:Generate report'
+        'config:Council configuration'
         'help:Council help'
     )
     _describe -t council_cmds 'council subcommand' council_cmds
 }
 
+function _loki_compound {
+    local -a cmds
+    cmds=(
+        'list:List solutions by category'
+        'show:Show solutions in a category'
+        'search:Search across solutions'
+        'run:Trigger compounding manually'
+        'stats:Show solution statistics'
+        'help:Compound help'
+    )
+    _describe -t cmds 'compound subcommand' cmds
+}
+
 function _loki_provider {
     local -a cmds
-    cmds=('show' 'set' 'list' 'info' 'help')
+    cmds=(
+        'show:Display current provider'
+        'set:Set default provider'
+        'list:List available providers'
+        'info:Get provider information'
+        'help:Provider help'
+    )
     _describe -t cmds 'provider subcommand' cmds
 }
 
 function _loki_memory {
     local -a cmds
-    cmds=('list' 'show' 'search' 'stats' 'export' 'dedupe' 'index' 'retrieve' 'episode' 'pattern' 'skill' 'help')
+    cmds=(
+        'list:List all learnings'
+        'show:Display specific type'
+        'search:Search learnings'
+        'stats:Show statistics'
+        'export:Export learnings'
+        'clear:Clear learnings'
+        'dedupe:Remove duplicates'
+        'index:Memory index'
+        'timeline:Memory timeline'
+        'consolidate:Consolidate memory'
+        'economics:Token economics'
+        'retrieve:Retrieve relevant memory'
+        'episode:Manage episodes'
+        'pattern:Manage patterns'
+        'skill:Manage skills'
+        'vectors:Vector search'
+        'help:Memory help'
+    )
     _describe -t cmds 'memory subcommand' cmds
 }
 
 function _loki_config {
     local -a cmds
-    cmds=('show' 'init' 'edit' 'path' 'help')
+    cmds=(
+        'show:Display current config'
+        'init:Initialize config file'
+        'edit:Edit in default editor'
+        'path:Show config file path'
+        'help:Config help'
+    )
     _describe -t cmds 'config subcommand' cmds
+}
+
+function _loki_dashboard {
+    local -a cmds
+    cmds=(
+        'start:Start dashboard server'
+        'stop:Stop dashboard server'
+        'status:Get dashboard status'
+        'url:Get dashboard URL'
+        'open:Open dashboard in browser'
+        'help:Dashboard help'
+    )
+    _describe -t cmds 'dashboard subcommand' cmds
+}
+
+function _loki_sandbox {
+    local -a cmds
+    cmds=(
+        'start:Start sandbox container'
+        'stop:Stop sandbox'
+        'status:Check status'
+        'logs:View logs'
+        'shell:Open interactive shell'
+        'build:Build sandbox image'
+        'help:Sandbox help'
+    )
+    _describe -t cmds 'sandbox subcommand' cmds
+}
+
+function _loki_notify {
+    local -a cmds
+    cmds=(
+        'test:Test all channels'
+        'slack:Send to Slack'
+        'discord:Send to Discord'
+        'webhook:Send to webhook'
+        'status:Show configuration'
+        'help:Notify help'
+    )
+    _describe -t cmds 'notify subcommand' cmds
+}
+
+function _loki_enterprise {
+    local -a cmds
+    cmds=(
+        'status:Show enterprise status'
+        'token:Manage API tokens'
+        'audit:Audit log commands'
+        'help:Enterprise help'
+    )
+    _describe -t cmds 'enterprise subcommand' cmds
+}
+
+function _loki_projects {
+    local -a cmds
+    cmds=(
+        'list:List registered projects'
+        'show:Show project details'
+        'register:Register new project'
+        'add:Alias for register'
+        'remove:Unregister a project'
+        'discover:Auto-discover projects'
+        'sync:Sync project data'
+        'health:Check project health'
+        'help:Projects help'
+    )
+    _describe -t cmds 'projects subcommand' cmds
+}
+
+function _loki_voice {
+    local -a cmds
+    cmds=(
+        'status:Voice input status'
+        'listen:Start listening'
+        'dictate:Dictate PRD'
+        'speak:Text-to-speech'
+        'start:Start voice session'
+        'help:Voice help'
+    )
+    _describe -t cmds 'voice subcommand' cmds
+}
+
+function _loki_reset {
+    local -a cmds
+    cmds=(
+        'all:Reset all state'
+        'retries:Reset retry counter'
+        'failed:Clear failed task queue'
+        'help:Reset help'
+    )
+    _describe -t cmds 'reset subcommand' cmds
+}
+
+function _loki_issue {
+    _arguments \
+        '--repo[Specify repository]:repo:' \
+        '--start[Start after generating PRD]' \
+        '--dry-run[Preview without saving]' \
+        '--output[Custom output path]:file:_files' \
+        '1:subcommand:(parse view)'
 }
 
 _loki "$@"

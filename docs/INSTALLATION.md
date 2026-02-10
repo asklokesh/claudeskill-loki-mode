@@ -20,7 +20,7 @@ Complete installation instructions for all platforms and use cases.
 - [Anthropic API Console](#anthropic-api-console)
 - [Verify Installation](#verify-installation)
 - [Ports](#ports)
-- [Completion](#completion)
+- [Shell Completions](#shell-completions)
 - [Troubleshooting](#troubleshooting)
 
 ---
