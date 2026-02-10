@@ -323,6 +323,7 @@ show_help() {
     echo "  council [cmd]    Completion council (status|verdicts|convergence|force-review|report)"
     echo "  dogfood          Show self-development statistics"
     echo "  reset [target]   Reset session state (all|retries|failed)"
+    echo "  doctor [--json]  Check system prerequisites"
     echo "  version          Show version"
     echo "  help             Show this help"
     echo ""
@@ -2457,6 +2458,290 @@ cmd_config_path() {
     echo "Create a config file with: loki config init"
 }
 
+# Check system prerequisites
+cmd_doctor() {
+    local json_output=false
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --json)
+                json_output=true
+                shift
+                ;;
+            --help|-h)
+                echo -e "${BOLD}loki doctor${NC} - Check system prerequisites"
+                echo ""
+                echo "Usage: loki doctor [--json]"
+                echo ""
+                echo "Options:"
+                echo "  --json    Output machine-readable JSON"
+                echo ""
+                echo "Checks: node, python3, jq, git, curl, bash version,"
+                echo "        claude/codex/gemini CLIs, and disk space."
+                return 0
+                ;;
+            *)
+                echo -e "${RED}Unknown option: $1${NC}"
+                echo "Usage: loki doctor [--json]"
+                return 1
+                ;;
+        esac
+    done
+
+    if [ "$json_output" = true ]; then
+        cmd_doctor_json
+        return $?
+    fi
+
+    echo -e "${BOLD}Loki Mode Doctor${NC}"
+    echo ""
+    echo "Checking system prerequisites..."
+    echo ""
+
+    local pass_count=0
+    local fail_count=0
+    local warn_count=0
+
+    # Helper: check command exists and optionally check version
+    doctor_check() {
+        local name="$1"
+        local cmd="$2"
+        local required="$3"  # required, recommended, optional
+        local min_version="${4:-}"
+
+        if ! command -v "$cmd" &> /dev/null; then
+            if [ "$required" = "required" ]; then
+                echo -e "  ${RED}FAIL${NC}  $name - not found"
+                fail_count=$((fail_count + 1))
+            elif [ "$required" = "recommended" ]; then
+                echo -e "  ${YELLOW}WARN${NC}  $name - not found (recommended)"
+                warn_count=$((warn_count + 1))
+            else
+                echo -e "  ${YELLOW}WARN${NC}  $name - not found (optional)"
+                warn_count=$((warn_count + 1))
+            fi
+            return 1
+        fi
+
+        local version=""
+        case "$cmd" in
+            node)
+                version=$(node --version 2>/dev/null | tr -d 'v')
+                ;;
+            python3)
+                version=$(python3 --version 2>/dev/null | awk '{print $2}')
+                ;;
+            git)
+                version=$(git --version 2>/dev/null | awk '{print $3}')
+                ;;
+            bash)
+                version=$("$cmd" --version 2>/dev/null | head -1 | sed 's/.*version \([0-9.]*\).*/\1/')
+                ;;
+            jq)
+                version=$(jq --version 2>/dev/null | tr -d 'jq-')
+                ;;
+            curl)
+                version=$(curl --version 2>/dev/null | head -1 | awk '{print $2}')
+                ;;
+            claude)
+                version=$(claude --version 2>/dev/null | head -1 | sed 's/[^0-9.]//g' | head -1)
+                ;;
+            codex)
+                version=$(codex --version 2>/dev/null | head -1 | sed 's/[^0-9.]//g' | head -1)
+                ;;
+            gemini)
+                version=$(gemini --version 2>/dev/null | head -1 | sed 's/[^0-9.]//g' | head -1)
+                ;;
+        esac
+
+        local version_display=""
+        if [ -n "$version" ]; then
+            version_display=" (v$version)"
+        fi
+
+        # Simple major version check if min_version is specified
+        if [ -n "$min_version" ] && [ -n "$version" ]; then
+            local cur_major cur_minor min_major min_minor
+            cur_major=$(echo "$version" | cut -d. -f1)
+            min_major=$(echo "$min_version" | cut -d. -f1)
+            cur_minor=$(echo "$version" | cut -d. -f2)
+            min_minor=$(echo "$min_version" | cut -d. -f2)
+
+            if [ "$cur_major" -lt "$min_major" ] 2>/dev/null || \
+               { [ "$cur_major" -eq "$min_major" ] 2>/dev/null && [ "$cur_minor" -lt "$min_minor" ] 2>/dev/null; }; then
+                if [ "$required" = "required" ]; then
+                    echo -e "  ${RED}FAIL${NC}  $name$version_display - requires >= $min_version"
+                    fail_count=$((fail_count + 1))
+                else
+                    echo -e "  ${YELLOW}WARN${NC}  $name$version_display - recommended >= $min_version"
+                    warn_count=$((warn_count + 1))
+                fi
+                return 1
+            fi
+        fi
+
+        echo -e "  ${GREEN}PASS${NC}  $name$version_display"
+        pass_count=$((pass_count + 1))
+        return 0
+    }
+
+    echo -e "${CYAN}Required:${NC}"
+    doctor_check "Node.js (>= 18)"    node     required    18.0
+    doctor_check "Python 3 (>= 3.8)"  python3  required    3.8
+    doctor_check "jq"                  jq       required
+    doctor_check "git"                 git      required
+    doctor_check "curl"                curl     required
+    echo ""
+
+    echo -e "${CYAN}AI Providers:${NC}"
+    doctor_check "Claude CLI"          claude   optional
+    doctor_check "Codex CLI"           codex    optional
+    doctor_check "Gemini CLI"          gemini   optional
+    echo ""
+
+    echo -e "${CYAN}System:${NC}"
+    doctor_check "bash (>= 4.0)"      bash     recommended  4.0
+
+    # Disk space check
+    local disk_avail
+    if command -v df &> /dev/null; then
+        # Get available space in GB (works on macOS and Linux)
+        disk_avail=$(df -g "$HOME" 2>/dev/null | tail -1 | awk '{print $4}')
+        if [ -z "$disk_avail" ]; then
+            # Linux fallback (df -g may not work)
+            disk_avail=$(df -BG "$HOME" 2>/dev/null | tail -1 | awk '{print $4}' | tr -d 'G')
+        fi
+        if [ -n "$disk_avail" ] && [ "$disk_avail" -gt 0 ] 2>/dev/null; then
+            if [ "$disk_avail" -lt 1 ]; then
+                echo -e "  ${RED}FAIL${NC}  Disk space: ${disk_avail}GB available (need >= 1GB)"
+                fail_count=$((fail_count + 1))
+            elif [ "$disk_avail" -lt 5 ]; then
+                echo -e "  ${YELLOW}WARN${NC}  Disk space: ${disk_avail}GB available (low)"
+                warn_count=$((warn_count + 1))
+            else
+                echo -e "  ${GREEN}PASS${NC}  Disk space: ${disk_avail}GB available"
+                pass_count=$((pass_count + 1))
+            fi
+        else
+            echo -e "  ${YELLOW}WARN${NC}  Disk space: unable to determine"
+            warn_count=$((warn_count + 1))
+        fi
+    fi
+    echo ""
+
+    # Summary
+    echo -e "${BOLD}Summary:${NC} ${GREEN}$pass_count passed${NC}, ${RED}$fail_count failed${NC}, ${YELLOW}$warn_count warnings${NC}"
+    echo ""
+
+    if [ "$fail_count" -gt 0 ]; then
+        echo -e "${RED}Some required prerequisites are missing.${NC}"
+        echo "Install missing dependencies and run 'loki doctor' again."
+        return 1
+    elif [ "$warn_count" -gt 0 ]; then
+        echo -e "${YELLOW}All required checks passed with some warnings.${NC}"
+        return 0
+    else
+        echo -e "${GREEN}All checks passed. System is ready for Loki Mode.${NC}"
+        return 0
+    fi
+}
+
+# JSON output for loki doctor --json
+cmd_doctor_json() {
+    python3 -c "
+import json, os, subprocess, sys, shutil
+
+def get_version(cmd, args=None):
+    try:
+        if args is None:
+            args = ['--version']
+        result = subprocess.run([cmd] + args, capture_output=True, text=True, timeout=5)
+        output = result.stdout.strip() or result.stderr.strip()
+        # Extract version number
+        import re
+        match = re.search(r'(\d+\.\d+[\.\d]*)', output)
+        return match.group(1) if match else None
+    except (FileNotFoundError, subprocess.TimeoutExpired, Exception):
+        return None
+
+def check_tool(name, cmd, required, min_version=None):
+    found = shutil.which(cmd) is not None
+    version = get_version(cmd) if found else None
+    status = 'pass'
+
+    if not found:
+        status = 'fail' if required == 'required' else 'warn'
+    elif min_version and version:
+        cur_parts = [int(x) for x in version.split('.')[:2]]
+        min_parts = [int(x) for x in min_version.split('.')[:2]]
+        while len(cur_parts) < 2: cur_parts.append(0)
+        while len(min_parts) < 2: min_parts.append(0)
+        if cur_parts < min_parts:
+            status = 'fail' if required == 'required' else 'warn'
+
+    return {
+        'name': name,
+        'command': cmd,
+        'found': found,
+        'version': version,
+        'required': required,
+        'min_version': min_version,
+        'status': status,
+        'path': shutil.which(cmd)
+    }
+
+checks = []
+checks.append(check_tool('Node.js', 'node', 'required', '18.0'))
+checks.append(check_tool('Python 3', 'python3', 'required', '3.8'))
+checks.append(check_tool('jq', 'jq', 'required'))
+checks.append(check_tool('git', 'git', 'required'))
+checks.append(check_tool('curl', 'curl', 'required'))
+checks.append(check_tool('bash', 'bash', 'recommended', '4.0'))
+checks.append(check_tool('Claude CLI', 'claude', 'optional'))
+checks.append(check_tool('Codex CLI', 'codex', 'optional'))
+checks.append(check_tool('Gemini CLI', 'gemini', 'optional'))
+
+# Disk space
+disk_gb = None
+try:
+    stat = os.statvfs(os.path.expanduser('~'))
+    disk_gb = round((stat.f_bavail * stat.f_frsize) / (1024**3), 1)
+except Exception:
+    pass
+
+disk_status = 'pass'
+if disk_gb is not None:
+    if disk_gb < 1:
+        disk_status = 'fail'
+    elif disk_gb < 5:
+        disk_status = 'warn'
+
+pass_count = sum(1 for c in checks if c['status'] == 'pass')
+fail_count = sum(1 for c in checks if c['status'] == 'fail')
+warn_count = sum(1 for c in checks if c['status'] == 'warn')
+
+if disk_status == 'pass': pass_count += 1
+elif disk_status == 'fail': fail_count += 1
+elif disk_status == 'warn': warn_count += 1
+
+result = {
+    'checks': checks,
+    'disk': {
+        'available_gb': disk_gb,
+        'status': disk_status
+    },
+    'summary': {
+        'passed': pass_count,
+        'failed': fail_count,
+        'warnings': warn_count,
+        'ok': fail_count == 0
+    }
+}
+
+print(json.dumps(result, indent=2))
+"
+}
+
 # Show version
 cmd_version() {
     echo "Loki Mode v$(get_version)"
@@ -3753,6 +4038,9 @@ main() {
             ;;
         voice)
             cmd_voice "$@"
+            ;;
+        doctor)
+            cmd_doctor "$@"
             ;;
         version|--version|-v)
             cmd_version
