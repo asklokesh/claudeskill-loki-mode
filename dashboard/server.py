@@ -26,6 +26,7 @@ from fastapi import (
     WebSocketDisconnect,
 )
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -1078,7 +1079,7 @@ async def get_auth_info():
 class TokenCreateRequest(BaseModel):
     """Schema for creating a token."""
     name: str = Field(..., min_length=1, max_length=255, description="Human-readable token name")
-    scopes: Optional[list[str]] = Field(None, description="Permission scopes (default: ['*'] for all)")
+    scopes: Optional[Any] = Field(None, description="Permission scopes (default: ['*'] for all)")  # list[str], Any for Python 3.8
     expires_days: Optional[int] = Field(None, gt=0, description="Days until expiration (must be positive)")
 
 
@@ -1086,7 +1087,7 @@ class TokenResponse(BaseModel):
     """Schema for token response."""
     id: str
     name: str
-    scopes: list[str]
+    scopes: Any  # list[str], Any for Python 3.8
     created_at: str
     expires_at: Optional[str]
     last_used: Optional[str]
@@ -2617,6 +2618,186 @@ async def get_process_health(token: Optional[dict] = Depends(auth.get_current_to
     result["watchdog_enabled"] = watchdog_enabled
 
     return result
+
+
+# =============================================================================
+# Prometheus / OpenMetrics Endpoint
+# =============================================================================
+
+
+def _build_metrics_text() -> str:
+    """Build Prometheus/OpenMetrics format metrics text from .loki/ flat files."""
+    lines = []  # type: list[str]  -- comment-style for Python 3.8
+    loki_dir = _get_loki_dir()
+
+    # Validate LOKI_DIR exists before attempting to read metrics
+    if not loki_dir.is_dir():
+        return "# loki_up 0\n"
+
+    # -- Read dashboard-state.json (primary data source) ----------------------
+    state: dict = {}
+    state_file = loki_dir / "dashboard-state.json"
+    if state_file.exists():
+        try:
+            state = json.loads(state_file.read_text())
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    # 1. loki_session_status (gauge) ------------------------------------------
+    mode = state.get("mode", "")
+    status_val = 0  # stopped
+    if mode == "paused":
+        status_val = 2
+    elif mode in ("autonomous", "running"):
+        status_val = 1
+    else:
+        # Also check PID file
+        pid_file = loki_dir / "loki.pid"
+        if pid_file.exists():
+            try:
+                pid = int(pid_file.read_text().strip())
+                os.kill(pid, 0)
+                status_val = 1
+            except (ValueError, OSError, ProcessLookupError):
+                pass
+
+    lines.append("# HELP loki_session_status Current session status (0=stopped, 1=running, 2=paused)")
+    lines.append("# TYPE loki_session_status gauge")
+    lines.append(f"loki_session_status {status_val}")
+    lines.append("")
+
+    # 2. loki_iteration_current (gauge) ---------------------------------------
+    iteration = state.get("iteration", 0)
+    lines.append("# HELP loki_iteration_current Current iteration number")
+    lines.append("# TYPE loki_iteration_current gauge")
+    lines.append(f"loki_iteration_current {iteration}")
+    lines.append("")
+
+    # 3. loki_iteration_max (gauge) -------------------------------------------
+    max_iterations = int(os.environ.get("LOKI_MAX_ITERATIONS", "1000"))
+    lines.append("# HELP loki_iteration_max Maximum configured iterations")
+    lines.append("# TYPE loki_iteration_max gauge")
+    lines.append(f"loki_iteration_max {max_iterations}")
+    lines.append("")
+
+    # 4. loki_tasks_total (gauge, label: status) ------------------------------
+    tasks = state.get("tasks", {})
+    pending_count = len(tasks.get("pending", []))
+    in_progress_count = len(tasks.get("inProgress", []))
+    completed_count = len(tasks.get("completed", []))
+    failed_count = len(tasks.get("failed", []))
+
+    lines.append("# HELP loki_tasks_total Number of tasks by status")
+    lines.append("# TYPE loki_tasks_total gauge")
+    lines.append(f'loki_tasks_total{{status="pending"}} {pending_count}')
+    lines.append(f'loki_tasks_total{{status="in_progress"}} {in_progress_count}')
+    lines.append(f'loki_tasks_total{{status="completed"}} {completed_count}')
+    lines.append(f'loki_tasks_total{{status="failed"}} {failed_count}')
+    lines.append("")
+
+    # 5. loki_agents_active (gauge) -------------------------------------------
+    # 6. loki_agents_total (counter) ------------------------------------------
+    agents_active = 0
+    agents_total = 0
+    agents_file = loki_dir / "state" / "agents.json"
+    if agents_file.exists():
+        try:
+            agents_data = json.loads(agents_file.read_text())
+            if isinstance(agents_data, list):
+                agents_total = len(agents_data)
+                agents_active = sum(
+                    1 for a in agents_data
+                    if isinstance(a, dict) and a.get("status") == "active"
+                )
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    # Fallback to dashboard-state.json agents
+    if agents_total == 0:
+        state_agents = state.get("agents", [])
+        if isinstance(state_agents, list):
+            agents_total = len(state_agents)
+            agents_active = sum(
+                1 for a in state_agents
+                if isinstance(a, dict) and a.get("status") == "active"
+            )
+
+    lines.append("# HELP loki_agents_active Number of currently active agents")
+    lines.append("# TYPE loki_agents_active gauge")
+    lines.append(f"loki_agents_active {agents_active}")
+    lines.append("")
+
+    lines.append("# HELP loki_agents_total Total number of agents registered")
+    lines.append("# TYPE loki_agents_total gauge")
+    lines.append(f"loki_agents_total {agents_total}")
+    lines.append("")
+
+    # 7. loki_cost_usd (gauge) ------------------------------------------------
+    estimated_cost = 0.0
+    efficiency_dir = loki_dir / "metrics" / "efficiency"
+    if efficiency_dir.exists():
+        try:
+            for eff_file in efficiency_dir.glob("*.json"):
+                try:
+                    data = json.loads(eff_file.read_text())
+                    cost = data.get("cost_usd")
+                    if cost is not None:
+                        estimated_cost += float(cost)
+                    else:
+                        inp = data.get("input_tokens", 0)
+                        out = data.get("output_tokens", 0)
+                        estimated_cost += _calculate_model_cost(
+                            data.get("model", "sonnet").lower(), inp, out
+                        )
+                except (json.JSONDecodeError, KeyError, TypeError):
+                    pass
+        except OSError:
+            pass
+
+    lines.append("# HELP loki_cost_usd Estimated total cost in USD")
+    lines.append("# TYPE loki_cost_usd gauge")
+    lines.append(f"loki_cost_usd {round(estimated_cost, 6)}")
+    lines.append("")
+
+    # 8. loki_events_total (counter) ------------------------------------------
+    events_count = 0
+    events_file = loki_dir / "events.jsonl"
+    if events_file.exists():
+        try:
+            content = events_file.read_text()
+            events_count = sum(1 for line in content.strip().split("\n") if line.strip())
+        except OSError:
+            pass
+
+    lines.append("# HELP loki_events_total Total number of events recorded")
+    lines.append("# TYPE loki_events_total counter")
+    lines.append(f"loki_events_total {events_count}")
+    lines.append("")
+
+    # 9. loki_uptime_seconds (gauge) ------------------------------------------
+    uptime_seconds = 0.0
+    started_at = state.get("startedAt", "")
+    if started_at:
+        try:
+            start_dt = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
+            uptime_seconds = (datetime.now(timezone.utc) - start_dt).total_seconds()
+            if uptime_seconds < 0:
+                uptime_seconds = 0.0
+        except (ValueError, TypeError):
+            pass
+
+    lines.append("# HELP loki_uptime_seconds Seconds since session started")
+    lines.append("# TYPE loki_uptime_seconds gauge")
+    lines.append(f"loki_uptime_seconds {round(uptime_seconds, 1)}")
+    lines.append("")
+
+    return "\n".join(lines) + "\n"
+
+
+@app.get("/metrics", response_class=PlainTextResponse)
+async def prometheus_metrics():
+    """Prometheus/OpenMetrics compatible metrics endpoint."""
+    return _build_metrics_text()
 
 
 # =============================================================================

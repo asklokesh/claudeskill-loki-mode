@@ -321,6 +321,7 @@ show_help() {
     echo "  memory [cmd]     Cross-project learnings (list|show|search|stats)"
     echo "  compound [cmd]   Knowledge compounding (list|show|search|run|stats)"
     echo "  council [cmd]    Completion council (status|verdicts|convergence|force-review|report)"
+    echo "  metrics          Prometheus/OpenMetrics metrics from dashboard"
     echo "  dogfood          Show self-development statistics"
     echo "  secrets [cmd]    API key status and validation (status|validate)"
     echo "  reset [target]   Reset session state (all|retries|failed)"
@@ -4312,6 +4313,9 @@ main() {
         audit)
             cmd_audit "$@"
             ;;
+        metrics)
+            cmd_metrics "$@"
+            ;;
         version|--version|-v)
             cmd_version
             ;;
@@ -7041,6 +7045,51 @@ for line in sys.stdin:
         *)
             echo -e "${RED}Unknown enterprise command: $subcommand${NC}"
             echo "Run 'loki enterprise help' for usage."
+            exit 1
+            ;;
+    esac
+}
+
+# Fetch and display Prometheus metrics from dashboard
+cmd_metrics() {
+    local subcommand="${1:-}"
+    local port="${LOKI_DASHBOARD_PORT:-57374}"
+    local host="127.0.0.1"
+
+    case "$subcommand" in
+        help|--help|-h)
+            echo -e "${BOLD}loki metrics${NC} - Prometheus/OpenMetrics metrics"
+            echo ""
+            echo "Usage: loki metrics [options]"
+            echo ""
+            echo "Fetches metrics from the dashboard API in Prometheus/OpenMetrics format."
+            echo "The dashboard must be running (loki dashboard start or loki serve)."
+            echo ""
+            echo "Options:"
+            echo "  help    Show this help"
+            echo ""
+            echo "Environment:"
+            echo "  LOKI_DASHBOARD_PORT   Dashboard port (default: 57374)"
+            echo ""
+            echo "Examples:"
+            echo "  loki metrics          # Display all metrics"
+            echo "  loki metrics | grep loki_cost_usd   # Filter specific metric"
+            ;;
+        "")
+            # Fetch metrics from dashboard
+            local url="http://${host}:${port}/metrics"
+            local response
+            response=$(curl -sf "$url" 2>/dev/null)
+            if [ $? -ne 0 ]; then
+                echo -e "${RED}Error: Could not connect to dashboard at ${url}${NC}"
+                echo "Make sure the dashboard is running: loki serve"
+                exit 1
+            fi
+            echo "$response"
+            ;;
+        *)
+            echo -e "${RED}Unknown metrics command: $subcommand${NC}"
+            echo "Run 'loki metrics help' for usage."
             exit 1
             ;;
     esac
