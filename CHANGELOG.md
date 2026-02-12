@@ -5,6 +5,24 @@ All notable changes to Loki Mode will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.38.0] - 2026-02-12
+
+### Added
+- Branch protection: agent sessions auto-create feature branches (LOKI_BRANCH_PROTECTION=true), PR creation via `gh`
+- Agent action audit trail: JSON lines log at .loki/logs/agent-audit.jsonl (cli_invoke, git_commit, session events)
+- `loki audit` CLI with log/count/help subcommands
+- Prometheus/OpenMetrics /metrics endpoint with 9 metrics (session_status, iterations, tasks, agents, cost, events, uptime)
+- `loki metrics` CLI to fetch metrics from dashboard
+- Log integrity chain hashing: SHA-256 tamper-evident audit entries with verify_log_integrity()
+- Network security wiki documentation (Docker isolation, Kubernetes NetworkPolicy)
+- OpenClaw bridge foundation: event schema mapping (15 event types), file watcher, CLI skeleton
+- integrations/openclaw/bridge/ package with __main__.py entry point
+
+### Fixed
+- loki_agents_total Prometheus metric type corrected from counter to gauge
+- Python 3.8 compat: removed dict|None type hints in OpenClaw bridge and Pydantic models
+- Added python3 guard in audit_agent_action() for systems without Python
+
 ## [5.37.1] - 2026-02-12
 
 ### Security

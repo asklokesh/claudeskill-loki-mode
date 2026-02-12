@@ -2,10 +2,7 @@
   "mcpServers": {
     "loki-mode": {
       "command": "python3",
-      "args": ["-m", "mcp.server"],
-      "env": {
-        "PYTHONPATH": "${PROJECT_DIR}"
-      }
+      "args": ["-m", "mcp.server"]
     }
   }
 }
