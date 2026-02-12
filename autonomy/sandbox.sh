@@ -820,8 +820,8 @@ start_sandbox() {
         "--security-opt=no-new-privileges:true"
         "--cap-drop=ALL"
         "--cap-add=CHOWN"
-        "--cap-add=SETUID"
-        "--cap-add=SETGID"
+        # SETUID/SETGID intentionally omitted: container runs as non-root (UID 1000)
+        # and should not be able to change UID/GID, which would undermine isolation
 
         # Network
         "--network=$SANDBOX_NETWORK"

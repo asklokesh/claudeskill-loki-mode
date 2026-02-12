@@ -5,6 +5,23 @@ All notable changes to Loki Mode will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.37.1] - 2026-02-12
+
+### Security
+- WebSocket /ws endpoint now requires token query param when enterprise auth or OIDC enabled (closes unauthenticated WS gap)
+- RBAC role model: admin, operator, viewer, auditor roles with scope hierarchy (* > control > write > read)
+- Removed SETUID/SETGID Docker capabilities from sandbox (unnecessary for non-root UID 1000)
+- CORS wildcard warning logged when LOKI_DASHBOARD_CORS set to *
+
+### Added
+- Syslog audit log forwarding via LOKI_AUDIT_SYSLOG_HOST/PORT/PROTO (fire-and-forget, off by default)
+- Role parameter on token generation (generate_token(role="viewer"))
+- resolve_scopes() and list_roles() functions in auth module
+
+### Fixed
+- Gemini provider PROVIDER_RATE_LIMIT_RPM changed from hardcoded 60 to configurable ${LOKI_GEMINI_RPM:-15} (free tier default)
+- Gemini model name comment updated to note preview status
+
 ## [5.37.0] - 2026-02-12
 
 ### Added

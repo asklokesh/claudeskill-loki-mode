@@ -49,7 +49,7 @@ PROVIDER_MAX_PARALLEL=1
 
 # Model Configuration
 # Gemini CLI supports --model flag to specify model
-# Primary: gemini-3-pro-preview (latest as of Jan 2026)
+# Primary: gemini-3-pro-preview (preview names - may change when GA is released)
 # Fallback: gemini-3-flash-preview (for rate limit scenarios)
 PROVIDER_MODEL="gemini-3-pro-preview"
 PROVIDER_MODEL_FALLBACK="gemini-3-flash-preview"
@@ -69,7 +69,9 @@ PROVIDER_TASK_MODEL_VALUES=()
 # Context and Limits
 PROVIDER_CONTEXT_WINDOW=1000000  # Gemini 3 has 1M context
 PROVIDER_MAX_OUTPUT_TOKENS=65536
-PROVIDER_RATE_LIMIT_RPM=60
+# Rate limit varies by tier: Free=5-15 RPM, Tier1=150+ RPM, Tier2=500+ RPM
+# Default to conservative free-tier value; override with LOKI_GEMINI_RPM env var
+PROVIDER_RATE_LIMIT_RPM="${LOKI_GEMINI_RPM:-15}"
 
 # Cost (USD per 1K tokens, approximate for Gemini 3 Pro)
 PROVIDER_COST_INPUT_PLANNING=0.00125

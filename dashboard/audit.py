@@ -5,10 +5,19 @@ Enabled by default. Disable with LOKI_AUDIT_DISABLED=true environment variable.
 Legacy env var LOKI_ENTERPRISE_AUDIT=true always enables audit (backward compat).
 
 Audit logs: ~/.loki/dashboard/audit/
+
+Syslog forwarding (optional):
+  Set LOKI_AUDIT_SYSLOG_HOST to enable forwarding to a centralized syslog server.
+  LOKI_AUDIT_SYSLOG_PORT defaults to 514.
+  LOKI_AUDIT_SYSLOG_PROTO defaults to "udp" (also supports "tcp").
 """
 
 import json
+import logging
+import logging.handlers
 import os
+import socket
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
@@ -24,6 +33,38 @@ AUDIT_DIR = Path.home() / ".loki" / "dashboard" / "audit"
 # Log rotation settings
 MAX_LOG_SIZE_MB = int(os.environ.get("LOKI_AUDIT_MAX_SIZE_MB", "10"))
 MAX_LOG_FILES = int(os.environ.get("LOKI_AUDIT_MAX_FILES", "10"))
+
+# Syslog forwarding (optional, off by default)
+_SYSLOG_HOST = os.environ.get("LOKI_AUDIT_SYSLOG_HOST", "").strip()
+_SYSLOG_PORT = int(os.environ.get("LOKI_AUDIT_SYSLOG_PORT", "514"))
+_SYSLOG_PROTO = os.environ.get("LOKI_AUDIT_SYSLOG_PROTO", "udp").lower().strip()
+
+# Actions considered security-relevant (logged at WARNING level in syslog)
+_SECURITY_ACTIONS = frozenset({
+    "delete", "kill", "stop", "login", "logout",
+    "create_token", "revoke_token",
+})
+
+_syslog_handler: logging.handlers.SysLogHandler | None = None
+SYSLOG_ENABLED: bool = False
+
+if _SYSLOG_HOST:
+    try:
+        _socktype = socket.SOCK_STREAM if _SYSLOG_PROTO == "tcp" else socket.SOCK_DGRAM
+        _syslog_handler = logging.handlers.SysLogHandler(
+            address=(_SYSLOG_HOST, _SYSLOG_PORT),
+            facility=logging.handlers.SysLogHandler.LOG_LOCAL0,
+            socktype=_socktype,
+        )
+        _syslog_handler.setFormatter(logging.Formatter("loki-audit: %(message)s"))
+        SYSLOG_ENABLED = True
+    except Exception as _exc:
+        print(
+            f"[loki-audit] WARNING: Failed to configure syslog handler "
+            f"({_SYSLOG_HOST}:{_SYSLOG_PORT}/{_SYSLOG_PROTO}): {_exc}",
+            file=sys.stderr,
+        )
+        _syslog_handler = None
 
 
 def _ensure_audit_dir() -> None:
@@ -66,6 +107,30 @@ def _cleanup_old_logs() -> None:
     while len(log_files) > MAX_LOG_FILES:
         oldest = log_files.pop(0)
         oldest.unlink()
+
+
+def _forward_to_syslog(entry: dict) -> None:
+    """Forward an audit entry to syslog if configured. Fire-and-forget."""
+    if _syslog_handler is None:
+        return
+    try:
+        message = json.dumps(entry, separators=(",", ":"))
+        action = entry.get("action", "")
+        is_security = action in _SECURITY_ACTIONS or not entry.get("success", True)
+        level = logging.WARNING if is_security else logging.INFO
+        record = logging.LogRecord(
+            name="loki-audit",
+            level=level,
+            pathname="",
+            lineno=0,
+            msg=message,
+            args=(),
+            exc_info=None,
+        )
+        _syslog_handler.emit(record)
+    except Exception:
+        # Fire-and-forget: never block the main audit write path
+        pass
 
 
 def log_event(
@@ -120,6 +185,9 @@ def log_event(
 
     with open(log_file, "a") as f:
         f.write(json.dumps(entry) + "\n")
+
+    # Forward to syslog if configured
+    _forward_to_syslog(entry)
 
     return entry
 

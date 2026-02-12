@@ -35,6 +35,23 @@ OIDC_CLIENT_ID = os.environ.get("LOKI_OIDC_CLIENT_ID", "")
 OIDC_AUDIENCE = os.environ.get("LOKI_OIDC_AUDIENCE", "")  # Usually same as client_id
 OIDC_ENABLED = bool(OIDC_ISSUER and OIDC_CLIENT_ID)
 
+# Role-to-scope mapping (predefined roles)
+ROLES = {
+    "admin": ["*"],  # Full access
+    "operator": ["control", "read", "write"],  # Start/stop/pause, view+edit dashboard
+    "viewer": ["read"],  # Read-only dashboard access
+    "auditor": ["read", "audit"],  # Read dashboard + audit logs
+}
+
+# Scope hierarchy: higher scopes implicitly grant lower ones (single-level lookup).
+# * -> control -> write -> read
+# Each scope explicitly lists ALL scopes it grants (no transitive resolution).
+_SCOPE_HIERARCHY = {
+    "*": {"control", "write", "read", "audit", "admin"},
+    "control": {"write", "read"},
+    "write": {"read"},
+}
+
 if OIDC_ENABLED:
     import logging as _logging
     _logging.getLogger("loki.auth").warning(
@@ -98,10 +115,39 @@ def _constant_time_compare(a: str, b: str) -> bool:
     return secrets.compare_digest(a.encode(), b.encode())
 
 
+def resolve_scopes(role_or_scopes) -> list[str]:
+    """Resolve a role name or scope list into a concrete list of scopes.
+
+    Args:
+        role_or_scopes: Either a role name (str), a single scope (str),
+                        or a list of scopes.
+
+    Returns:
+        List of scope strings.
+    """
+    if isinstance(role_or_scopes, list):
+        return role_or_scopes
+    if isinstance(role_or_scopes, str):
+        if role_or_scopes in ROLES:
+            return list(ROLES[role_or_scopes])
+        return [role_or_scopes]
+    return ["*"]
+
+
+def list_roles() -> dict[str, list[str]]:
+    """Return the predefined role-to-scope mapping.
+
+    Returns:
+        Dict mapping role names to their scope lists.
+    """
+    return dict(ROLES)
+
+
 def generate_token(
     name: str,
     scopes: Optional[list[str]] = None,
     expires_days: Optional[int] = None,
+    role: Optional[str] = None,
 ) -> dict:
     """
     Generate a new API token.
@@ -110,12 +156,16 @@ def generate_token(
         name: Human-readable name for the token
         scopes: Optional list of permission scopes (default: all)
         expires_days: Optional expiration in days (None = never expires)
+        role: Optional role name (admin, operator, viewer, auditor).
+              If provided, scopes are resolved from the role.
+              Cannot be combined with explicit scopes.
 
     Returns:
         Dict with token info (includes raw token - only shown once)
 
     Raises:
-        ValueError: If name is empty/too long or expires_days is invalid
+        ValueError: If name is empty/too long, expires_days is invalid,
+                    or role is unrecognized
     """
     # Validate inputs
     if not name or not name.strip():
@@ -124,8 +174,18 @@ def generate_token(
         raise ValueError("Token name too long (max 255 characters)")
     if expires_days is not None and expires_days <= 0:
         raise ValueError("expires_days must be positive (or None for no expiration)")
+    if role is not None and role not in ROLES:
+        raise ValueError(
+            f"Unknown role '{role}'. Valid roles: {', '.join(ROLES.keys())}"
+        )
 
     name = name.strip()
+
+    # Resolve scopes: role takes precedence if provided
+    if role is not None:
+        resolved_scopes = resolve_scopes(role)
+    else:
+        resolved_scopes = scopes
 
     # Generate secure random token
     raw_token = f"loki_{secrets.token_urlsafe(32)}"
@@ -150,12 +210,14 @@ def generate_token(
         "name": name,
         "hash": token_hash,
         "salt": token_salt,
-        "scopes": scopes or ["*"],
+        "scopes": resolved_scopes or ["*"],
         "created_at": datetime.now(timezone.utc).isoformat(),
         "expires_at": expires_at,
         "last_used": None,
         "revoked": False,
     }
+    if role is not None:
+        token_entry["role"] = role
 
     tokens["tokens"][token_id] = token_entry
     _save_tokens(tokens)
@@ -247,6 +309,8 @@ def list_tokens(include_revoked: bool = False) -> list[dict]:
             "last_used": token.get("last_used"),
             "revoked": token.get("revoked", False),
         }
+        if "role" in token:
+            safe_token["role"] = token["role"]
         result.append(safe_token)
 
     return result
@@ -297,17 +361,32 @@ def validate_token(raw_token: str) -> Optional[dict]:
 
 def has_scope(token_info: dict, required_scope: str) -> bool:
     """
-    Check if a token has a required scope.
+    Check if a token has a required scope, respecting scope hierarchy.
+
+    Hierarchy (higher scopes implicitly grant lower ones):
+        * -> control -> write -> read
+        * also grants audit, admin, and all other scopes
 
     Args:
         token_info: Token metadata from validate_token
         required_scope: The scope to check
 
     Returns:
-        True if token has the scope (or wildcard)
+        True if token has the scope (directly or via hierarchy)
     """
     scopes = token_info.get("scopes", [])
-    return "*" in scopes or required_scope in scopes
+
+    # Direct match
+    if required_scope in scopes:
+        return True
+
+    # Check hierarchy: does any held scope implicitly grant the required one?
+    for scope in scopes:
+        implied = _SCOPE_HIERARCHY.get(scope, set())
+        if required_scope in implied:
+            return True
+
+    return False
 
 
 # ---------------------------------------------------------------------------

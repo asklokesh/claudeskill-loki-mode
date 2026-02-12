@@ -246,7 +246,13 @@ app = FastAPI(
 # Add CORS middleware - restricted to localhost by default.
 # Set LOKI_DASHBOARD_CORS to override (comma-separated origins).
 _cors_default = "http://localhost:57374,http://127.0.0.1:57374"
-_cors_origins = os.environ.get("LOKI_DASHBOARD_CORS", _cors_default).split(",")
+_cors_raw = os.environ.get("LOKI_DASHBOARD_CORS", _cors_default)
+if _cors_raw.strip() == "*":
+    logger.warning(
+        "LOKI_DASHBOARD_CORS is set to '*' -- all origins are allowed. "
+        "This is insecure for production deployments."
+    )
+_cors_origins = _cors_raw.split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in _cors_origins if o.strip()],
@@ -827,7 +833,36 @@ async def move_task(
 # WebSocket endpoint
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket) -> None:
-    """WebSocket endpoint for real-time updates."""
+    """WebSocket endpoint for real-time updates.
+
+    When enterprise auth or OIDC is enabled, a valid token must be passed
+    as a query parameter: ``/ws?token=loki_xxx`` (or a JWT for OIDC).
+    Browsers cannot send Authorization headers on WebSocket upgrade
+    requests, so query-parameter auth is the standard approach.
+    """
+    # --- WebSocket authentication gate ---
+    # NOTE: Query-parameter auth is used because browsers cannot send
+    # Authorization headers on WS upgrade. Tokens may appear in reverse
+    # proxy access logs -- configure log sanitization for /ws in production.
+    # FastAPI Depends() is not supported on @app.websocket() routes.
+    if auth.is_enterprise_mode() or auth.is_oidc_mode():
+        ws_token: Optional[str] = websocket.query_params.get("token")
+        if not ws_token:
+            await websocket.close(code=1008)  # Policy Violation
+            return
+
+        token_info: Optional[dict] = None
+        # Try OIDC first for JWT-style tokens
+        if auth.is_oidc_mode() and not ws_token.startswith("loki_"):
+            token_info = auth.validate_oidc_token(ws_token)
+        # Fall back to enterprise token auth
+        if token_info is None and auth.is_enterprise_mode():
+            token_info = auth.validate_token(ws_token)
+
+        if token_info is None:
+            await websocket.close(code=1008)  # Policy Violation
+            return
+
     await manager.connect(websocket)
     try:
         # Send initial connection confirmation
