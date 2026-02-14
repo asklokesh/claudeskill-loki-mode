@@ -5,6 +5,23 @@ All notable changes to Loki Mode will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.41.0] - 2026-02-13
+
+### Added
+- GitHub sync-back: `sync_github_status()` wired into iteration loop and session lifecycle
+- GitHub PR creation: `create_github_pr()` called on successful session end (`LOKI_GITHUB_PR=true`)
+- GitHub task export: `export_tasks_to_github()` available via CLI
+- Deduplication log at `.loki/github/synced.log` prevents duplicate issue comments
+- `sync_github_completed_tasks()` batch syncs all completed GitHub tasks after each iteration
+- `sync_github_in_progress_tasks()` notifies GitHub when imported issues are being worked on
+- `loki github` CLI command with 4 subcommands: sync, export, pr, status
+- Dashboard API: `/api/github/status`, `/api/github/tasks`, `/api/github/sync-log`
+- Comprehensive CLI reference wiki with copy-paste examples for all commands
+
+### Fixed
+- Misleading "API credits" wording in no-PRD confirmation prompt
+- GitHub integration status changed from "Planned" to "Implemented" in SKILL.md
+
 ## [5.40.1] - 2026-02-13
 
 ### Fixed

@@ -2,7 +2,7 @@
 
 Complete installation instructions for all platforms and use cases.
 
-**Version:** v5.40.1
+**Version:** v5.41.0
 
 ---
 

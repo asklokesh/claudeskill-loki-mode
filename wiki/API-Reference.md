@@ -697,7 +697,7 @@ curl http://localhost:57374/metrics
 
 ---
 
-### Context Window Endpoints (v5.40.1)
+### Context Window Endpoints (v5.41.0)
 
 #### `GET /api/context`
 Get current context window state including per-agent usage, totals, and content-type breakdown.
@@ -727,7 +727,7 @@ Get current context window state including per-agent usage, totals, and content-
 
 ---
 
-### Notification Endpoints (v5.40.1)
+### Notification Endpoints (v5.41.0)
 
 #### `GET /api/notifications`
 List all notifications, newest first.
