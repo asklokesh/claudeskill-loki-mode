@@ -918,13 +918,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // Skip if modifier keys are held (let browser defaults work)
     if (e.metaKey || e.ctrlKey || e.altKey) return;
 
-    var sections = ['overview', 'tasks', 'logs', 'memory', 'learning', 'council', 'cost', 'checkpoint'];
+    var sections = ['overview', 'tasks', 'logs', 'memory', 'learning', 'council', 'cost', 'checkpoint', 'context', 'notifications'];
 
     switch (e.key) {
-      // Section navigation: 1-8
-      case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8':
+      // Section navigation: 1-9, 0
+      case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
         e.preventDefault();
         switchSection(sections[parseInt(e.key) - 1]);
+        break;
+      case '0':
+        e.preventDefault();
+        switchSection(sections[9]);
         break;
 
       // Help overlay

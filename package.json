@@ -1,6 +1,6 @@
 {
   "name": "loki-mode",
-  "version": "5.42.2",
+  "version": "5.43.0",
   "description": "Loki Mode by Autonomi - Multi-agent autonomous startup system for Claude Code, Codex CLI, and Gemini CLI",
   "keywords": [
     "autonomi",
@@ -49,6 +49,7 @@
   ],
   "scripts": {
     "postinstall": "node bin/postinstall.js",
+    "prepack": "find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null; find . -name '*.pyc' -delete 2>/dev/null; true",
     "prepublishOnly": "cd dashboard-ui && npm ci && npm run build:all",
     "test": "bash -n autonomy/run.sh && bash -n autonomy/loki && bash -n autonomy/completion-council.sh && echo 'All syntax checks passed'",
     "test:visual": "node --experimental-vm-modules node_modules/jest/bin/jest.js dashboard-ui/tests/visual-regression.test.js",

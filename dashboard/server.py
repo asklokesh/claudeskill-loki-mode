@@ -48,6 +48,7 @@ from . import auth
 from . import audit
 from . import secrets as secrets_mod
 from . import telemetry as _telemetry
+from .control import atomic_write_json
 
 try:
     from . import __version__ as _version
@@ -2036,7 +2037,7 @@ async def stop_session(request: Request):
         try:
             sd = json.loads(session_file.read_text())
             sd["status"] = "stopped"
-            session_file.write_text(json.dumps(sd))
+            atomic_write_json(session_file, sd, use_lock=True)
         except Exception:
             pass
 

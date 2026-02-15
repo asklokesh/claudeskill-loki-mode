@@ -86,6 +86,8 @@ from .namespace import (
     GLOBAL_NAMESPACE,
 )
 
+__version__ = '5.43.0'
+
 __all__ = [
     # Embeddings
     "EmbeddingEngine",

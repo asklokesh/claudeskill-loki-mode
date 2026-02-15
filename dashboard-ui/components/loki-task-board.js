@@ -88,6 +88,13 @@ export class LokiTaskBoard extends LokiElement {
     const apiUrl = this.getAttribute('api-url') || window.location.origin;
     this._api = getApiClient({ baseUrl: apiUrl });
 
+    // Remove old listeners before adding new ones to prevent leaks
+    if (this._onTaskEvent) {
+      this._api.removeEventListener(ApiEvents.TASK_CREATED, this._onTaskEvent);
+      this._api.removeEventListener(ApiEvents.TASK_UPDATED, this._onTaskEvent);
+      this._api.removeEventListener(ApiEvents.TASK_DELETED, this._onTaskEvent);
+    }
+
     this._onTaskEvent = () => this._loadTasks();
     this._api.addEventListener(ApiEvents.TASK_CREATED, this._onTaskEvent);
     this._api.addEventListener(ApiEvents.TASK_UPDATED, this._onTaskEvent);

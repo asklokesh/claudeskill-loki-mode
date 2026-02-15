@@ -883,6 +883,46 @@ export class LokiApiClient extends EventTarget {
   }
 
   // ============================================
+  // Council API (v5.25.0)
+  // ============================================
+
+  /**
+   * Get completion council state
+   */
+  async getCouncilState() {
+    return this._get('/api/council/state');
+  }
+
+  /**
+   * Get council verdicts
+   * @param {number} limit - Max verdicts to return
+   */
+  async getCouncilVerdicts(limit = 20) {
+    return this._get(`/api/council/verdicts?limit=${limit}`);
+  }
+
+  /**
+   * Get convergence metrics
+   */
+  async getCouncilConvergence() {
+    return this._get('/api/council/convergence');
+  }
+
+  /**
+   * Get council report
+   */
+  async getCouncilReport() {
+    return this._get('/api/council/report');
+  }
+
+  /**
+   * Force council review
+   */
+  async forceCouncilReview() {
+    return this._post('/api/council/force-review', {});
+  }
+
+  // ============================================
   // Context Window Tracking API (v5.40.0)
   // ============================================
 

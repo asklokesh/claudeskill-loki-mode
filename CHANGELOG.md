@@ -5,6 +5,26 @@ All notable changes to Loki Mode will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.43.0] - 2026-02-15
+
+### Fixed
+- CLI: Added missing `syslog` command (was documented but not implemented)
+- CLI: Added 7 missing commands to bash completions (checkpoint, watchdog, audit, metrics, secrets, github, syslog)
+- Dashboard API: session.json writes now use atomic_write_json to prevent race conditions
+- Dashboard frontend: Added 5 missing council API methods to loki-api-client.js (state, verdicts, convergence, report, force-review)
+- Dashboard frontend: Fixed event listener leak in task board component on re-setup
+- Dashboard frontend: Fixed model pricing mutation across instances (moved to instance-level state)
+- Dashboard frontend: Fixed keyboard shortcut help overlay to include Context (9) and Notifications (0)
+- GitHub Actions: Fixed base64 -w 0 portability (release.yml now uses base64 | tr -d '\n')
+- GitHub Actions: Updated deprecated model ID in wiki-sync.yml to claude-sonnet-4-5-20250929
+- npm: Fixed Python __pycache__ files leaking into package (added prepack cleanup + .npmignore patterns)
+- Versions: Fixed learning/__init__.py version (was 1.2.0, now matches release), added missing __version__ to memory/__init__.py
+- Runtime: Added provider CLI validation in completion-council.sh before council invocations
+
+### Added
+- 8 enterprise documentation files: network-security.md, authentication.md, authorization.md, metrics.md, git-workflow.md, audit-logging.md, siem-integration.md, openclaw-integration.md
+- wiki/Changelog.md linking to main CHANGELOG.md
+
 ## [5.42.2] - 2026-02-15
 
 ### Changed

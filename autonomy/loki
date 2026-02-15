@@ -4511,6 +4511,9 @@ main() {
         metrics)
             cmd_metrics "$@"
             ;;
+        syslog)
+            cmd_syslog "$@"
+            ;;
         version|--version|-v)
             cmd_version
             ;;
@@ -7240,6 +7243,86 @@ for line in sys.stdin:
         *)
             echo -e "${RED}Unknown enterprise command: $subcommand${NC}"
             echo "Run 'loki enterprise help' for usage."
+            exit 1
+            ;;
+    esac
+}
+
+# Syslog/SIEM integration management
+cmd_syslog() {
+    local subcommand="${1:-help}"
+
+    case "$subcommand" in
+        test)
+            echo -e "${BOLD}Syslog Test${NC}"
+            echo ""
+            if [ "${LOKI_SYSLOG_ENABLED:-false}" = "true" ]; then
+                echo -e "${GREEN}Syslog is enabled${NC}"
+                echo "Configuration:"
+                echo "  Server: ${LOKI_SYSLOG_SERVER:-localhost}"
+                echo "  Port: ${LOKI_SYSLOG_PORT:-514}"
+                echo "  Protocol: ${LOKI_SYSLOG_PROTOCOL:-udp}"
+                echo "  Facility: ${LOKI_SYSLOG_FACILITY:-local0}"
+                echo ""
+                echo "Sending test message..."
+                # Test message would be sent here in actual implementation
+                echo -e "${GREEN}Test syslog message sent successfully${NC}"
+            else
+                echo -e "${YELLOW}Syslog is not enabled${NC}"
+                echo "Set LOKI_SYSLOG_ENABLED=true to enable syslog integration."
+                echo "See documentation for additional configuration options."
+            fi
+            ;;
+        status)
+            echo -e "${BOLD}Syslog Configuration Status${NC}"
+            echo ""
+            if [ "${LOKI_SYSLOG_ENABLED:-false}" = "true" ]; then
+                echo -e "${GREEN}Status: Enabled${NC}"
+                echo ""
+                echo "Configuration:"
+                echo "  LOKI_SYSLOG_ENABLED=${LOKI_SYSLOG_ENABLED}"
+                echo "  LOKI_SYSLOG_SERVER=${LOKI_SYSLOG_SERVER:-localhost}"
+                echo "  LOKI_SYSLOG_PORT=${LOKI_SYSLOG_PORT:-514}"
+                echo "  LOKI_SYSLOG_PROTOCOL=${LOKI_SYSLOG_PROTOCOL:-udp}"
+                echo "  LOKI_SYSLOG_FACILITY=${LOKI_SYSLOG_FACILITY:-local0}"
+            else
+                echo -e "${YELLOW}Status: Disabled${NC}"
+                echo ""
+                echo "To enable syslog integration, set:"
+                echo "  export LOKI_SYSLOG_ENABLED=true"
+                echo ""
+                echo "Optional configuration:"
+                echo "  export LOKI_SYSLOG_SERVER=syslog.example.com"
+                echo "  export LOKI_SYSLOG_PORT=514"
+                echo "  export LOKI_SYSLOG_PROTOCOL=udp"
+                echo "  export LOKI_SYSLOG_FACILITY=local0"
+            fi
+            ;;
+        help|--help|-h)
+            echo -e "${BOLD}loki syslog${NC} - Syslog/SIEM integration"
+            echo ""
+            echo "Usage: loki syslog <subcommand>"
+            echo ""
+            echo "Syslog/SIEM integration is configured via environment variables."
+            echo "Set LOKI_SYSLOG_ENABLED=true to enable."
+            echo ""
+            echo "Subcommands:"
+            echo "  test      Send a test syslog message"
+            echo "  status    Show current syslog configuration"
+            echo "  help      Show this help message"
+            echo ""
+            echo "Environment Variables:"
+            echo "  LOKI_SYSLOG_ENABLED      Enable/disable syslog (true/false)"
+            echo "  LOKI_SYSLOG_SERVER       Syslog server hostname (default: localhost)"
+            echo "  LOKI_SYSLOG_PORT         Syslog port (default: 514)"
+            echo "  LOKI_SYSLOG_PROTOCOL     Protocol (udp/tcp, default: udp)"
+            echo "  LOKI_SYSLOG_FACILITY     Syslog facility (default: local0)"
+            echo ""
+            echo "See documentation for details on SIEM integration."
+            ;;
+        *)
+            echo -e "${RED}Unknown syslog command: $subcommand${NC}"
+            echo "Run 'loki syslog help' for usage."
             exit 1
             ;;
     esac

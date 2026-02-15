@@ -5,7 +5,7 @@ _loki_completion() {
     _init_completion || return
 
     # Main subcommands (must match autonomy/loki main case statement)
-    local main_commands="start quick demo init stop pause resume status dashboard logs serve api sandbox notify import issue config provider reset memory compound council dogfood projects enterprise voice version completions doctor help"
+    local main_commands="start quick demo init stop pause resume status dashboard logs serve api sandbox notify import github issue config provider reset memory compound checkpoint council dogfood projects enterprise voice secrets doctor watchdog audit metrics syslog version completions help"
 
     # 1. If we are on the first argument (subcommand)
     if [[ $cword -eq 1 ]]; then
@@ -86,6 +86,11 @@ _loki_completion() {
         voice)
             local voice_cmds="status listen dictate speak start help"
             COMPREPLY=( $(compgen -W "${voice_cmds}" -- "$cur") )
+            ;;
+
+        syslog)
+            local syslog_cmds="test status help"
+            COMPREPLY=( $(compgen -W "${syslog_cmds}" -- "$cur") )
             ;;
 
         status)

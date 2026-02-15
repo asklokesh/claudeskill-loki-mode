@@ -438,6 +438,13 @@ council_member_review() {
     local evidence_file="$3"
     local vote_dir="$4"
 
+    # Validate provider CLI is available
+    case "${PROVIDER_NAME:-claude}" in
+        claude) command -v claude >/dev/null 2>&1 || { log_error "Claude CLI not found"; return 1; } ;;
+        codex) command -v codex >/dev/null 2>&1 || { log_error "Codex CLI not found"; return 1; } ;;
+        gemini) command -v gemini >/dev/null 2>&1 || { log_error "Gemini CLI not found"; return 1; } ;;
+    esac
+
     local evidence
     evidence=$(cat "$evidence_file" 2>/dev/null || echo "No evidence available")
 
@@ -513,6 +520,13 @@ REASON: your reasoning here"
 council_devils_advocate() {
     local evidence_file="$1"
     local vote_dir="$2"
+
+    # Validate provider CLI is available
+    case "${PROVIDER_NAME:-claude}" in
+        claude) command -v claude >/dev/null 2>&1 || { log_error "Claude CLI not found"; return 1; } ;;
+        codex) command -v codex >/dev/null 2>&1 || { log_error "Codex CLI not found"; return 1; } ;;
+        gemini) command -v gemini >/dev/null 2>&1 || { log_error "Gemini CLI not found"; return 1; } ;;
+    esac
 
     local evidence
     evidence=$(cat "$evidence_file" 2>/dev/null || echo "No evidence available")

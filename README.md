@@ -13,7 +13,7 @@
 [![HumanEval](https://img.shields.io/badge/HumanEval-98.17%25%20Pass%401-brightgreen)](benchmarks/results/)
 [![SWE-bench](https://img.shields.io/badge/SWE--bench-99.67%25%20Patch%20Gen-brightgreen)](benchmarks/results/)
 
-**Current Version: v5.42.2**
+**Current Version: v5.43.0**
 
 **[Autonomi](https://www.autonomi.dev/)** | **[Documentation](https://www.autonomi.dev/docs)** | **[GitHub](https://github.com/asklokesh/loki-mode)**
 

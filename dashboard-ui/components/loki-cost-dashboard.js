@@ -26,9 +26,6 @@ const DEFAULT_PRICING = {
   'gemini-3-flash': { input: 0.10, output: 0.40, label: 'Gemini 3 Flash', provider: 'gemini' },
 };
 
-// Active pricing - starts with defaults, updated from API
-let MODEL_PRICING = { ...DEFAULT_PRICING };
-
 /**
  * @class LokiCostDashboard
  * @extends LokiElement
@@ -55,6 +52,7 @@ export class LokiCostDashboard extends LokiElement {
     };
     this._api = null;
     this._pollInterval = null;
+    this._modelPricing = { ...DEFAULT_PRICING };
   }
 
   connectedCallback() {
@@ -100,14 +98,14 @@ export class LokiCostDashboard extends LokiElement {
             provider: m.provider || 'unknown',
           };
         }
-        MODEL_PRICING = updated;
+        this._modelPricing = updated;
         this._pricingSource = pricing.source || 'api';
         this._pricingDate = pricing.updated || '';
         this._activeProvider = pricing.provider || 'claude';
         this.render();
       }
     } catch {
-      // Keep static defaults
+      // Keep instance defaults
     }
   }
 
@@ -643,7 +641,7 @@ export class LokiCostDashboard extends LokiElement {
             ${this._pricingDate ? `<span class="pricing-meta">Updated: ${this._escapeHTML(this._pricingDate)}</span>` : ''}
           </div>
           <div class="pricing-grid">
-            ${Object.entries(MODEL_PRICING).map(([key, m]) => `
+            ${Object.entries(this._modelPricing).map(([key, m]) => `
             <div class="pricing-item">
               <div class="pricing-model ${this._getPricingColorClass(key, m)}">${m.label || key}</div>
               <div class="pricing-rates">In: $${m.input.toFixed(2)} / Out: $${m.output.toFixed(2)}</div>

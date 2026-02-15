@@ -327,7 +327,7 @@ jobs:
           CURRENT_SHA=$(gh api repos/asklokesh/homebrew-tap/contents/Formula/loki-mode.rb --jq '.sha')
 
           # Encode content as base64
-          CONTENT=$(echo "$FORMULA" | base64 -w 0)
+          CONTENT=$(echo "$FORMULA" | base64 | tr -d '\n')
 
           # Update file via API
           gh api repos/asklokesh/homebrew-tap/contents/Formula/loki-mode.rb \

@@ -154,4 +154,4 @@ __all__ = [
     'get_startup_tips',
 ]
 
-__version__ = '1.2.0'
+__version__ = '5.43.0'

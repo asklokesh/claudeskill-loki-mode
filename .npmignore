@@ -5,6 +5,12 @@
 **/*.pyc
 **/*.pyo
 
+# Python cache (redundant patterns for npm glob compatibility)
+__pycache__
+__pycache__/
+*.pyc
+*.pyo
+
 # Node modules (dashboard frontend)
 **/node_modules/
 
