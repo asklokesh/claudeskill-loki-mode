@@ -15,7 +15,7 @@
 
 **Current Version: v5.42.2**
 
-**[Autonomi](https://www.autonomi.dev/)** | **[Documentation](https://www.autonomi.dev/)** | **[GitHub](https://github.com/asklokesh/loki-mode)**
+**[Autonomi](https://www.autonomi.dev/)** | **[Documentation](https://www.autonomi.dev/docs)** | **[GitHub](https://github.com/asklokesh/loki-mode)**
 
 > **PRD → Deployed Product in Zero Human Intervention**
 >
@@ -983,7 +983,8 @@ Loki Mode is the flagship product of **[Autonomi](https://www.autonomi.dev/)** -
 
 **Why Autonomi?** Loki Mode proved that multi-agent autonomous systems can build real software from a PRD with zero human intervention. Autonomi is the expansion of that vision into a broader platform of autonomous services and products.
 
-- **[autonomi.dev](https://www.autonomi.dev/)** -- Main website and documentation
+- **[autonomi.dev](https://www.autonomi.dev/)** -- Main website
+- **[Documentation](https://www.autonomi.dev/docs)** -- Full documentation
 - **Loki Mode** -- Autonomous multi-agent startup system (this repo)
 - More products coming soon
 
