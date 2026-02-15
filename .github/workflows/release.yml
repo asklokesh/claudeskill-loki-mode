@@ -153,6 +153,39 @@ jobs:
         run: |
           echo "Release v${{ steps.version.outputs.version }} already exists. Skipping."
 
+  update-website:
+    needs: release
+    if: needs.release.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (for changelog)
+        uses: actions/checkout@v4
+
+      - name: Extract changelog for this version
+        id: changelog
+        run: |
+          VERSION="${{ needs.release.outputs.version }}"
+          CHANGELOG=$(awk "/^## \[$VERSION\]/{flag=1; next} /^## \[/{flag=0} flag" CHANGELOG.md)
+          if [ -z "$CHANGELOG" ]; then
+            CHANGELOG="Release v$VERSION"
+          fi
+          # Escape for JSON
+          CHANGELOG_JSON=$(echo "$CHANGELOG" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))')
+          echo "changelog=$CHANGELOG_JSON" >> $GITHUB_OUTPUT
+
+      - name: Dispatch to autonomi-website
+        env:
+          GH_TOKEN: ${{ secrets.WEBSITE_DISPATCH_TOKEN }}
+        run: |
+          VERSION="v${{ needs.release.outputs.version }}"
+          CHANGELOG=${{ steps.changelog.outputs.changelog }}
+          gh api repos/asklokesh/autonomi-website/dispatches \
+            -X POST \
+            -f event_type=loki-mode-release \
+            -f "client_payload[version]=${VERSION}" \
+            -f "client_payload[changelog]=${CHANGELOG}"
+          echo "Dispatched website update for ${VERSION}"
+
   publish-npm:
     needs: release
     if: needs.release.outputs.release_created == 'true'
