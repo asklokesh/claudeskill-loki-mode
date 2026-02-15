@@ -25,9 +25,9 @@
 
 ## Demo
 
-[![asciicast](https://asciinema.org/a/EqNo5IVTaPJfCjLmnYgZ9TC3E.svg)](https://asciinema.org/a/EqNo5IVTaPJfCjLmnYgZ9TC3E)
+[![asciicast](https://asciinema.org/a/AjjnjzOeKLYItp6s.svg)](https://asciinema.org/a/AjjnjzOeKLYItp6s)
 
-*Click to watch Loki Mode build a complete Todo App from PRD - zero human intervention*
+*Click to watch Loki Mode v5.42 -- CLI commands, dashboard, 8 parallel agents, 7-gate quality, Completion Council, memory system*
 
 ---
 
