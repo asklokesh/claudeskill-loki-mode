@@ -177,6 +177,11 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "SLACK_WEBHOOK_URL not configured, skipping Slack notification"
+            exit 0
+          fi
+
           VERSION="v${{ needs.release.outputs.version }}"
           RELEASE_URL="https://github.com/asklokesh/loki-mode/releases/tag/${VERSION}"
 
