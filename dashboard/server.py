@@ -3359,6 +3359,50 @@ async def prometheus_metrics():
 
 
 # =============================================================================
+# PRD Checklist Endpoints (v5.44.0)
+# =============================================================================
+
+@app.get("/api/checklist")
+async def get_checklist():
+    """Get full PRD checklist with verification status."""
+    loki_dir = _get_loki_dir()
+    checklist_file = loki_dir / "checklist" / "checklist.json"
+    if not checklist_file.exists():
+        return {"status": "not_initialized", "categories": [], "summary": {"total": 0, "verified": 0, "failing": 0, "pending": 0}}
+    try:
+        return json.loads(checklist_file.read_text())
+    except (json.JSONDecodeError, OSError):
+        return {"status": "error", "categories": [], "summary": {"total": 0, "verified": 0, "failing": 0, "pending": 0}}
+
+
+@app.get("/api/checklist/summary")
+async def get_checklist_summary():
+    """Get checklist verification summary."""
+    loki_dir = _get_loki_dir()
+    results_file = loki_dir / "checklist" / "verification-results.json"
+    if not results_file.exists():
+        return {"status": "not_initialized", "summary": {"total": 0, "verified": 0, "failing": 0, "pending": 0}}
+    try:
+        return json.loads(results_file.read_text())
+    except (json.JSONDecodeError, OSError):
+        return {"status": "error", "summary": {"total": 0, "verified": 0, "failing": 0, "pending": 0}}
+
+
+@app.get("/api/prd-observations")
+async def get_prd_observations():
+    """Get PRD quality analysis observations."""
+    loki_dir = _get_loki_dir()
+    obs_file = loki_dir / "prd-observations.md"
+    if not obs_file.exists():
+        return PlainTextResponse("No PRD observations available yet.", status_code=200)
+    try:
+        content = obs_file.read_text()
+        return PlainTextResponse(content, status_code=200)
+    except OSError:
+        return PlainTextResponse("Error reading PRD observations.", status_code=500)
+
+
+# =============================================================================
 # Static File Serving (Production/Docker)
 # =============================================================================
 # Must be configured AFTER all API routes to avoid conflicts

@@ -72,6 +72,7 @@ export { LokiLogStream } from './components/loki-log-stream.js';
 export { LokiMemoryBrowser } from './components/loki-memory-browser.js';
 export { LokiLearningDashboard } from './components/loki-learning-dashboard.js';
 export { LokiCouncilDashboard } from './components/loki-council-dashboard.js';
+export { LokiChecklistViewer } from './components/loki-checklist-viewer.js';
 export { LokiCostDashboard } from './components/loki-cost-dashboard.js';
 export { LokiCheckpointViewer } from './components/loki-checkpoint-viewer.js';
 export { LokiContextTracker } from './components/loki-context-tracker.js';
@@ -119,6 +120,7 @@ const componentModules = [
   './components/loki-memory-browser.js',
   './components/loki-learning-dashboard.js',
   './components/loki-council-dashboard.js',
+  './components/loki-checklist-viewer.js',
   './components/loki-cost-dashboard.js',
   './components/loki-checkpoint-viewer.js',
   './components/loki-context-tracker.js',

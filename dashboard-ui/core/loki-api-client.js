@@ -53,6 +53,7 @@ export const ApiEvents = {
   AGENT_UPDATE: 'api:agent-update',
   LOG_MESSAGE: 'api:log-message',
   MEMORY_UPDATE: 'api:memory-update',
+  CHECKLIST_UPDATE: 'api:checklist-update',
 };
 
 /**
@@ -1008,6 +1009,36 @@ export class LokiApiClient extends EventTarget {
    */
   async getLogs(lines = 100) {
     return this._get(`/api/logs?lines=${lines}`);
+  }
+
+  // ============================================
+  // PRD Checklist API (v5.44.0)
+  // ============================================
+
+  /**
+   * Get full PRD checklist with verification results
+   */
+  async getChecklist() {
+    return this._get('/api/checklist');
+  }
+
+  /**
+   * Get checklist verification summary only
+   */
+  async getChecklistSummary() {
+    return this._get('/api/checklist/summary');
+  }
+
+  /**
+   * Get PRD quality analysis observations
+   */
+  async getPrdObservations() {
+    // Server returns PlainTextResponse, not JSON
+    const response = await fetch(`${this.baseUrl}/api/prd-observations`);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    return response.text();
   }
 
   // ============================================

@@ -42,6 +42,7 @@ export class LokiOverview extends LokiElement {
     this._statusUpdateHandler = null;
     this._connectedHandler = null;
     this._disconnectedHandler = null;
+    this._checklistSummary = null;
   }
 
   connectedCallback() {
@@ -88,8 +89,20 @@ export class LokiOverview extends LokiElement {
 
   async _loadStatus() {
     try {
-      const status = await this._api.getStatus();
-      this._updateFromStatus(status);
+      const [status, checklistSummary] = await Promise.allSettled([
+        this._api.getStatus(),
+        this._api.getChecklistSummary(),
+      ]);
+      if (status.status === 'fulfilled') {
+        this._updateFromStatus(status.value);
+      } else {
+        this._data.connected = false;
+        this._data.status = 'offline';
+      }
+      if (checklistSummary.status === 'fulfilled') {
+        this._checklistSummary = checklistSummary.value?.summary || null;
+      }
+      this.render();
     } catch (error) {
       this._data.connected = false;
       this._data.status = 'offline';
@@ -165,6 +178,30 @@ export class LokiOverview extends LokiElement {
       default:
         return 'offline';
     }
+  }
+
+  _renderChecklistCard() {
+    const s = this._checklistSummary;
+    if (!s || !s.total) {
+      return `
+        <div class="overview-card">
+          <div class="card-label">PRD Progress</div>
+          <div class="card-value small-text">--</div>
+        </div>
+      `;
+    }
+    const pct = Math.round((s.verified / s.total) * 100);
+    const barColor = s.failing > 0 ? 'var(--loki-yellow, #f59e0b)' : 'var(--loki-green, #22c55e)';
+    return `
+      <div class="overview-card">
+        <div class="card-label">PRD Progress</div>
+        <div class="card-value small-text">${s.verified}/${s.total} (${pct}%)</div>
+        <div class="mini-progress" style="margin-top:4px;height:4px;background:var(--loki-bg-secondary,#e4e4e7);border-radius:2px;overflow:hidden;">
+          <div style="width:${pct}%;height:100%;background:${barColor};transition:width 0.3s;"></div>
+        </div>
+        ${s.failing ? `<div style="font-size:10px;color:var(--loki-red,#ef4444);margin-top:2px;">${s.failing} failing</div>` : ''}
+      </div>
+    `;
   }
 
   render() {
@@ -333,6 +370,8 @@ export class LokiOverview extends LokiElement {
             <div class="card-label">Tasks</div>
             <div class="card-value small-text">${tasks}</div>
           </div>
+
+          ${this._renderChecklistCard()}
 
           <div class="overview-card">
             <div class="card-label">Uptime</div>

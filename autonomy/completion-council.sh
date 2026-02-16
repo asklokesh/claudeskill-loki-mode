@@ -426,6 +426,20 @@ EVIDENCE_SECTION
     if [ -f "go.mod" ]; then
         echo "- Go project detected" >> "$evidence_file"
     fi
+
+    # PRD Checklist verification evidence (v5.44.0 - advisory only)
+    # Uses checklist_as_evidence() from prd-checklist.sh if available
+    if type checklist_as_evidence &>/dev/null; then
+        checklist_as_evidence "$evidence_file"
+    elif [ -f ".loki/checklist/verification-results.json" ]; then
+        echo "" >> "$evidence_file"
+        echo "## PRD Checklist Verification Results" >> "$evidence_file"
+        cat ".loki/checklist/verification-results.json" >> "$evidence_file" 2>/dev/null || true
+    else
+        echo "" >> "$evidence_file"
+        echo "## PRD Checklist Verification Results" >> "$evidence_file"
+        echo "No PRD checklist has been created yet." >> "$evidence_file"
+    fi
 }
 
 #===============================================================================

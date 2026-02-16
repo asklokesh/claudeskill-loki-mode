@@ -534,6 +534,12 @@ if [ -f "$COUNCIL_SCRIPT" ]; then
     source "$COUNCIL_SCRIPT"
 fi
 
+# PRD Checklist module (v5.44.0)
+if [ -f "${SCRIPT_DIR}/prd-checklist.sh" ]; then
+    # shellcheck source=prd-checklist.sh
+    source "${SCRIPT_DIR}/prd-checklist.sh"
+fi
+
 # Anonymous usage telemetry (opt-out: LOKI_TELEMETRY_DISABLED=true or DO_NOT_TRACK=1)
 TELEMETRY_SCRIPT="$SCRIPT_DIR/telemetry.sh"
 if [ -f "$TELEMETRY_SCRIPT" ]; then
@@ -2627,6 +2633,12 @@ write_dashboard_state() {
         council_state=$(cat ".loki/council/state.json" 2>/dev/null || echo '{"enabled":false}')
     fi
 
+    # PRD Checklist summary (v5.44.0)
+    local checklist_summary='null'
+    if [ -f ".loki/checklist/verification-results.json" ]; then
+        checklist_summary=$(cat ".loki/checklist/verification-results.json" 2>/dev/null || echo "null")
+    fi
+
     # Get budget status (if configured)
     local budget_json="null"
     if [ -f ".loki/metrics/budget.json" ]; then
@@ -2703,6 +2715,7 @@ except: print('{\"total\":0,\"unacknowledged\":0}')
   },
   "qualityGates": $quality_gates,
   "council": $council_state,
+  "checklist": $checklist_summary,
   "budget": $budget_json,
   "context": $context_state,
   "tokens": $(python3 -c "
@@ -6047,17 +6060,29 @@ build_prompt() {
         memory_context_section="CONTEXT: $context_injection"
     fi
 
+    # PRD Checklist status injection (v5.44.0)
+    local checklist_status=""
+    if [ -n "$prd" ] && [ ! -f ".loki/checklist/checklist.json" ]; then
+        # First iteration with PRD but no checklist yet: instruct AI to create it
+        checklist_status="PRD_CHECKLIST_INIT: Create .loki/checklist/checklist.json from the PRD. Extract requirements into categories with items. Each item needs: id, title, description, priority (critical|major|minor), and verification checks (file_exists, file_contains, tests_pass, grep_codebase, command). This checklist will be auto-verified every ${CHECKLIST_INTERVAL:-5} iterations."
+    elif type checklist_summary &>/dev/null && [ -f ".loki/checklist/verification-results.json" ]; then
+        checklist_status=$(checklist_summary 2>/dev/null || true)
+        if [ -n "$checklist_status" ]; then
+            checklist_status="PRD_CHECKLIST_STATUS: ${checklist_status}. Review failing items and prioritize fixing them in this iteration."
+        fi
+    fi
+
     if [ $retry -eq 0 ]; then
         if [ -n "$prd" ]; then
-            echo "Loki Mode with PRD at $prd. $human_directive $queue_tasks $memory_context_section $rarv_instruction $memory_instruction $compaction_reminder $completion_instruction $sdlc_instruction $autonomous_suffix"
+            echo "Loki Mode with PRD at $prd. $human_directive $queue_tasks $checklist_status $memory_context_section $rarv_instruction $memory_instruction $compaction_reminder $completion_instruction $sdlc_instruction $autonomous_suffix"
         else
-            echo "Loki Mode. $human_directive $queue_tasks $memory_context_section $analysis_instruction $rarv_instruction $memory_instruction $compaction_reminder $completion_instruction $sdlc_instruction $autonomous_suffix"
+            echo "Loki Mode. $human_directive $queue_tasks $checklist_status $memory_context_section $analysis_instruction $rarv_instruction $memory_instruction $compaction_reminder $completion_instruction $sdlc_instruction $autonomous_suffix"
         fi
     else
         if [ -n "$prd" ]; then
-            echo "Loki Mode - Resume iteration #$iteration (retry #$retry). PRD: $prd. $human_directive $queue_tasks $memory_context_section $rarv_instruction $memory_instruction $compaction_reminder $completion_instruction $sdlc_instruction $autonomous_suffix"
+            echo "Loki Mode - Resume iteration #$iteration (retry #$retry). PRD: $prd. $human_directive $queue_tasks $checklist_status $memory_context_section $rarv_instruction $memory_instruction $compaction_reminder $completion_instruction $sdlc_instruction $autonomous_suffix"
         else
-            echo "Loki Mode - Resume iteration #$iteration (retry #$retry). $human_directive $queue_tasks $memory_context_section Use .loki/generated-prd.md if exists. $rarv_instruction $memory_instruction $compaction_reminder $completion_instruction $sdlc_instruction $autonomous_suffix"
+            echo "Loki Mode - Resume iteration #$iteration (retry #$retry). $human_directive $queue_tasks $checklist_status $memory_context_section Use .loki/generated-prd.md if exists. $rarv_instruction $memory_instruction $compaction_reminder $completion_instruction $sdlc_instruction $autonomous_suffix"
         fi
     fi
 }
@@ -6128,6 +6153,19 @@ run_autonomous() {
     # Initialize Completion Council (v5.25.0)
     if type council_init &>/dev/null; then
         council_init "$prd_path"
+    fi
+
+    # PRD Quality Analysis and Checklist Init (v5.44.0)
+    if [ -n "$prd_path" ] && [ -f "$prd_path" ]; then
+        if [ -f "${SCRIPT_DIR}/prd-analyzer.py" ]; then
+            log_step "Analyzing PRD quality..."
+            python3 "${SCRIPT_DIR}/prd-analyzer.py" "$prd_path" \
+                --output ".loki/prd-observations.md" \
+                ${LOKI_INTERACTIVE_PRD:+--interactive} 2>/dev/null || true
+        fi
+        if type checklist_init &>/dev/null; then
+            checklist_init "$prd_path"
+        fi
     fi
 
     # Check max iterations before starting
@@ -6507,6 +6545,11 @@ if __name__ == "__main__":
 
         # Auto-track iteration completion (for dashboard task queue)
         track_iteration_complete "$ITERATION_COUNT" "$exit_code"
+
+        # PRD Checklist verification on interval (v5.44.0)
+        if type checklist_should_verify &>/dev/null && checklist_should_verify; then
+            checklist_verify
+        fi
 
         # Update session continuity file for next iteration / agent handoff
         update_continuity
@@ -6940,6 +6983,10 @@ main() {
                 BACKGROUND_MODE=true
                 shift
                 ;;
+            --interactive-prd|--interactive)
+                LOKI_INTERACTIVE_PRD=true
+                shift
+                ;;
             --help|-h)
                 echo "Usage: ./autonomy/run.sh [OPTIONS] [PRD_PATH]"
                 echo ""
@@ -6948,6 +6995,7 @@ main() {
                 echo "  --allow-haiku        Enable Haiku model for fast tier (default: disabled)"
                 echo "  --provider <name>    Provider: claude (default), codex, gemini"
                 echo "  --bg, --background   Run in background mode"
+                echo "  --interactive-prd    Interactive PRD pre-flight analysis"
                 echo "  --help, -h           Show this help message"
                 echo ""
                 echo "Environment variables: See header comments in this script"
