@@ -220,8 +220,17 @@ jobs:
                       'type': 'section',
                       'text': {
                           'type': 'mrkdwn',
-                          'text': f':robot_face: *Ready for website update.* Reply in this thread:\\n>\`@Claude update the autonomi.dev blog for Loki Mode {version}. Read the changelog from https://github.com/asklokesh/loki-mode/blob/main/CHANGELOG.md for {version}, then update src/data/blog-posts.ts in https://github.com/asklokesh/autonomi-website with a new blog post entry. Also update the FALLBACK version in src/hooks/useLatestVersion.ts. No emojis. Commit and push.\`'
+                          'text': f'*Website Update:* An issue has been automatically created in <https://github.com/asklokesh/autonomi-website/issues|autonomi-website> to trigger Claude Code for:\\n- Blog post creation\\n- Version number updates\\n- Documentation sync\\n\\n_Check the repo for the auto-generated issue with @claude instructions._'
                       }
+                  },
+                  {
+                      'type': 'context',
+                      'elements': [
+                          {
+                              'type': 'mrkdwn',
+                              'text': f'Manual trigger (if needed): `@Claude update the autonomi.dev blog for Loki Mode {version}`'
+                          }
+                      ]
                   }
               ]
           }
@@ -235,6 +244,111 @@ jobs:
             -d @/tmp/slack-payload.json
 
           echo "Slack notification sent for ${VERSION}"
+
+  trigger-website-update:
+    needs: release
+    if: needs.release.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (for changelog)
+        uses: actions/checkout@v4
+
+      - name: Extract changelog for this version
+        id: changelog
+        run: |
+          VERSION="${{ needs.release.outputs.version }}"
+          # Extract changelog section for this version
+          awk "/^## \[$VERSION\]/{flag=1; next} /^## \[/{flag=0} flag" CHANGELOG.md > /tmp/changelog-body.txt
+          if [ ! -s /tmp/changelog-body.txt ]; then
+            echo "Release v$VERSION" > /tmp/changelog-body.txt
+          fi
+          # Store changelog for issue body (truncate to 60000 chars for GitHub limit)
+          head -c 60000 /tmp/changelog-body.txt > /tmp/changelog-final.txt
+
+      - name: Create issue in autonomi-website
+        env:
+          GH_TOKEN: ${{ secrets.AUTONOMI_WEBSITE_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "AUTONOMI_WEBSITE_TOKEN not configured, skipping website update trigger"
+            exit 0
+          fi
+
+          VERSION="v${{ needs.release.outputs.version }}"
+          RELEASE_URL="https://github.com/asklokesh/loki-mode/releases/tag/${VERSION}"
+          CHANGELOG_URL="https://github.com/asklokesh/loki-mode/blob/main/CHANGELOG.md"
+
+          # Read changelog from file
+          CHANGELOG_CONTENT=$(cat /tmp/changelog-final.txt)
+
+          # Create issue body with @claude trigger
+          ISSUE_BODY=$(cat << 'ISSUE_EOF'
+          @claude
+
+          ## Task: Update Autonomi Website for Loki Mode Release
+
+          A new version of Loki Mode has been released. Please update the autonomi website with the following changes:
+
+          ### Version Information
+          - **Version**: VERSION_PLACEHOLDER
+          - **Release URL**: RELEASE_URL_PLACEHOLDER
+          - **Changelog URL**: CHANGELOG_URL_PLACEHOLDER
+
+          ### Required Updates
+
+          1. **Create a new blog post** in `src/data/blog-posts.ts`:
+             - Title: "Loki Mode VERSION_PLACEHOLDER Released"
+             - Date: Use today's date
+             - Summarize the key changes from the changelog below
+             - Link to the GitHub release
+             - NO emojis anywhere
+
+          2. **Update version fallback** in `src/hooks/useLatestVersion.ts`:
+             - Update the FALLBACK version constant to VERSION_PLACEHOLDER
+
+          3. **Update any documentation** that references the version number
+
+          ### Changelog for this Release
+
+          ```
+          CHANGELOG_PLACEHOLDER
+          ```
+
+          ### Instructions
+          - Read the full changelog from the URL above if needed
+          - Write professional, concise content (no emojis)
+          - Commit changes with message: "docs: add blog post for Loki Mode VERSION_PLACEHOLDER"
+          - Push to the main branch
+          ISSUE_EOF
+          )
+
+          # Replace placeholders
+          ISSUE_BODY=$(echo "$ISSUE_BODY" | sed "s|VERSION_PLACEHOLDER|${VERSION}|g")
+          ISSUE_BODY=$(echo "$ISSUE_BODY" | sed "s|RELEASE_URL_PLACEHOLDER|${RELEASE_URL}|g")
+          ISSUE_BODY=$(echo "$ISSUE_BODY" | sed "s|CHANGELOG_URL_PLACEHOLDER|${CHANGELOG_URL}|g")
+
+          # Replace changelog placeholder (use Python to handle multiline safely)
+          python3 << PYEOF
+          import os
+
+          body = '''$ISSUE_BODY'''
+          with open('/tmp/changelog-final.txt', 'r') as f:
+              changelog = f.read()
+
+          body = body.replace('CHANGELOG_PLACEHOLDER', changelog)
+
+          with open('/tmp/issue-body.txt', 'w') as f:
+              f.write(body)
+          PYEOF
+
+          # Create the issue using GitHub CLI
+          gh issue create \
+            --repo asklokesh/autonomi-website \
+            --title "Update website for Loki Mode ${VERSION} release" \
+            --body-file /tmp/issue-body.txt \
+            --label "release,claude"
+
+          echo "Created issue in autonomi-website to trigger Claude Code update for ${VERSION}"
 
   publish-npm:
     needs: release

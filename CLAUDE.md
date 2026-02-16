@@ -288,6 +288,8 @@ git push origin main
 - Builds and pushes Docker image (includes `dashboard/` with deps)
 - Updates Homebrew tap
 - Publishes VSCode extension (includes dashboard IIFE bundle)
+- Sends Slack notification with release details
+- Creates issue in autonomi-website to trigger Claude Code for blog/version updates
 
 ### 5. Verify ALL Distribution Channels
 
@@ -312,6 +314,9 @@ brew update && brew info loki-mode
 
 # GitHub Release
 gh release view vX.Y.Z
+
+# Autonomi website update (auto-triggered)
+gh issue list --repo asklokesh/autonomi-website --label release --limit 1
 ```
 
 ### Distribution Channel Checklist
@@ -325,12 +330,15 @@ Every release MUST include these artifacts across ALL channels:
 | Homebrew| Full tarball             | Full tarball                 | Full tarball  | Full tarball |
 | VSCode  | N/A (connects to API)    | `media/loki-dashboard.js` (IIFE bundle) | N/A | N/A |
 | Release | Skill-only zip           | N/A                          | N/A           | `references/` |
+| Website | N/A                      | N/A                          | N/A           | Blog post + version update (auto-triggered via GitHub issue) |
 
 ### Credentials (GitHub Secrets)
 All credentials are stored as GitHub repository secrets and used by the workflow:
 - `NPM_TOKEN`: npm publish token
 - `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN`: Docker Hub credentials
 - `HOMEBREW_TAP_TOKEN`: PAT for homebrew-tap updates
+- `SLACK_WEBHOOK_URL`: Slack webhook for release notifications
+- `AUTONOMI_WEBSITE_TOKEN`: PAT with repo scope for autonomi-website issue creation
 
 ## Testing
 
