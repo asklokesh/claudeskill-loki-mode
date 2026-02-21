@@ -41,6 +41,11 @@ function parseToolResult(response) {
 // loki/start-project
 // -------------------------------------------------------------------
 describe('loki/start-project', () => {
+  beforeEach(() => {
+    // Clean up any existing session to avoid session guard blocking
+    const sessionPath = path.join(testDir, '.loki', 'state', 'session.json');
+    if (fs.existsSync(sessionPath)) fs.unlinkSync(sessionPath);
+  });
   it('should start a project with inline PRD', () => {
     const resp = callTool('loki/start-project', {
       prd: 'Build a SaaS product for task management with real-time collaboration.'
