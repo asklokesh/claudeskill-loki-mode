@@ -1,5 +1,20 @@
 # Testing
 
+## Mandatory Testing Rules
+
+1. Write tests FIRST. Commit the test before writing implementation.
+2. Tests must call REAL functions with REAL inputs and assert REAL outputs.
+3. Mock ONLY external dependencies: HTTP APIs, databases, file system, third-party services.
+4. NEVER mock internal modules, utility functions, or any code that is part of this project.
+5. NEVER change a test's expected value to make it pass. If a test fails, the implementation is wrong. Fix the code, not the test.
+6. If you believe a test expectation is incorrect, document WHY and flag for council review. Do not silently change it.
+7. Every test file must have at least one assertion per tested function.
+
+Gate 8 (mock detector) and Gate 9 (mutation detector) enforce rules 3-5 automatically.
+Violations result in automatic FAIL during VERIFY phase.
+
+---
+
 ## E2E Testing with Playwright MCP
 
 **Use Playwright MCP for browser-based testing.**

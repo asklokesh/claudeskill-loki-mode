@@ -191,7 +191,7 @@ Complete narration for Loki Mode demo video.
 > - All tests passing
 > - Code reviewed and approved
 >
-> From PRD to working application - completely autonomous.
+> From PRD to working application - with minimal human oversight.
 
 ---
 
@@ -206,7 +206,7 @@ Complete narration for Loki Mode demo video.
 > 5. Enforced quality gates and test coverage
 > 6. Maintained context through the memory system
 >
-> All without a single human intervention.
+> All with minimal human intervention.
 
 ---
 

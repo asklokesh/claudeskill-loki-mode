@@ -165,6 +165,16 @@ IMPLEMENT -> BLIND REVIEW (parallel) -> DEBATE (if disagreement) -> AGGREGATE ->
 - NEVER dispatch reviewers sequentially (always parallel - 3x faster)
 - NEVER aggregate before all 3 reviewers complete
 
+### Test Quality Review (Apply to Every Review)
+
+Before approving, verify:
+- Are tests using real implementations or excessive mocks of internal code?
+- Were any assertion expected values changed in the same commit as implementation? (This is the top sign an agent cheated.)
+- Do tests verify meaningful behavior or just "runs without throwing"?
+- Could all tests pass while the feature is completely broken?
+
+Assertion manipulation in the same commit as implementation = CRITICAL finding = automatic REJECT.
+
 ### Anti-Sycophancy Protocol (CONSENSAGENT Research)
 
 **Problem:** Reviewers may reinforce each other's findings instead of critically engaging.

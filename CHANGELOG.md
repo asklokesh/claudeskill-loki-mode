@@ -5,6 +5,21 @@ All notable changes to Loki Mode will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.49.3] - 2026-02-21
+
+### Added
+- Mandatory testing rules in `skills/testing.md`: 7 rules covering test-first, real assertions, mock restrictions, assertion protection
+- Test quality review checklist in `references/quality-control.md`: reviewers now check for assertion manipulation, excessive internal mocks, and meaningless tests
+- Gate 8/9 run documentation in `skills/quality-gates.md`: VERIFY phase execution, env var toggles (`LOKI_GATE_MOCK_DETECTOR`, `LOKI_GATE_MUTATION_DETECTOR`)
+- "What To Expect" table in README: project type vs autonomy level (Simple/Standard/Complex)
+
+### Changed
+- `docs/INSTALLATION.md`: restructured to lead with git clone as primary method; npm/Homebrew/Docker moved to "Alternative Methods" section with honest status notes and Docker TTY limitation
+- `integrations/openclaw/SKILL.md`: "zero intervention" -> "minimal human intervention"
+- `demo/voice-over-script.md`: "completely autonomous" -> "with minimal human oversight"; "without a single human intervention" -> "with minimal human intervention"
+- `docs/COMPETITIVE-ANALYSIS.md`: MetaGPT "100% task completion" qualified as "not independently verified"
+- Version bumped to v5.49.3 across all version files
+
 ## [5.49.2] - 2026-02-21
 
 ### Added

@@ -85,7 +85,7 @@ GSD is the closest competitor -- a context engineering system that spawns fresh 
 
 **Strengths:**
 - 85.9-87.7% Pass@1 on HumanEval
-- 100% task completion rate in evaluations
+- High task completion rate in evaluations (100% reported by MetaGPT authors; not independently verified)
 - Standard Operating Procedures (SOPs) reduce hallucinations
 - Assembly line paradigm with role specialization
 - Low cost: ~$1.09 per project completion

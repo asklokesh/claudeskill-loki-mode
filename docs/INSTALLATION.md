@@ -2,7 +2,7 @@
 
 The flagship product of [Autonomi](https://www.autonomi.dev/). Complete installation instructions for all platforms and use cases.
 
-**Version:** v5.49.2
+**Version:** v5.49.3
 
 ---
 
@@ -36,9 +36,7 @@ The flagship product of [Autonomi](https://www.autonomi.dev/). Complete installa
 
 - [Quick Install (Recommended)](#quick-install-recommended)
 - [VS Code Extension](#vs-code-extension)
-- [npm (Node.js)](#npm-nodejs)
-- [Homebrew (macOS/Linux)](#homebrew-macoslinux)
-- [Docker](#docker)
+- [Alternative Methods](#alternative-methods)
 - [Sandbox Mode](#sandbox-mode)
 - [Multi-Provider Support](#multi-provider-support)
 - [Claude Code (CLI)](#claude-code-cli)
@@ -53,23 +51,19 @@ The flagship product of [Autonomi](https://www.autonomi.dev/). Complete installa
 
 ## Quick Install (Recommended)
 
-Choose your preferred method:
-
 ```bash
-# Option A: npm (easiest)
-npm install -g loki-mode
-
-# Option B: Homebrew (macOS/Linux)
-brew tap asklokesh/tap && brew install loki-mode
-
-# Option C: Docker
-docker pull asklokesh/loki-mode:latest
-
-# Option D: Git clone
 git clone https://github.com/asklokesh/loki-mode.git ~/.claude/skills/loki-mode
 ```
 
-**Done!** Skip to [Verify Installation](#verify-installation).
+That's it. Claude Code auto-discovers skills in `~/.claude/skills/`.
+
+**Update:** `cd ~/.claude/skills/loki-mode && git pull`
+
+Skip to [Verify Installation](#verify-installation) to confirm it's working.
+
+### Alternative Installation Methods
+
+Also available via npm, Homebrew, Docker, VS Code Extension, and GitHub Action. Each has trade-offs -- see [docs/alternative-installations.md](alternative-installations.md) for details, limitations, and current status of each method.
 
 ---
 
@@ -145,153 +139,42 @@ The extension will automatically connect when it detects the server is running a
 
 ---
 
-## npm (Node.js)
+## Alternative Methods
 
-Install via npm for the easiest setup with automatic PATH configuration.
+The following installation methods are available but each has limitations. Git clone (above) is the recommended primary method.
 
-### Prerequisites
+For full details, troubleshooting, and current status of each method, see [alternative-installations.md](alternative-installations.md).
 
-- Node.js 16.0.0 or later
+### npm
 
-### Installation
+**Status:** Published to npm registry. Verify current version: `npm view loki-mode version`
 
 ```bash
-# Global installation
 npm install -g loki-mode
-
-# The skill is automatically installed to ~/.claude/skills/loki-mode
-
-# Opt out of anonymous install telemetry:
-# LOKI_TELEMETRY_DISABLED=true npm install -g loki-mode
-# Or set DO_NOT_TRACK=1
 ```
 
-### Usage
+Requires Node.js 16+. Provides the `loki` CLI and auto-installs the skill to `~/.claude/skills/loki-mode`.
+
+### Homebrew
+
+**Status:** Available via tap. Verify formula: `brew info asklokesh/tap/loki-mode`
 
 ```bash
-# Use the CLI
-loki start ./my-prd.md
-loki status
-loki dashboard
-
-# Or invoke in Claude Code
-claude --dangerously-skip-permissions
-> Loki Mode with PRD at ./my-prd.md
-```
-
-### Updating
-
-```bash
-npm update -g loki-mode
-```
-
-### Uninstalling
-
-```bash
-npm uninstall -g loki-mode
-rm -rf ~/.claude/skills/loki-mode
-```
-
----
-
-## Homebrew (macOS/Linux)
-
-Install via Homebrew with automatic dependency management.
-
-### Prerequisites
-
-- Homebrew (https://brew.sh)
-
-### Installation
-
-```bash
-# Add the tap
-brew tap asklokesh/tap
-
-# Install Loki Mode
-brew install loki-mode
-
-# Set up Claude Code skill integration (manual symlink required)
+brew tap asklokesh/tap && brew install loki-mode
+# Manual symlink required for Claude Code:
 ln -sf "$(brew --prefix)/opt/loki-mode/libexec" ~/.claude/skills/loki-mode
 ```
 
-### Dependencies
+### Docker
 
-Homebrew automatically installs:
-- bash 4.0+ (for associative arrays)
-- jq (JSON processing)
-- gh (GitHub CLI for integration)
-
-### Usage
+**Status:** Published to Docker Hub.
 
 ```bash
-# Use the CLI
-loki start ./my-prd.md
-loki status
-loki --help
-```
-
-### Updating
-
-```bash
-brew upgrade loki-mode
-```
-
-### Uninstalling
-
-```bash
-brew uninstall loki-mode
-rm -rf ~/.claude/skills/loki-mode
-```
-
----
-
-## Docker
-
-Run Loki Mode in a container for isolated execution.
-
-### Prerequisites
-
-- Docker installed and running
-
-### Installation
-
-```bash
-# Pull the image
 docker pull asklokesh/loki-mode:latest
-
-# Or use docker-compose
-curl -o docker-compose.yml https://raw.githubusercontent.com/asklokesh/loki-mode/main/docker-compose.yml
-```
-
-### Usage
-
-```bash
-# Run with a PRD file
 docker run -v $(pwd):/workspace -w /workspace asklokesh/loki-mode:latest start ./my-prd.md
-
-# Interactive mode
-docker run -it -v $(pwd):/workspace -w /workspace asklokesh/loki-mode:latest
-
-# Using docker-compose
-docker-compose run loki start ./my-prd.md
 ```
 
-### Environment Variables
-
-Pass your configuration via environment variables:
-
-```bash
-docker run -e LOKI_MAX_RETRIES=100 -e LOKI_BASE_WAIT=120 \
-  -v $(pwd):/workspace -w /workspace \
-  asklokesh/loki-mode:latest start ./my-prd.md
-```
-
-### Updating
-
-```bash
-docker pull asklokesh/loki-mode:latest
-```
+**Limitation:** Docker cannot run Claude Code interactively (Claude Code is a terminal-based CLI requiring TTY access). Docker is suitable for CI/CD pipelines, API-only modes, and sandbox execution -- not for the primary interactive workflow.
 
 ---
 

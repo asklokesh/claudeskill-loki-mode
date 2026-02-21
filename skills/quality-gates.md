@@ -14,6 +14,24 @@
 8. **Mock Detector** - Classifies internal vs external mocks; flags tests that never import source code, tautological assertions, and high internal mock ratios
 9. **Test Mutation Detector** - Detects assertion value changes alongside implementation changes (test fitting), low assertion density, and missing pass/fail tracking
 
+## Gate 8 and 9: Automated Test Integrity
+
+Gates 8 (Mock Detector) and 9 (Test Mutation Detector) run during the VERIFY phase and are enabled by default.
+
+**How they run:**
+- Gate 8 runs `tests/detect-mock-problems.sh` against all test files in the project
+- Gate 9 runs `tests/detect-test-mutations.sh` against recent commits (default: last 5, or use `--commit HASH` for targeted checks)
+- Both produce findings at HIGH/MEDIUM/LOW severity levels
+- HIGH findings = automatic FAIL (same as other blocking gates)
+
+**Disabling (not recommended):**
+```bash
+LOKI_GATE_MOCK_DETECTOR=false    # Disable gate 8
+LOKI_GATE_MUTATION_DETECTOR=false # Disable gate 9
+```
+
+---
+
 ## Guardrails Execution Modes
 
 - **Blocking**: Guardrail completes before agent starts (use for expensive operations)

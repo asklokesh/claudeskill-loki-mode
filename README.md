@@ -11,7 +11,7 @@
 [![Agent Types](https://img.shields.io/badge/Agent%20Types-41-blue)]()
 [![Benchmarks](https://img.shields.io/badge/Benchmarks-Infrastructure%20Ready-blue)](benchmarks/)
 
-**Current Version: v5.49.2**
+**Current Version: v5.49.3**
 
 **[Autonomi](https://www.autonomi.dev/)** | **[Documentation](https://www.autonomi.dev/docs)** | **[GitHub](https://github.com/asklokesh/loki-mode)**
 
@@ -149,6 +149,16 @@ Loki Mode is powerful but not magic. Be aware of these honest limitations:
 - It does NOT have access to your cloud accounts, payment systems, or external services unless you provide credentials
 - Human oversight is expected for: deployment credentials, domain setup, API keys, and critical business decisions
 - The system is as good as the underlying AI model -- it can make mistakes, especially on novel or complex problems
+
+## What To Expect
+
+| Project Type | Examples | Autonomy Level | Typical Experience |
+|---|---|---|---|
+| Simple | Landing page, todo app, static site, single API | High | Completes with minimal retries. Human reviews output. |
+| Standard | CRUD app with auth, REST API + React frontend | Medium | Completes most features. Complex components may need guidance. |
+| Complex | Microservices, real-time systems, ML pipelines | Guided | Use as accelerator. Human reviews between phases. |
+
+"Autonomous" means the system runs RARV cycles without prompting. It does NOT mean zero oversight.
 
 ---
 
