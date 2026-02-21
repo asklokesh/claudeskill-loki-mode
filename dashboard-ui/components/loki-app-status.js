@@ -15,8 +15,12 @@ const STATUS_CONFIG = {
   not_initialized: { color: 'var(--loki-text-muted, #71717a)', label: 'Not Started', pulse: false },
   starting:        { color: 'var(--loki-yellow, #ca8a04)',      label: 'Starting...',  pulse: true },
   running:         { color: 'var(--loki-green, #16a34a)',       label: 'Running',      pulse: true },
+  stale:           { color: 'var(--loki-yellow, #ca8a04)',      label: 'Stale',        pulse: false },
+  completed:       { color: 'var(--loki-text-muted, #a1a1aa)',  label: 'Completed',    pulse: false },
+  failed:          { color: 'var(--loki-red, #dc2626)',         label: 'Failed',       pulse: false },
   crashed:         { color: 'var(--loki-red, #dc2626)',         label: 'Crashed',      pulse: false },
   stopped:         { color: 'var(--loki-text-muted, #a1a1aa)',  label: 'Stopped',      pulse: false },
+  unknown:         { color: 'var(--loki-text-muted, #71717a)',  label: 'Unknown',      pulse: false },
 };
 
 /**

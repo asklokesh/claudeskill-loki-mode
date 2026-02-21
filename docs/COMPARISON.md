@@ -37,7 +37,7 @@
 |---------|--------------|-----------|-----------|------------|----------|-----------------|--------------|--------------|
 | **Code Review** | 3 blind reviewers + devil's advocate | Basic | Basic | BugBot PR | Property-based | Artifacts | Doc/Review | Basic |
 | **Anti-Sycophancy** | Yes (CONSENSAGENT) | No | No | No | No | No | No | No |
-| **Quality Gates** | 7 gates + PBT | Basic | Sandbox | Tests | Spec validation | Artifact checks | Tests | Permissions |
+| **Quality Gates** | 9 gates + PBT | Basic | Sandbox | Tests | Spec validation | Artifact checks | Tests | Permissions |
 | **Constitutional AI** | Yes (principles) | No | Refusal training | No | No | No | No | No |
 
 ---
@@ -146,7 +146,7 @@
 
 | Feature | **Zencoder** | **Loki Mode** | **Assessment** |
 |---------|-------------|---------------|----------------|
-| **Four Pillars** | Structured Workflows, SDD, Multi-Agent Verification, Parallel Execution | SDLC + RARV + 7 Gates + Worktrees | TIE |
+| **Four Pillars** | Structured Workflows, SDD, Multi-Agent Verification, Parallel Execution | SDLC + RARV + 9 Gates + Worktrees | TIE |
 | **Spec-Driven Dev** | Specs as first-class objects | OpenAPI-first | TIE |
 | **Multi-Agent Verification** | Model diversity (Claude vs OpenAI, 54% improvement) | 3 blind reviewers + devil's advocate | Different approach (N/A for Claude Code - only Claude models) |
 | **Quality Gates** | Built-in verification loops | 7 explicit gates + anti-sycophancy | **Loki Mode** |
@@ -207,7 +207,7 @@
 | **Skills** | Progressive disclosure | 6 slash commands | N/A | 129 skills | N/A | 35 skills | Memory focus |
 | **Multi-Provider** | Yes (Claude/Codex/Gemini) | 3 CLIs (separate) | No | No | No | No | No |
 | **Memory System** | 3-tier (episodic/semantic/procedural) | None | N/A | N/A | Hybrid | N/A | SQLite+FTS5 |
-| **Quality Gates** | 7 gates + Completion Council | User verify only | Two-Stage Review | N/A | Consensus | Tiered | N/A |
+| **Quality Gates** | 9 gates + Completion Council | User verify only | Two-Stage Review | N/A | Consensus | Tiered | N/A |
 | **Context Mgmt** | Standard | Fresh per task (core innovation) | Fresh per task | N/A | N/A | N/A | Progressive |
 | **Autonomy** | High (minimal human) | Semi (checkpoints) | Human-guided | Human-guided | Orchestrated | Human-guided | N/A |
 
@@ -232,7 +232,7 @@ These are patterns from competing projects that are **practically and scientific
 |----------|---------|-------------------------|
 | **Multi-Provider Support** | Only skill supporting Claude, Codex, and Gemini with graceful degradation | All 8 competitors are Claude-only |
 | **RARV Cycle** | Reason-Act-Reflect-Verify is more rigorous than Plan-Execute | Most use simple Plan-Execute |
-| **7-Gate Quality System** | Static analysis + 3 reviewers + devil's advocate + anti-sycophancy + severity blocking + coverage + debate | Superpowers has 2-stage, others have less |
+| **9-Gate Quality System** | Static analysis + 3 reviewers + devil's advocate + anti-sycophancy + severity blocking + coverage + debate | Superpowers has 2-stage, others have less |
 | **Constitutional AI Integration** | Principles-based self-critique from Anthropic research | None have this |
 | **Anti-Sycophancy (CONSENSAGENT)** | Blind review + devil's advocate prevents groupthink | None have this |
 | **Provider Abstraction Layer** | Clean degradation from full-featured to sequential-only | Claude-only projects can't degrade |
@@ -359,7 +359,7 @@ Tiered agent architecture with explicit escalation:
 |-----------|-------------------|
 | **Autonomy** | Designed for high autonomy with minimal human intervention |
 | **Multi-Agent** | 41 specialized agents in 8 swarms vs 1-8 in competitors |
-| **Quality** | 7 gates + blind review + devil's advocate + property-based testing |
+| **Quality** | 9 gates + blind review + devil's advocate + property-based testing |
 | **Research** | 10+ academic papers integrated vs proprietary/undisclosed |
 | **Anti-Sycophancy** | Only agent with CONSENSAGENT-based blind review |
 | **Memory** | 3-tier memory (episodic/semantic/procedural) + review learning + cross-project |

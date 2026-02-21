@@ -2,7 +2,7 @@
 
 **Never ship code without passing all quality gates.**
 
-## The 7 Quality Gates
+## The 9 Quality Gates
 
 1. **Input Guardrails** - Validate scope, detect injection, check constraints (OpenAI SDK)
 2. **Static Analysis** - CodeQL, ESLint/Pylint, type checking
@@ -11,6 +11,8 @@
 5. **Output Guardrails** - Validate code quality, spec compliance, no secrets (tripwire on fail)
 6. **Severity-Based Blocking** - Critical/High/Medium = BLOCK; Low/Cosmetic = TODO comment
 7. **Test Coverage Gates** - Unit: 100% pass, >80% coverage; Integration: 100% pass
+8. **Mock Detector** - Classifies internal vs external mocks; flags tests that never import source code, tautological assertions, and high internal mock ratios
+9. **Test Mutation Detector** - Detects assertion value changes alongside implementation changes (test fitting), low assertion density, and missing pass/fail tracking
 
 ## Guardrails Execution Modes
 

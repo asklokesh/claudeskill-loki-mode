@@ -25,7 +25,7 @@
 
 [![asciicast](https://asciinema.org/a/AjjnjzOeKLYItp6s.svg)](https://asciinema.org/a/AjjnjzOeKLYItp6s)
 
-*Click to watch Loki Mode v5.42 -- CLI commands, dashboard, 8 parallel agents, 7-gate quality, Completion Council, memory system*
+*Click to watch Loki Mode v5.42 -- CLI commands, dashboard, 8 parallel agents, 9-gate quality, Completion Council, memory system*
 
 ---
 
@@ -39,98 +39,38 @@
 
 ---
 
-## Usage
-
-### Option 1: npm (Recommended)
-
-```bash
-npm install -g loki-mode
-loki start ./my-prd.md
-```
-
-### Option 2: Claude Code Skill
+## Installation
 
 ```bash
 git clone https://github.com/asklokesh/loki-mode.git ~/.claude/skills/loki-mode
+```
+
+That's it. Claude Code auto-discovers skills in `~/.claude/skills/`.
+
+### Use It
+
+```bash
 claude --dangerously-skip-permissions
-# Then say: Loki Mode with PRD at ./my-prd.md
+# Then say: "Loki Mode with PRD at ./my-prd.md"
 ```
 
-### Option 3: GitHub Action
+### Update
 
-Add automated AI code review to your pull requests:
-
-```yaml
-# .github/workflows/loki-review.yml
-name: Loki Code Review
-
-on:
-  pull_request:
-    types: [opened, synchronize]
-
-permissions:
-  contents: read
-  pull-requests: write
-
-jobs:
-  review:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: asklokesh/loki-mode@v5
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          mode: review          # review, fix, or test
-          provider: claude      # claude, codex, or gemini
-          max_iterations: 3     # sets LOKI_MAX_ITERATIONS env var
-          budget_limit: '5.00'  # max cost in USD (maps to --budget flag)
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+```bash
+cd ~/.claude/skills/loki-mode && git pull
 ```
 
-**Prerequisites:**
-- An API key for your chosen provider (set as a repository secret):
-  - Claude: `ANTHROPIC_API_KEY`
-  - Codex: `OPENAI_API_KEY`
-  - Gemini: `GOOGLE_API_KEY`
-- The action automatically installs `loki-mode` and `@anthropic-ai/claude-code` (for the Claude provider)
+### Troubleshooting
 
-**Action Inputs:**
+| Problem | Fix |
+|---------|-----|
+| `SKILL.md` not found | Verify: `ls ~/.claude/skills/loki-mode/SKILL.md` |
+| Claude doesn't recognize "Loki Mode" | Restart Claude Code after cloning |
+| Permission denied on clone | Check SSH keys or use HTTPS URL above |
 
-| Input | Default | Description |
-|-------|---------|-------------|
-| `mode` | `review` | `review`, `fix`, or `test` |
-| `provider` | `claude` | `claude`, `codex`, or `gemini` |
-| `budget_limit` | `5.00` | Max cost in USD (maps to `--budget` CLI flag) |
-| `budget` | | Alias for `budget_limit` |
-| `max_iterations` | `3` | Sets `LOKI_MAX_ITERATIONS` env var |
-| `github_token` | (required) | GitHub token for PR comments |
-| `prd_file` | | Path to PRD file relative to repo root |
-| `auto_confirm` | `true` | Skip confirmation prompts (always true in CI) |
-| `install_claude` | `true` | Auto-install Claude Code CLI if not present |
-| `node_version` | `20` | Node.js version |
+### Other Installation Methods
 
-**Using with a PRD file (fix/test modes):**
-
-```yaml
-- uses: asklokesh/loki-mode@v5
-  with:
-    mode: fix
-    prd_file: 'docs/my-prd.md'
-    github_token: ${{ secrets.GITHUB_TOKEN }}
-  env:
-    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-```
-
-**Modes:**
-
-| Mode | Description |
-|------|-------------|
-| `review` | Analyze PR diff, post structured review as PR comment |
-| `fix` | Automatically fix issues found in the codebase |
-| `test` | Run autonomous test generation and validation |
-
-Also available via **Homebrew**, **Docker**, **VS Code Extension**, and **direct shell script**. See the [Installation Guide](docs/INSTALLATION.md) for all 7 installation methods and detailed instructions.
+Also available via **npm**, **Homebrew**, **Docker**, **GitHub Action**, and **VS Code Extension**. See [docs/alternative-installations.md](docs/alternative-installations.md) for details and limitations of each method.
 
 ### Multi-Provider Support (v5.0.0)
 
@@ -188,6 +128,30 @@ PRD → Research → Architecture → Development → Testing → Deployment →
 
 ---
 
+## Current Limitations
+
+Loki Mode is powerful but not magic. Be aware of these honest limitations:
+
+| Area | What Works | What Doesn't (Yet) |
+|------|-----------|---------------------|
+| **Code Generation** | Generates full-stack applications from PRDs | Complex domain logic may need human review and correction |
+| **Deployment** | Generates deployment configs and scripts | Does not have cloud credentials -- human must provide and authorize |
+| **Testing** | 9 automated quality gates, blind review | Test quality depends on AI-generated assertions; mutation testing is heuristic |
+| **Business Ops** | Generates marketing copy, legal templates | Does not actually send emails, file legal documents, or process payments |
+| **Multi-Provider** | Claude (full), Codex (degraded), Gemini (degraded) | Codex and Gemini lack parallel agents and Task tool -- sequential only |
+| **Memory System** | Episodic, semantic, procedural memory tiers | Vector search requires optional `sentence-transformers` dependency |
+| **Enterprise Security** | TLS, OIDC, RBAC, audit trail, SIEM configs | Self-signed certs only; production deployments need real certificates |
+| **Dashboard** | Real-time status, task queue, agent monitoring | Single-machine only; no multi-node dashboard clustering |
+| **Benchmarks** | HumanEval 98.78%, SWE-bench 299/300 patches | Self-reported; SWE-bench counts patch generation, not verified resolution |
+
+**What "autonomous" means in practice:**
+- Loki Mode runs without prompting between RARV cycles
+- It does NOT have access to your cloud accounts, payment systems, or external services unless you provide credentials
+- Human oversight is expected for: deployment credentials, domain setup, API keys, and critical business decisions
+- The system is as good as the underlying AI model -- it can make mistakes, especially on novel or complex problems
+
+---
+
 ## Why Loki Mode?
 
 ### **How It Works**
@@ -196,7 +160,7 @@ PRD → Research → Architecture → Development → Testing → Deployment →
 |----------------|---------------------|
 | **Single agent** writes code linearly | **Multiple agents** work in parallel across engineering, ops, business, data, product, and growth |
 | **Manual deployment** required | **Autonomous deployment** to AWS, GCP, Azure, Vercel, Railway with blue-green and canary strategies |
-| **No testing** or basic unit tests | **7 automated quality gates**: input/output guardrails, static analysis, blind review, anti-sycophancy, severity blocking, test coverage |
+| **No testing** or basic unit tests | **9 automated quality gates**: input/output guardrails, static analysis, blind review, anti-sycophancy, severity blocking, test coverage, mock detection, mutation detection |
 | **Code only** - you handle the rest | **Full business operations**: marketing, sales, legal, HR, finance, investor relations |
 | **Stops on errors** | **Self-healing**: circuit breakers, dead letter queues, exponential backoff, automatic recovery |
 | **No visibility** into progress | **Real-time dashboard** with agent monitoring, task queues, and live status updates |
@@ -234,7 +198,7 @@ PRD → Research → Architecture → Development → Testing → Deployment →
 | **OpenClaw Bridge (v5.38.0)** | Multi-agent coordination protocol | [OpenClaw Integration](docs/openclaw-integration.md) |
 | **41 Agent Types** | Engineering, Ops, Business, Data, Product, Growth, Orchestration | [Agent Definitions](references/agent-types.md) |
 | **RARV Cycle** | Reason-Act-Reflect-Verify workflow | [Core Workflow](references/core-workflow.md) |
-| **Quality Gates** | 7-gate system: guardrails, static analysis, blind review, anti-sycophancy, severity blocking, test coverage | [Quality Control](references/quality-control.md) |
+| **Quality Gates** | 9-gate system: guardrails, static analysis, blind review, anti-sycophancy, severity blocking, test coverage, mock detection, mutation detection | [Quality Control](references/quality-control.md) |
 | **Memory System (v5.15.0)** | Complete 3-tier memory with progressive disclosure | [Memory Architecture](references/memory-system.md) |
 | **Parallel Workflows** | Git worktree-based parallelism | [Parallel Workflows](skills/parallel-workflows.md) |
 | **GitHub Integration** | Issue import, PR creation, status sync | [GitHub Integration](skills/github-integration.md) |
@@ -661,7 +625,7 @@ references/                    # Deep documentation (23KB+ files)
 | **2. Architecture** | Tech stack selection with self-reflection |
 | **3. Infrastructure** | Provision cloud, CI/CD, monitoring |
 | **4. Development** | Implement with TDD, parallel code review |
-| **5. QA** | 7 quality gates, security audit, load testing |
+| **5. QA** | 9 quality gates, security audit, load testing |
 | **6. Deployment** | Blue-green deploy, auto-rollback on errors |
 | **7. Business** | Marketing, sales, legal, support setup |
 | **8. Growth** | Continuous optimization, A/B testing, feedback loops |

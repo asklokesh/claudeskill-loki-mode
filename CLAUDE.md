@@ -35,7 +35,7 @@ skills/                     # On-demand skill modules (v3.0 architecture)
   00-index.md               # Module selection rules and routing
   model-selection.md        # Task tool, parallelization, thinking modes
   providers.md              # Multi-provider documentation
-  quality-gates.md          # 7-gate system, velocity-quality balance
+  quality-gates.md          # 9-gate system, velocity-quality balance
   testing.md                # Playwright, E2E, property-based testing
   production.md             # HN patterns, CI/CD, context management
   troubleshooting.md        # Common issues, red flags, fallbacks

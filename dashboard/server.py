@@ -3151,23 +3151,112 @@ async def get_github_sync_log(
 # =============================================================================
 
 
+def _resolve_process_state(pid: Optional[int], last_status: str = "",
+                           started: str = "", heartbeat: str = "",
+                           stale_threshold: int = 30) -> dict[str, Any]:
+    """Resolve process state with honest labels.
+
+    States:
+      RUNNING   - PID alive AND heartbeat < stale_threshold seconds
+      STALE     - PID alive BUT no heartbeat update in > stale_threshold seconds
+      COMPLETED - last_status marked done/completed and PID exited
+      FAILED    - last_status marked failed OR PID exited non-zero
+      CRASHED   - PID dead BUT last_status was 'running'
+      UNKNOWN   - No PID, no status, or conflicting data
+
+    Returns dict with: state, pid_alive, started, last_heartbeat, duration_seconds
+    """
+    now = datetime.now(timezone.utc)
+    pid_alive = False
+    if pid is not None:
+        try:
+            os.kill(pid, 0)
+            pid_alive = True
+        except (OSError, ValueError, TypeError):
+            pass
+
+    # Parse timestamps
+    started_dt = None
+    heartbeat_dt = None
+    if started:
+        try:
+            started_dt = datetime.fromisoformat(started.replace("Z", "+00:00"))
+            if started_dt.tzinfo is None:
+                started_dt = started_dt.replace(tzinfo=timezone.utc)
+        except (ValueError, AttributeError):
+            pass
+    if heartbeat:
+        try:
+            heartbeat_dt = datetime.fromisoformat(heartbeat.replace("Z", "+00:00"))
+            if heartbeat_dt.tzinfo is None:
+                heartbeat_dt = heartbeat_dt.replace(tzinfo=timezone.utc)
+        except (ValueError, AttributeError):
+            pass
+
+    # Calculate duration
+    duration_seconds = None
+    if started_dt:
+        duration_seconds = round((now - started_dt).total_seconds())
+
+    # Calculate heartbeat age
+    heartbeat_age = None
+    if heartbeat_dt:
+        heartbeat_age = round((now - heartbeat_dt).total_seconds())
+
+    # Resolve state
+    normalized = last_status.lower().strip() if last_status else ""
+    if pid_alive:
+        if heartbeat_age is not None and heartbeat_age > stale_threshold:
+            state = "STALE"
+        else:
+            state = "RUNNING"
+    else:
+        if normalized in ("done", "completed", "complete", "success"):
+            state = "COMPLETED"
+        elif normalized in ("failed", "error", "errored"):
+            state = "FAILED"
+        elif normalized in ("running", "active", "in_progress", "starting"):
+            state = "CRASHED"
+        elif pid is None:
+            state = "UNKNOWN"
+        else:
+            # PID dead, unknown last status
+            state = "CRASHED" if normalized == "" else "UNKNOWN"
+
+    result: dict[str, Any] = {
+        "state": state,
+        "pid_alive": pid_alive,
+    }
+    if started:
+        result["started"] = started
+    if heartbeat:
+        result["last_heartbeat"] = heartbeat
+    if heartbeat_age is not None:
+        result["heartbeat_age_seconds"] = heartbeat_age
+    if duration_seconds is not None:
+        result["duration_seconds"] = duration_seconds
+    return result
+
+
 @app.get("/api/health/processes")
 async def get_process_health(token: Optional[dict] = Depends(auth.get_current_token)):
-    """Get health status of all loki processes (dashboard, session, agents)."""
+    """Get health status of all loki processes (dashboard, session, agents).
+
+    Returns honest state labels: RUNNING, STALE, COMPLETED, FAILED, CRASHED, UNKNOWN.
+    Every entry includes timestamps (started, last_heartbeat, duration_seconds).
+    """
     result: dict[str, Any] = {"dashboard": None, "session": None, "agents": []}
 
     loki_dir = _get_loki_dir()
+    now_iso = datetime.now(timezone.utc).isoformat()
 
     # Dashboard PID
     dpid_file = loki_dir / "dashboard" / "dashboard.pid"
     if dpid_file.exists():
         try:
             dpid = int(dpid_file.read_text().strip())
-            try:
-                os.kill(dpid, 0)
-                result["dashboard"] = {"pid": dpid, "status": "alive"}
-            except OSError:
-                result["dashboard"] = {"pid": dpid, "status": "dead"}
+            state_info = _resolve_process_state(dpid, last_status="running")
+            result["dashboard"] = {"pid": dpid, **state_info}
         except (ValueError, OSError):
             pass
 
@@ -3176,12 +3265,21 @@ async def get_process_health(token: Optional[dict] = Depends(auth.get_current_to
     if spid_file.exists():
         try:
             spid = int(spid_file.read_text().strip())
-            try:
-                os.kill(spid, 0)
-                result["session"] = {"pid": spid, "status": "alive"}
-            except OSError:
-                result["session"] = {"pid": spid, "status": "dead"}
+            state_info = _resolve_process_state(spid, last_status="running")
+            result["session"] = {"pid": spid, **state_info}
         except (ValueError, OSError):
+            pass
+
+    # Read dashboard-state.json for heartbeat timestamp
+    state_file = loki_dir / "dashboard-state.json"
+    state_heartbeat = ""
+    if state_file.exists():
+        try:
+            st = os.stat(state_file)
+            state_heartbeat = datetime.fromtimestamp(
+                st.st_mtime, tz=timezone.utc
+            ).isoformat()
+        except OSError:
             pass
 
     # Agent PIDs
@@ -3191,18 +3289,21 @@ async def get_process_health(token: Optional[dict] = Depends(auth.get_current_to
             agents = json.loads(agents_file.read_text())
             for agent in agents:
                 pid = agent.get("pid")
-                status = "unknown"
-                if pid:
-                    try:
-                        os.kill(int(pid), 0)
-                        status = "alive"
-                    except (OSError, ValueError):
-                        status = "dead"
+                pid_int = int(pid) if pid else None
+                agent_status = agent.get("status", "")
+                agent_started = agent.get("started", "")
+                agent_heartbeat = agent.get("heartbeat", state_heartbeat)
+                state_info = _resolve_process_state(
+                    pid_int,
+                    last_status=agent_status,
+                    started=agent_started,
+                    heartbeat=agent_heartbeat,
+                )
                 result["agents"].append({
                     "id": agent.get("id", ""),
                     "name": agent.get("name", ""),
                     "pid": pid,
-                    "status": status,
+                    **state_info,
                 })
         except Exception:
             pass
@@ -3216,17 +3317,29 @@ async def get_process_health(token: Optional[dict] = Depends(auth.get_current_to
                 pid_str = entry_file.stem
                 pid = int(pid_str)
                 entry = json.loads(entry_file.read_text())
-                try:
-                    os.kill(pid, 0)
-                    status = "alive"
-                except OSError:
-                    status = "dead"
+                entry_started = entry.get("started", "")
+                entry_heartbeat = entry.get("heartbeat", "")
+                # Use file mtime as heartbeat fallback
+                if not entry_heartbeat:
+                    try:
+                        st = os.stat(entry_file)
+                        entry_heartbeat = datetime.fromtimestamp(
+                            st.st_mtime, tz=timezone.utc
+                        ).isoformat()
+                    except OSError:
+                        pass
+                entry_status = entry.get("status", "running")
+                state_info = _resolve_process_state(
+                    pid,
+                    last_status=entry_status,
+                    started=entry_started,
+                    heartbeat=entry_heartbeat,
+                )
                 registered.append({
                     "pid": pid,
                     "label": entry.get("label", "unknown"),
-                    "started": entry.get("started", ""),
                     "ppid": entry.get("ppid"),
-                    "status": status,
+                    **state_info,
                 })
             except (ValueError, json.JSONDecodeError, OSError):
                 continue
@@ -3234,6 +3347,7 @@ async def get_process_health(token: Optional[dict] = Depends(auth.get_current_to
 
     watchdog_enabled = os.environ.get("LOKI_WATCHDOG", "false").lower() == "true"
     result["watchdog_enabled"] = watchdog_enabled
+    result["checked_at"] = now_iso
 
     return result
 

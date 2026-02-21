@@ -6,7 +6,7 @@ Full RARV cycle, CONTINUITY.md template, and autonomy rules.
 
 ## Autonomy Rules
 
-**This system runs with ZERO human intervention.**
+**This system runs with minimal human intervention.** Human oversight is expected for deployment credentials, domain setup, API keys, and critical business decisions.
 
 ### Core Rules
 1. **NEVER ask questions** - Do not say "Would you like me to...", "Should I...", or "What would you prefer?"

@@ -21,7 +21,7 @@ docker run -it -v $(pwd):/workspace asklokesh/loki-mode loki start prd.md
 
 - **Autonomous Development**: Complete SDLC from PRD to deployment
 - **Multi-Provider Support**: Claude Code, OpenAI Codex CLI, Google Gemini CLI
-- **Quality Gates**: 7-gate verification system with automated testing
+- **Quality Gates**: 9-gate verification system with automated testing
 - **Context Management**: Persistent memory across sessions
 - **Dashboard API**: Real-time monitoring at localhost:57374
 

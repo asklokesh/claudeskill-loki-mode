@@ -11,7 +11,7 @@
 |-----------|--------|-----------|--------|
 | **Proven Scale** | 1M+ LoC, large agent count | Benchmarks only | Cursor |
 | **Research Foundation** | Empirical iteration | 25+ academic citations | Loki Mode |
-| **Quality Assurance** | Workers self-manage | 7-gate system + anti-sycophancy | Loki Mode |
+| **Quality Assurance** | Workers self-manage | 9-gate system + anti-sycophancy | Loki Mode |
 | **Anti-Sycophancy** | Not mentioned | CONSENSAGENT blind review | Loki Mode |
 | **Velocity-Quality Balance** | Not mentioned | arXiv-backed metrics | Loki Mode |
 | **Full SDLC Coverage** | Code generation focus | PRD to production + growth | Loki Mode |
@@ -66,7 +66,7 @@ velocity_quality_balance:
 
 ---
 
-### 3. 7-Gate Quality System
+### 3. 9-Gate Quality System
 
 **Loki Mode's Gates:**
 1. Input Guardrails - Validate scope, detect injection (OpenAI SDK pattern)
@@ -174,7 +174,7 @@ Cursor learned through failure:
 ### 3. Simplicity Principle
 > "A surprising amount of the system's behavior comes down to how we prompt the agents. The harness and models matter, but the prompts matter more."
 
-**Loki Mode:** More complex infrastructure (7 gates, 41 agent types, memory systems). May be over-engineered for some use cases.
+**Loki Mode:** More complex infrastructure (9 gates, 41 agent types, memory systems). May be over-engineered for some use cases.
 
 ---
 
@@ -192,7 +192,7 @@ We incorporated Cursor's proven patterns:
 ## Conclusion
 
 **Loki Mode is scientifically better in:**
-- Quality assurance (research-backed 7-gate system)
+- Quality assurance (research-backed 9-gate system)
 - Anti-sycophancy (CONSENSAGENT blind review)
 - Velocity-quality balance (arXiv metrics)
 - Full SDLC coverage (PRD to growth)

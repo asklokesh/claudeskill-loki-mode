@@ -155,7 +155,7 @@ SKILL.md (~190 lines)         # Always loaded: RARV cycle, autonomy rules
 skills/
   00-index.md                  # Module routing table
   model-selection.md           # Task tool, parallelization
-  quality-gates.md             # 7-gate system, anti-sycophancy
+  quality-gates.md             # 9-gate system, anti-sycophancy
   testing.md                   # Playwright, E2E, property-based
   production.md                # CI/CD, batch processing
   agents.md                    # 41 agent types, A2A patterns
@@ -196,7 +196,7 @@ Main Worktree (orchestrator)
 
 ---
 
-## Quality Gates (7-Gate System)
+## Quality Gates (9-Gate System)
 
 ### Gate 1: Static Analysis
 ```yaml

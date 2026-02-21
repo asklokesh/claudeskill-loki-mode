@@ -2,19 +2,32 @@
 # Test Mutation Detector - Quality Gate #9
 # Verifies that test assertions exercise real code paths
 #
-# Usage: ./tests/detect-test-mutations.sh [--strict]
+# Usage: ./tests/detect-test-mutations.sh [--strict] [--commit HASH]
 #   --strict: Exit with error code on any finding (for CI)
+#   --commit HASH: Check specific commit for assertion value mutations
 #
 # Detects:
 # 1. Shell tests where functions are redefined to return canned output
 # 2. Test files where all assertions check constant values
 # 3. Test files with assertion-to-test ratio below threshold
+# 4. Assertion value mutations: commits that change assertion expected values
+#    alongside implementation changes (sign of fitting tests to code)
 
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-STRICT="${1:-}"
+STRICT=""
+COMMIT_HASH=""
+
+# Parse arguments
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --strict) STRICT="--strict"; shift ;;
+        --commit) COMMIT_HASH="$2"; shift 2 ;;
+        *) shift ;;
+    esac
+done
 
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
@@ -97,6 +110,62 @@ for test_file in "$PROJECT_DIR"/tests/test-*.sh; do
         report "MEDIUM" "$rel_path" "No pass/fail assertion tracking found"
     fi
 done
+
+# Check 5: Assertion value mutations in git commits
+# Detects when a commit changes BOTH implementation code AND assertion expected values
+# This is a sign of "fitting the test to the code" -- changing what the test expects
+# to match what the code produces, rather than fixing the code
+echo -e "${CYAN}Scanning for assertion value mutations in commits...${NC}"
+
+# Use provided commit or check the last 5 commits
+if [ -n "$COMMIT_HASH" ]; then
+    COMMITS_TO_CHECK="$COMMIT_HASH"
+else
+    COMMITS_TO_CHECK=$(cd "$PROJECT_DIR" && git log --oneline -5 --format='%H' 2>/dev/null || true)
+fi
+
+if [ -n "$COMMITS_TO_CHECK" ]; then
+    for commit in $COMMITS_TO_CHECK; do
+        # Get files changed in this commit
+        changed_files=$(cd "$PROJECT_DIR" && git diff-tree --no-commit-id --name-only -r "$commit" 2>/dev/null || true)
+        [ -z "$changed_files" ] && continue
+
+        # Classify files: test files vs implementation files
+        has_impl=false
+        has_test=false
+        test_files_changed=""
+        impl_files_changed=""
+
+        while IFS= read -r file; do
+            if echo "$file" | grep -qE '\.(test|spec)\.(ts|js|tsx|jsx)$|^tests?/|test_.*\.py$'; then
+                has_test=true
+                test_files_changed="$test_files_changed $file"
+            elif echo "$file" | grep -qE '\.(ts|js|tsx|jsx|py|sh)$' | grep -vqE '\.md$|\.json$|\.yml$|\.yaml$' 2>/dev/null; then
+                has_impl=true
+                impl_files_changed="$impl_files_changed $file"
+            fi
+        done <<< "$changed_files"
+
+        # Only flag if BOTH test and implementation files changed in same commit
+        if [ "$has_impl" = true ] && [ "$has_test" = true ]; then
+            # Check if test file changes include modified assertion values
+            # Look for changed lines that have expect/assert with literal values
+            test_diff=$(cd "$PROJECT_DIR" && git diff "$commit^" "$commit" -- $test_files_changed 2>/dev/null || true)
+
+            # Count changed assertion lines (lines starting with + or - that contain assertions)
+            changed_assertions=$(echo "$test_diff" | grep -cE '^[-+].*(\.toBe\(|\.toEqual\(|\.toStrictEqual\(|strictEqual\(|deepEqual\(|assertEqual\(|assert.*==)' 2>/dev/null || echo "0")
+            # Filter out the diff header lines (--- and +++)
+            header_lines=$(echo "$test_diff" | grep -cE '^(---|\+\+\+)' 2>/dev/null || echo "0")
+            changed_assertions=$((changed_assertions - header_lines))
+            [ "$changed_assertions" -lt 0 ] && changed_assertions=0
+
+            if [ "$changed_assertions" -gt 2 ]; then
+                short_hash=$(echo "$commit" | cut -c1-8)
+                report "HIGH" "commit:$short_hash" "Changed $changed_assertions assertion values alongside implementation code -- possible test fitting"
+            fi
+        fi
+    done
+fi
 
 # Summary
 echo ""

@@ -11,6 +11,7 @@
 # 3. Conditional assertions that silently pass (if guards around expects)
 # 4. Empty test bodies
 # 5. Tests with no imports from source code
+# 6. Internal mock ratio: mocks of own code vs external service mocks
 
 set -uo pipefail
 
@@ -133,6 +134,35 @@ while IFS= read -r test_file; do
     done < <(grep -nE "(xit|xtest|xdescribe|\.skip)\(" "$test_file" 2>/dev/null | head -5)
 
 done < <(find "$PROJECT_DIR" -name "*.test.ts" -o -name "*.test.js" -o -name "*.spec.ts" -o -name "*.spec.js" -o -name "test_*.py" 2>/dev/null | grep -v node_modules | grep -v dist)
+
+# Pattern 6: Internal vs External mock classification
+# Internal mocks (mocking your own code) are problematic -- you're hiding bugs
+# External mocks (mocking HTTP, DB, filesystem, APIs) are expected
+echo -e "${CYAN}Scanning for internal mock ratio...${NC}"
+
+# Mock patterns for external services (acceptable)
+EXTERNAL_MOCK_PATTERN='(fetch|axios|http|request|database|db\.|redis|pg\.|mysql|mongo|s3|aws|gcp|azure|stripe|twilio|sendgrid|smtp|mailer|fs\.|readFile|writeFile|unlink|mkdir|createServer|listen|connect|socket)'
+# Mock patterns for internal code (problematic if excessive)
+INTERNAL_MOCK_PATTERN='(jest\.fn|sinon\.stub|sinon\.spy|vi\.fn|mock\(\)|spyOn|jest\.spyOn|stub\()'
+
+while IFS= read -r test_file; do
+    rel_path="${test_file#$PROJECT_DIR/}"
+
+    total_mocks=$(grep -cE "$INTERNAL_MOCK_PATTERN" "$test_file" 2>/dev/null || true)
+    total_mocks="${total_mocks:-0}"
+    total_mocks=$(echo "$total_mocks" | tr -d '[:space:]')
+    external_mocks=$(grep -cE "$EXTERNAL_MOCK_PATTERN" "$test_file" 2>/dev/null || true)
+    external_mocks="${external_mocks:-0}"
+    external_mocks=$(echo "$external_mocks" | tr -d '[:space:]')
+
+    # Internal mock count = total mocks minus those near external patterns
+    # Simple heuristic: if file has many mocks but few external references, it's over-mocking
+    if [ "$total_mocks" -gt 5 ] && [ "$external_mocks" -eq 0 ]; then
+        report "HIGH" "$rel_path" "1" "High internal mock ratio: $total_mocks mocks with 0 external service references -- likely mocking own code"
+    elif [ "$total_mocks" -gt 10 ] && [ "$external_mocks" -lt 3 ]; then
+        report "MEDIUM" "$rel_path" "1" "Elevated internal mock ratio: $total_mocks mocks, only $external_mocks external refs -- review mock targets"
+    fi
+done < <(find "$PROJECT_DIR" \( -name "*.test.ts" -o -name "*.test.js" -o -name "*.spec.ts" -o -name "*.spec.js" \) 2>/dev/null | grep -v node_modules | grep -v dist)
 
 # Summary
 echo ""

@@ -41,7 +41,7 @@
 
 ### quality-gates.md
 **When:** Code review, pre-commit checks, quality assurance
-- 7-gate quality system
+- 9-gate quality system
 - Blind review + anti-sycophancy
 - Velocity-quality feedback loop (arXiv research)
 - Mandatory quality checks per task
