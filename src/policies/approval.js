@@ -20,6 +20,7 @@ const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const https = require('https');
+const crypto = require('crypto');
 
 // -------------------------------------------------------------------
 // Constants
@@ -27,6 +28,53 @@ const https = require('https');
 
 const DEFAULT_TIMEOUT_MINUTES = 30;
 const APPROVAL_STATES = ['pending', 'approved', 'rejected', 'timed_out'];
+
+// -------------------------------------------------------------------
+// SSRF protection helpers
+// -------------------------------------------------------------------
+
+/**
+ * Returns true if the hostname resolves to an internal/private address.
+ * Checks against RFC1918, loopback, and link-local ranges by hostname
+ * string matching (does not perform DNS resolution).
+ */
+function _isInternalHostname(hostname) {
+  // Reject loopback
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') return true;
+
+  // Reject link-local (169.254.x.x)
+  if (/^169\.254\./.test(hostname)) return true;
+
+  // Reject RFC1918 private ranges
+  if (/^10\./.test(hostname)) return true;
+  if (/^192\.168\./.test(hostname)) return true;
+  if (/^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname)) return true;
+
+  // Reject IPv6 private/loopback
+  if (/^(::1|fc[0-9a-f]{2}:|fd[0-9a-f]{2}:)/i.test(hostname)) return true;
+
+  return false;
+}
+
+/**
+ * Validate a webhook URL for SSRF safety.
+ * Returns an error string if invalid, null if valid.
+ */
+function _validateWebhookUrl(url) {
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch (_) {
+    return 'Invalid webhook URL';
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    return 'Webhook URL must use http or https protocol, got: ' + parsed.protocol;
+  }
+  if (_isInternalHostname(parsed.hostname)) {
+    return 'Webhook URL must not target internal/private addresses';
+  }
+  return null;
+}
 
 // -------------------------------------------------------------------
 // ApprovalGateManager class
@@ -115,7 +163,7 @@ class ApprovalGateManager {
       });
     }
 
-    const requestId = 'apr-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8);
+    const requestId = 'apr-' + crypto.randomBytes(16).toString('hex');
     const timeout = (gate.timeout_minutes || DEFAULT_TIMEOUT_MINUTES) * 60 * 1000;
 
     const request = {
@@ -141,17 +189,24 @@ class ApprovalGateManager {
     const self = this;
 
     return new Promise(function (resolve) {
-      // Set timeout for auto-approve
+      // Set timeout handler.
+      // Default behavior (fail-closed): timeout resolves as rejected (approved: false).
+      // Opt-in to auto-approve on timeout by setting gate.auto_approve_on_timeout: true.
+      const autoApproveOnTimeout = gate.auto_approve_on_timeout === true;
       const timer = setTimeout(function () {
         delete self._pendingTimers[requestId];
         request.status = 'timed_out';
         request.resolvedAt = new Date().toISOString();
         request.method = 'timeout';
-        request.reason = 'Auto-approved after ' + (gate.timeout_minutes || DEFAULT_TIMEOUT_MINUTES) + ' minute timeout';
+        if (autoApproveOnTimeout) {
+          request.reason = 'Auto-approved after ' + (gate.timeout_minutes || DEFAULT_TIMEOUT_MINUTES) + ' minute timeout';
+        } else {
+          request.reason = 'Rejected: approval not received within ' + (gate.timeout_minutes || DEFAULT_TIMEOUT_MINUTES) + ' minute timeout';
+        }
         self._addAudit(request);
         self._saveState();
         resolve({
-          approved: true,
+          approved: autoApproveOnTimeout,
           reason: request.reason,
           method: 'timeout',
         });
@@ -205,6 +260,13 @@ class ApprovalGateManager {
 
   _sendWebhook(url, request) {
     try {
+      // Validate URL for SSRF safety before making any outbound request
+      const urlError = _validateWebhookUrl(url);
+      if (urlError) {
+        // Silently drop invalid webhook -- caller already validated at config load
+        return;
+      }
+
       const payload = JSON.stringify({
         type: 'approval_request',
         id: request.id,

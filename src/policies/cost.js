@@ -33,7 +33,10 @@ class CostController extends EventEmitter {
     this._state = this._loadState();
     this._budgetConfig = this._extractBudgetConfig(resourcePolicies || []);
     this._triggeredAlerts = new Set();
-    this._shutdownEmitted = false;
+    // Per-project shutdown flags (keyed by projectId or 'global').
+    // Using a Set instead of a single boolean ensures each project only
+    // emits shutdown once even when multiple projects are tracked.
+    this._shutdownEmittedProjects = new Set();
 
     // Restore previously triggered alerts
     if (this._state.triggeredAlerts) {
@@ -206,10 +209,11 @@ class CostController extends EventEmitter {
       }
     }
 
-    // Kill switch
-    if (budget.exceeded && !this._shutdownEmitted) {
+    // Kill switch (per-project: each project emits shutdown at most once)
+    const shutdownKey = projectId || 'global';
+    if (budget.exceeded && !this._shutdownEmittedProjects.has(shutdownKey)) {
       if (this._budgetConfig.onExceed === 'shutdown') {
-        this._shutdownEmitted = true;
+        this._shutdownEmittedProjects.add(shutdownKey);
 
         this._state.history.push({
           type: 'shutdown',
@@ -271,7 +275,7 @@ class CostController extends EventEmitter {
       history: [],
     };
     this._triggeredAlerts.clear();
-    this._shutdownEmitted = false;
+    this._shutdownEmittedProjects.clear();
     this._saveState();
   }
 }

@@ -237,3 +237,56 @@ describe('CostController - persistence', function () {
     c2.removeAllListeners();
   });
 });
+
+// -------------------------------------------------------------------
+// Tests: CostController - per-project shutdown flag (Finding 7 fix)
+// -------------------------------------------------------------------
+
+describe('CostController - per-project shutdown isolation', function () {
+  let tempDir;
+  let controller;
+  const resourcePolicies = [
+    { name: 'budget', max_tokens: 1000, alerts: [100], on_exceed: 'shutdown' },
+  ];
+
+  before(function () {
+    tempDir = createTempDir();
+  });
+
+  beforeEach(function () {
+    controller = new CostController(tempDir, resourcePolicies);
+  });
+
+  afterEach(function () {
+    controller.removeAllListeners();
+    controller.reset();
+  });
+
+  after(function () {
+    cleanup(tempDir);
+  });
+
+  it('should emit shutdown for project-a and still emit for project-b independently', function () {
+    const shutdowns = [];
+    controller.on('shutdown', function (data) { shutdowns.push(data.projectId); });
+
+    // Exceed budget for project-a
+    controller.recordUsage('proj-a', { tokens: 1001 });
+    assert.strictEqual(shutdowns.length, 1);
+    assert.strictEqual(shutdowns[0], 'proj-a');
+
+    // proj-a shutdown should not block proj-b
+    controller.recordUsage('proj-b', { tokens: 1001 });
+    assert.strictEqual(shutdowns.length, 2);
+    assert.strictEqual(shutdowns[1], 'proj-b');
+  });
+
+  it('should not emit duplicate shutdown for same project', function () {
+    const shutdowns = [];
+    controller.on('shutdown', function (data) { shutdowns.push(data.projectId); });
+
+    controller.recordUsage('proj-a', { tokens: 1001 });
+    controller.recordUsage('proj-a', { tokens: 1001 }); // second call should not re-emit
+    assert.strictEqual(shutdowns.length, 1, 'Shutdown must only be emitted once per project');
+  });
+});

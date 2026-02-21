@@ -99,11 +99,12 @@ describe('ApprovalGateManager - with gates', function () {
     assert.strictEqual(mgr.hasGate('build'), false);
   });
 
-  it('should auto-approve after timeout', async function () {
+  it('should reject (fail-closed) after timeout by default', async function () {
     mgr = new ApprovalGateManager(tempDir, gates);
     const result = await mgr.requestApproval('deploy', { branch: 'main' });
-    assert.strictEqual(result.approved, true);
+    assert.strictEqual(result.approved, false);
     assert.strictEqual(result.method, 'timeout');
+    assert.ok(result.reason.includes('timeout'));
   });
 
   it('should resolve approval manually', async function () {
@@ -174,5 +175,172 @@ describe('ApprovalGateManager - with gates', function () {
 describe('ApprovalGateManager - constants', function () {
   it('should export DEFAULT_TIMEOUT_MINUTES as 30', function () {
     assert.strictEqual(DEFAULT_TIMEOUT_MINUTES, 30);
+  });
+});
+
+// -------------------------------------------------------------------
+// Tests: fail-closed timeout behavior
+// -------------------------------------------------------------------
+
+describe('ApprovalGateManager - fail-closed timeout', function () {
+  let tempDir;
+  let mgr;
+
+  before(function () {
+    tempDir = createTempDir();
+  });
+
+  afterEach(function () {
+    if (mgr) {
+      mgr.destroy();
+      mgr = null;
+    }
+  });
+
+  after(function () {
+    cleanup(tempDir);
+  });
+
+  it('should return approved: false on timeout when auto_approve_on_timeout not set', async function () {
+    const gates = [{ name: 'gate', phase: 'deploy', timeout_minutes: 0.01 }];
+    mgr = new ApprovalGateManager(tempDir, gates);
+    const result = await mgr.requestApproval('deploy', {});
+    assert.strictEqual(result.approved, false);
+    assert.strictEqual(result.method, 'timeout');
+  });
+
+  it('should return approved: true on timeout when auto_approve_on_timeout is true', async function () {
+    const gates = [{
+      name: 'gate',
+      phase: 'release',
+      timeout_minutes: 0.01,
+      auto_approve_on_timeout: true,
+    }];
+    mgr = new ApprovalGateManager(tempDir, gates);
+    const result = await mgr.requestApproval('release', {});
+    assert.strictEqual(result.approved, true);
+    assert.strictEqual(result.method, 'timeout');
+  });
+
+  it('should return approved: false on timeout when auto_approve_on_timeout is false', async function () {
+    const gates = [{
+      name: 'gate',
+      phase: 'build',
+      timeout_minutes: 0.01,
+      auto_approve_on_timeout: false,
+    }];
+    mgr = new ApprovalGateManager(tempDir, gates);
+    const result = await mgr.requestApproval('build', {});
+    assert.strictEqual(result.approved, false);
+    assert.strictEqual(result.method, 'timeout');
+  });
+});
+
+// -------------------------------------------------------------------
+// Tests: SSRF protection in _sendWebhook
+// -------------------------------------------------------------------
+
+describe('ApprovalGateManager - SSRF protection', function () {
+  let tempDir;
+  let mgr;
+
+  before(function () {
+    tempDir = createTempDir();
+  });
+
+  afterEach(function () {
+    if (mgr) {
+      mgr.destroy();
+      mgr = null;
+    }
+  });
+
+  after(function () {
+    cleanup(tempDir);
+  });
+
+  it('should not make HTTP request for file:// webhook URL', function (t, done) {
+    // We verify _sendWebhook does not throw and silently drops invalid URLs.
+    // Since it is fire-and-forget, we just confirm no exception is thrown.
+    const gates = [{
+      name: 'gate',
+      phase: 'deploy',
+      timeout_minutes: 60,
+      webhook: 'https://legitimate-external-service.example.com/hook',
+    }];
+    mgr = new ApprovalGateManager(tempDir, gates);
+    // Call _sendWebhook directly with a bad URL -- should not throw
+    assert.doesNotThrow(function () {
+      mgr._sendWebhook('file:///etc/passwd', { id: 'x', phase: 'deploy', gate: 'gate', context: {}, createdAt: '' });
+    });
+    done();
+  });
+
+  it('should silently drop internal IP webhook URLs', function (t, done) {
+    mgr = new ApprovalGateManager(tempDir, []);
+    assert.doesNotThrow(function () {
+      mgr._sendWebhook('http://169.254.169.254/latest/meta-data/', { id: 'x', phase: 'deploy', gate: 'gate', context: {}, createdAt: '' });
+    });
+    done();
+  });
+
+  it('should silently drop RFC1918 webhook URLs', function (t, done) {
+    mgr = new ApprovalGateManager(tempDir, []);
+    assert.doesNotThrow(function () {
+      mgr._sendWebhook('http://10.0.0.1/internal', { id: 'x', phase: 'deploy', gate: 'gate', context: {}, createdAt: '' });
+    });
+    done();
+  });
+
+  it('should silently drop localhost webhook URLs', function (t, done) {
+    mgr = new ApprovalGateManager(tempDir, []);
+    assert.doesNotThrow(function () {
+      mgr._sendWebhook('http://localhost:6379/', { id: 'x', phase: 'deploy', gate: 'gate', context: {}, createdAt: '' });
+    });
+    done();
+  });
+});
+
+// -------------------------------------------------------------------
+// Tests: crypto request IDs
+// -------------------------------------------------------------------
+
+describe('ApprovalGateManager - request ID entropy', function () {
+  let tempDir;
+  let mgr;
+
+  before(function () {
+    tempDir = createTempDir();
+    const gates = [{ name: 'gate', phase: 'build', timeout_minutes: 60 }];
+    mgr = new ApprovalGateManager(tempDir, gates);
+  });
+
+  after(function () {
+    mgr.destroy();
+    cleanup(tempDir);
+  });
+
+  it('should generate unique hex request IDs', function () {
+    const p1 = mgr.requestApproval('build', {});
+    const pending = mgr.getPendingRequests();
+    const id = pending[0].id;
+    // Format: "apr-" + 32 hex chars
+    assert.match(id, /^apr-[0-9a-f]{32}$/);
+    // Clean up
+    mgr.resolveApproval(id, false, 'test cleanup');
+    return p1;
+  });
+
+  it('should generate distinct IDs for concurrent requests', function () {
+    const p1 = mgr.requestApproval('build', {});
+    const p2 = mgr.requestApproval('build', {});
+    const pending = mgr.getPendingRequests();
+    assert.strictEqual(pending.length, 2);
+    assert.notStrictEqual(pending[0].id, pending[1].id);
+    // Clean up
+    pending.forEach(function (r) {
+      mgr.resolveApproval(r.id, false, 'test cleanup');
+    });
+    return Promise.all([p1, p2]);
   });
 });

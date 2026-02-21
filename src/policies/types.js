@@ -1,5 +1,7 @@
 'use strict';
 
+const path = require('path');
+
 /**
  * Loki Mode Policy Engine - Type Definitions and Validators
  *
@@ -164,6 +166,15 @@ function validateApprovalGate(entry) {
   if (entry.webhook !== undefined) {
     if (typeof entry.webhook !== 'string' || entry.webhook.length === 0) {
       errors.push('webhook must be a non-empty string URL');
+    } else {
+      try {
+        const parsed = new URL(entry.webhook);
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+          errors.push('webhook must use http or https protocol');
+        }
+      } catch (_) {
+        errors.push('webhook must be a valid URL');
+      }
     }
   }
   return { valid: errors.length === 0, errors };
@@ -181,12 +192,17 @@ const RULE_EVALUATORS = {
   /**
    * "file_path must start with project_dir"
    * Context must contain: file_path (string), project_dir (string)
+   *
+   * Uses path.resolve() on both paths to normalize traversal sequences
+   * (e.g., /project/../etc/passwd) and ensures prefix ends with path.sep
+   * to prevent sibling-directory bypass (/project-evil matching /project).
    */
   'file_path must start with project_dir': function (context) {
     if (!context.file_path || !context.project_dir) return null;
-    const fp = String(context.file_path);
-    const pd = String(context.project_dir);
-    return fp.startsWith(pd);
+    const fp = path.resolve(String(context.file_path));
+    const pd = path.resolve(String(context.project_dir));
+    const base = pd.endsWith(path.sep) ? pd : pd + path.sep;
+    return fp === pd || fp.startsWith(base);
   },
 
   /**
@@ -283,4 +299,5 @@ module.exports = {
   scanContent,
   SECRET_PATTERNS,
   PII_PATTERNS,
+  RULE_EVALUATORS,
 };

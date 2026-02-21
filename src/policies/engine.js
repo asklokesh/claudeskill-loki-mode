@@ -20,7 +20,7 @@ const fs = require('fs');
 const path = require('path');
 const { Decision, evaluateRule, scanContent, validatePreExecution,
   validatePreDeployment, validateResource, validateData,
-  validateApprovalGate } = require('./types');
+  validateApprovalGate, RULE_EVALUATORS } = require('./types');
 
 // -------------------------------------------------------------------
 // Minimal YAML parser for policy files
@@ -306,10 +306,22 @@ class PolicyEngine {
     const policies = parsed.policies || parsed;
 
     if (policies.pre_execution && Array.isArray(policies.pre_execution)) {
+      const knownRuleKeys = Object.keys(RULE_EVALUATORS);
       policies.pre_execution.forEach(function (entry, i) {
         const result = validatePreExecution(entry);
         if (!result.valid) {
           errors.push('pre_execution[' + i + ']: ' + result.errors.join(', '));
+        }
+        // Warn when rule string doesn't match any known evaluator (likely typo).
+        // This is a warning (not a hard error) to preserve forward-compatibility
+        // for future custom rule strings.
+        if (entry && typeof entry.rule === 'string') {
+          const recognized = knownRuleKeys.some(function (k) {
+            return entry.rule === k || entry.rule.startsWith(k);
+          });
+          if (!recognized) {
+            errors.push('pre_execution[' + i + ']: warning: rule "' + entry.rule + '" is not recognized by any built-in evaluator and will always pass');
+          }
         }
       });
     }

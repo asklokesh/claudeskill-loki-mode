@@ -539,3 +539,52 @@ describe('PolicyEngine - pre_deployment', function () {
     engine.destroy();
   });
 });
+
+// -------------------------------------------------------------------
+// Tests: Unknown rule validation warning (Finding 8 fix)
+// -------------------------------------------------------------------
+
+describe('PolicyEngine - unknown rule validation warning', function () {
+  let tempDir;
+
+  before(function () {
+    tempDir = createTempDir();
+  });
+
+  after(function () {
+    cleanup(tempDir);
+  });
+
+  it('should add warning to validation errors for unrecognized rule strings', function () {
+    writePolicyJson(tempDir, {
+      pre_execution: [
+        { name: 'good-rule', rule: 'file_path must start with project_dir', action: 'deny' },
+        // Completely different rule name that doesn't match any known evaluator prefix
+        { name: 'typo-rule', rule: 'restrict_file_access to project_dir', action: 'deny' },
+      ],
+    });
+    const engine = new PolicyEngine(tempDir);
+    const errors = engine.getValidationErrors();
+    assert.ok(
+      errors.some(function (e) { return e.includes('not recognized') && e.includes('restrict_file_access'); }),
+      'Should warn about unrecognized rule: ' + JSON.stringify(errors)
+    );
+    engine.destroy();
+  });
+
+  it('should not warn for recognized rule strings', function () {
+    writePolicyJson(tempDir, {
+      pre_execution: [
+        { name: 'file-rule', rule: 'file_path must start with project_dir', action: 'deny' },
+        { name: 'agent-rule', rule: 'active_agents <= 5', action: 'deny' },
+      ],
+    });
+    const engine = new PolicyEngine(tempDir);
+    const errors = engine.getValidationErrors();
+    assert.ok(
+      !errors.some(function (e) { return e.includes('not recognized'); }),
+      'Known rules should not produce warnings: ' + JSON.stringify(errors)
+    );
+    engine.destroy();
+  });
+});

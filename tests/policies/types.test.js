@@ -296,3 +296,117 @@ describe('scanContent', function () {
     assert.strictEqual(scanContent('', 'secret_detection').length, 0);
   });
 });
+
+// -------------------------------------------------------------------
+// Tests: path traversal bypass fix (Finding 1)
+// -------------------------------------------------------------------
+
+describe('evaluateRule - path traversal security', function () {
+  it('should block path traversal with ../ sequences', function () {
+    const result = evaluateRule('file_path must start with project_dir', {
+      file_path: '/home/project/../../../etc/passwd',
+      project_dir: '/home/project',
+    });
+    assert.strictEqual(result, false, 'Path traversal via ../ must be blocked');
+  });
+
+  it('should block sibling directory bypass (/home/project-evil)', function () {
+    const result = evaluateRule('file_path must start with project_dir', {
+      file_path: '/home/project-evil/secret.js',
+      project_dir: '/home/project',
+    });
+    assert.strictEqual(result, false, 'Sibling directory /project-evil must not match /project prefix');
+  });
+
+  it('should allow exact match on project_dir itself', function () {
+    const result = evaluateRule('file_path must start with project_dir', {
+      file_path: '/home/project',
+      project_dir: '/home/project',
+    });
+    assert.strictEqual(result, true);
+  });
+
+  it('should allow a file directly in project_dir', function () {
+    const result = evaluateRule('file_path must start with project_dir', {
+      file_path: '/home/project/main.js',
+      project_dir: '/home/project',
+    });
+    assert.strictEqual(result, true);
+  });
+
+  it('should allow nested subdirectory files', function () {
+    const result = evaluateRule('file_path must start with project_dir', {
+      file_path: '/home/project/src/lib/utils.js',
+      project_dir: '/home/project',
+    });
+    assert.strictEqual(result, true);
+  });
+
+  it('should block /etc/passwd regardless of project_dir', function () {
+    const result = evaluateRule('file_path must start with project_dir', {
+      file_path: '/etc/passwd',
+      project_dir: '/home/project',
+    });
+    assert.strictEqual(result, false);
+  });
+
+  it('should block traversal when project_dir itself ends with separator', function () {
+    const result = evaluateRule('file_path must start with project_dir', {
+      file_path: '/home/project/../etc/passwd',
+      project_dir: '/home/project/',
+    });
+    assert.strictEqual(result, false);
+  });
+});
+
+// -------------------------------------------------------------------
+// Tests: validateApprovalGate - webhook URL validation (SSRF fix)
+// -------------------------------------------------------------------
+
+describe('validateApprovalGate - webhook URL validation', function () {
+  it('should accept https webhook URL', function () {
+    const result = validateApprovalGate({
+      name: 'gate',
+      phase: 'deploy',
+      webhook: 'https://hooks.example.com/notify',
+    });
+    assert.strictEqual(result.valid, true);
+  });
+
+  it('should accept http webhook URL', function () {
+    const result = validateApprovalGate({
+      name: 'gate',
+      phase: 'deploy',
+      webhook: 'http://hooks.example.com/notify',
+    });
+    assert.strictEqual(result.valid, true);
+  });
+
+  it('should reject file:// webhook URL', function () {
+    const result = validateApprovalGate({
+      name: 'gate',
+      phase: 'deploy',
+      webhook: 'file:///etc/passwd',
+    });
+    assert.strictEqual(result.valid, false);
+    assert.ok(result.errors.some(function (e) { return e.includes('http') || e.includes('protocol'); }));
+  });
+
+  it('should reject gopher:// webhook URL', function () {
+    const result = validateApprovalGate({
+      name: 'gate',
+      phase: 'deploy',
+      webhook: 'gopher://evil.example.com/',
+    });
+    assert.strictEqual(result.valid, false);
+  });
+
+  it('should reject malformed webhook URL', function () {
+    const result = validateApprovalGate({
+      name: 'gate',
+      phase: 'deploy',
+      webhook: 'not-a-url',
+    });
+    assert.strictEqual(result.valid, false);
+  });
+});
