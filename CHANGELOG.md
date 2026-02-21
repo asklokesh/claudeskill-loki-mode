@@ -5,6 +5,39 @@ All notable changes to Loki Mode will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.50.0] - 2026-02-21
+
+### Added - Enterprise Protocol Layer (P0-1, P0-2, P0-3)
+- MCP server: JSON-RPC 2.0 over stdio/SSE with 5 enterprise tools (start-project, project-status, agent-metrics, checkpoint-restore, quality-report)
+- MCP client: consume external MCP servers with circuit breaker, connection pooling, auto-reconnect
+- A2A protocol: agent discovery via `.well-known/agent.json`, task delegation, SSE streaming, artifact management
+- OAuth validator for protocol authentication
+- Session guard: prevents concurrent project starts
+
+### Added - Enterprise Observability (P0-4, P0-5, P0-9)
+- OpenTelemetry instrumentation: RARV cycle, quality gates, agents, council (zero-overhead when disabled)
+- Policy engine: governance-as-code with YAML config, approval gates, webhook notifications
+- Audit trail: tamper-evident SHA-256 hash chain, JSONL persistence
+- Compliance reports: SOC 2 Type II, ISO 27001, GDPR
+- Data residency controller: provider/region restrictions, air-gapped mode
+
+### Added - Enterprise Integrations (P0-6, P0-7, P0-8)
+- Jira bidirectional sync: epic-to-PRD conversion, webhook handler, sub-task creation
+- Linear bidirectional sync: reusable adapter pattern, webhook support
+- GitHub Actions: enterprise trigger patterns, fork trust controls, expression injection prevention
+
+### Security
+- JQL injection prevention: strict epic key validation (`^[A-Z][A-Z0-9_]+-\d+$`)
+- Response size limits (10MB) and request timeouts (30s) on all HTTP clients
+- SSE buffer bounds and input size limits on A2A task manager
+- Shell injection prevention in GitHub Actions (env vars instead of expression interpolation)
+- Path traversal, SSRF, and fail-open fixes across policy engine
+- Metadata deep-copy in audit trail to prevent hash integrity bypass
+
+### Tests
+- 572 enterprise tests across all modules (protocols, observability, policies, audit, integrations)
+- Council-reviewed: 3 blind reviewers per module, anti-sycophancy devil's advocate pass
+
 ## [5.49.4] - 2026-02-21
 
 ### Added
