@@ -432,6 +432,10 @@ app_runner_start() {
         (cd "$dir" && bash -c "$_APP_RUNNER_METHOD" >> "$_APP_RUNNER_DIR/app.log" 2>&1) &
     fi
     _APP_RUNNER_PID=$!
+    # Register with central PID registry if available
+    if type register_pid &>/dev/null; then
+        register_pid "$_APP_RUNNER_PID" "app-runner" "method=$_APP_RUNNER_METHOD"
+    fi
 
     # Write PID file
     echo "$_APP_RUNNER_PID" > "$_APP_RUNNER_DIR/app.pid"
@@ -495,6 +499,11 @@ app_runner_stop() {
     if kill -0 "$_APP_RUNNER_PID" 2>/dev/null; then
         log_warn "App Runner: process did not stop gracefully, sending SIGKILL"
         kill -KILL "-$_APP_RUNNER_PID" 2>/dev/null || kill -KILL "$_APP_RUNNER_PID" 2>/dev/null || true
+    fi
+
+    # Unregister from central PID registry
+    if type unregister_pid &>/dev/null && [ -n "$_APP_RUNNER_PID" ]; then
+        unregister_pid "$_APP_RUNNER_PID"
     fi
 
     rm -f "$_APP_RUNNER_DIR/app.pid"

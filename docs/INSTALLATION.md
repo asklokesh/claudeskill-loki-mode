@@ -2,11 +2,11 @@
 
 The flagship product of [Autonomi](https://www.autonomi.dev/). Complete installation instructions for all platforms and use cases.
 
-**Version:** v5.49.0
+**Version:** v5.49.1
 
 ---
 
-## What's New in v5.39.0
+## What's New in v5.49.1
 
 ### Enterprise Security (v5.36.0-v5.37.1)
 - TLS/HTTPS support for dashboard connections
@@ -63,7 +63,7 @@ npm install -g loki-mode
 brew tap asklokesh/tap && brew install loki-mode
 
 # Option C: Docker
-docker pull asklokesh/loki-mode:5.32.0
+docker pull asklokesh/loki-mode:latest
 
 # Option D: Git clone
 git clone https://github.com/asklokesh/loki-mode.git ~/.claude/skills/loki-mode
@@ -160,6 +160,10 @@ Install via npm for the easiest setup with automatic PATH configuration.
 npm install -g loki-mode
 
 # The skill is automatically installed to ~/.claude/skills/loki-mode
+
+# Opt out of anonymous install telemetry:
+# LOKI_TELEMETRY_DISABLED=true npm install -g loki-mode
+# Or set DO_NOT_TRACK=1
 ```
 
 ### Usage
@@ -207,8 +211,8 @@ brew tap asklokesh/tap
 # Install Loki Mode
 brew install loki-mode
 
-# Set up Claude Code skill integration
-loki-mode-install-skill
+# Set up Claude Code skill integration (manual symlink required)
+ln -sf "$(brew --prefix)/opt/loki-mode/libexec" ~/.claude/skills/loki-mode
 ```
 
 ### Dependencies
@@ -254,7 +258,7 @@ Run Loki Mode in a container for isolated execution.
 
 ```bash
 # Pull the image
-docker pull asklokesh/loki-mode:5.32.0
+docker pull asklokesh/loki-mode:latest
 
 # Or use docker-compose
 curl -o docker-compose.yml https://raw.githubusercontent.com/asklokesh/loki-mode/main/docker-compose.yml
@@ -264,10 +268,10 @@ curl -o docker-compose.yml https://raw.githubusercontent.com/asklokesh/loki-mode
 
 ```bash
 # Run with a PRD file
-docker run -v $(pwd):/workspace -w /workspace asklokesh/loki-mode:5.32.0 start ./my-prd.md
+docker run -v $(pwd):/workspace -w /workspace asklokesh/loki-mode:latest start ./my-prd.md
 
 # Interactive mode
-docker run -it -v $(pwd):/workspace -w /workspace asklokesh/loki-mode:5.32.0
+docker run -it -v $(pwd):/workspace -w /workspace asklokesh/loki-mode:latest
 
 # Using docker-compose
 docker-compose run loki start ./my-prd.md
@@ -280,7 +284,7 @@ Pass your configuration via environment variables:
 ```bash
 docker run -e LOKI_MAX_RETRIES=100 -e LOKI_BASE_WAIT=120 \
   -v $(pwd):/workspace -w /workspace \
-  asklokesh/loki-mode:5.32.0 start ./my-prd.md
+  asklokesh/loki-mode:latest start ./my-prd.md
 ```
 
 ### Updating
@@ -396,12 +400,12 @@ Pass the provider as an environment variable:
 # Use Codex with Docker
 docker run -e LOKI_PROVIDER=codex \
   -v $(pwd):/workspace -w /workspace \
-  asklokesh/loki-mode:5.32.0 start ./my-prd.md
+  asklokesh/loki-mode:latest start ./my-prd.md
 
 # Use Gemini with Docker
 docker run -e LOKI_PROVIDER=gemini \
   -v $(pwd):/workspace -w /workspace \
-  asklokesh/loki-mode:5.32.0 start ./my-prd.md
+  asklokesh/loki-mode:latest start ./my-prd.md
 ```
 
 ### Degraded Mode
@@ -652,7 +656,11 @@ Add the source command to your startup file so completions load every time you o
 Add this line to your `~/.bashrc` (Linux) or `~/.bash_profile` (macOS):
 
 ```bash
-source /path/to/loki/completions/loki.bash
+# npm install: use the npm package path
+source "$(npm root -g)/loki-mode/completions/loki.bash"
+
+# git clone: use the skills directory
+source ~/.claude/skills/loki-mode/completions/loki.bash
 ```
 
 ---

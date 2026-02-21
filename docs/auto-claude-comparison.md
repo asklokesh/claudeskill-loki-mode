@@ -169,7 +169,7 @@ Loki Mode:
 **Verdict: Loki Mode wins** - Simpler, lighter footprint.
 
 ### 10. Cursor Scale Patterns (v3.3.0)
-Loki Mode now incorporates proven patterns from Cursor's 100+ agent deployments:
+Loki Mode now incorporates proven patterns from Cursor's large-scale agent deployments:
 - Recursive sub-planners
 - Judge agents for cycle decisions
 - Optimistic concurrency control

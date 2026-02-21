@@ -6,7 +6,7 @@ Complete definitions and capabilities for all 41 specialized agent types.
 
 ## Overview
 
-Loki Mode has 41 predefined agent types organized into 7 specialized swarms (37 domain agents + 4 orchestration agents). The orchestrator spawns only the agents needed for your project - a simple app might use 5-10 agents, while a complex startup could spawn 100+ agents working in parallel.
+Loki Mode has 41 predefined agent types organized into 8 specialized swarms (37 domain agents + 4 orchestration agents). The orchestrator spawns only the agents needed for your project -- typically 5-10 for simple projects, more for complex ones.
 
 ---
 
@@ -98,7 +98,7 @@ Loki Mode has 41 predefined agent types organized into 7 specialized swarms (37 
 
 ## Orchestration Swarm (4 types)
 
-> **Source:** [Cursor Scaling Learnings](./cursor-learnings.md) - patterns proven at 100+ agent scale
+> **Source:** [Cursor Scaling Learnings](./cursor-learnings.md) - patterns proven at large agent scale
 
 | Agent | Capabilities |
 |-------|-------------|

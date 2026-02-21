@@ -2,7 +2,7 @@
 
 **Multi-agent autonomous development system for Claude Code, OpenAI Codex CLI, and Google Gemini CLI**
 
-Transform your PRD into a fully deployed, production-ready product with zero human intervention.
+Transform your PRD into a fully deployed, production-ready product with minimal human intervention.
 
 ## Quick Start
 

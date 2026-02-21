@@ -427,7 +427,7 @@ optimistic_write:
     - No waiting for locks
     - No deadlock risk
     - Failed writes are cheap (just retry)
-    - Scales to 100+ agents
+    - Scales horizontally with agent count
 ```
 
 ### Implementation

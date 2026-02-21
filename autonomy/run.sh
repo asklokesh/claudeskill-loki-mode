@@ -668,6 +668,146 @@ log_step() { echo -e "${CYAN}[STEP]${NC} $*"; }
 log_debug() { [[ "${LOKI_DEBUG:-}" == "true" ]] && echo -e "${CYAN}[DEBUG]${NC} $*" || true; }
 
 #===============================================================================
+# Process Registry (PID Supervisor)
+# Central registry of all spawned child processes for reliable cleanup
+#===============================================================================
+
+PID_REGISTRY_DIR=""
+
+# Initialize the PID registry directory
+init_pid_registry() {
+    PID_REGISTRY_DIR="${TARGET_DIR:-.}/.loki/pids"
+    mkdir -p "$PID_REGISTRY_DIR"
+}
+
+# Parse a field from a JSON registry entry (python3 with shell fallback)
+# Usage: _parse_json_field <file> <field>
+_parse_json_field() {
+    local file="$1" field="$2"
+    if command -v python3 >/dev/null 2>&1; then
+        python3 -c "import json,sys; print(json.load(open(sys.argv[1])).get(sys.argv[2],''))" "$file" "$field" 2>/dev/null
+    else
+        # Shell fallback: extract value for simple flat JSON
+        sed 's/.*"'"$field"'":\s*//' "$file" 2>/dev/null | sed 's/[",}].*//' | head -1
+    fi
+}
+
+# Register a spawned process in the central registry
+# Usage: register_pid <pid> <label> [<extra_info>]
+# Example: register_pid $! "dashboard" "port=57374"
+register_pid() {
+    local pid="$1"
+    # Sanitize label and extra for JSON safety (escape backslash first, then double-quote, strip newlines)
+    local label="${2//\\/\\\\}"
+    label="${label//\"/\\\"}"
+    label="$(printf '%s' "$label" | tr -d '\n\r')"
+    local extra="${3:-}"
+    extra="${extra//\\/\\\\}"
+    extra="${extra//\"/\\\"}"
+    extra="$(printf '%s' "$extra" | tr -d '\n\r')"
+    [ -z "$PID_REGISTRY_DIR" ] && init_pid_registry
+    local entry_file="$PID_REGISTRY_DIR/${pid}.json"
+    cat > "$entry_file" << EOF
+{"pid":$pid,"label":"$label","started":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","ppid":$$,"extra":"$extra"}
+EOF
+}
+
+# Unregister a process from the registry (called on clean shutdown)
+# Usage: unregister_pid <pid>
+unregister_pid() {
+    local pid="$1"
+    [ -z "$PID_REGISTRY_DIR" ] && init_pid_registry
+    rm -f "$PID_REGISTRY_DIR/${pid}.json" 2>/dev/null
+}
+
+# Kill a registered process with SIGTERM -> wait -> SIGKILL escalation
+# Usage: kill_registered_pid <pid>
+kill_registered_pid() {
+    local pid="$1"
+    if kill -0 "$pid" 2>/dev/null; then
+        kill "$pid" 2>/dev/null || true
+        # Wait up to 2 seconds for graceful exit
+        local waited=0
+        while [ $waited -lt 4 ] && kill -0 "$pid" 2>/dev/null; do
+            sleep 0.5
+            waited=$((waited + 1))
+        done
+        # Escalate to SIGKILL if still alive
+        if kill -0 "$pid" 2>/dev/null; then
+            kill -9 "$pid" 2>/dev/null || true
+        fi
+    fi
+    unregister_pid "$pid"
+}
+
+# Scan registry for orphaned processes and kill them
+# Called on startup and by `loki cleanup`
+# Returns: number of orphans killed
+cleanup_orphan_pids() {
+    [ -z "$PID_REGISTRY_DIR" ] && init_pid_registry
+    local orphan_count=0
+
+    if [ ! -d "$PID_REGISTRY_DIR" ]; then
+        echo "0"
+        return 0
+    fi
+
+    for entry_file in "$PID_REGISTRY_DIR"/*.json; do
+        [ -f "$entry_file" ] || continue
+        local pid
+        pid=$(basename "$entry_file" .json)
+
+        # Skip non-numeric filenames
+        case "$pid" in
+            ''|*[!0-9]*) continue ;;
+        esac
+
+        if kill -0 "$pid" 2>/dev/null; then
+            # Process is alive -- check if its parent session is dead
+            local ppid_val=""
+            ppid_val=$(_parse_json_field "$entry_file" "ppid") || true
+
+            # Validate ppid_val is numeric before using with kill
+            case "$ppid_val" in ''|*[!0-9]*) ppid_val="" ;; esac
+            if [ -n "$ppid_val" ] && [ "$ppid_val" != "$$" ]; then
+                if ! kill -0 "$ppid_val" 2>/dev/null; then
+                    # Parent is dead -- this is an orphan
+                    local label=""
+                    label=$(_parse_json_field "$entry_file" "label") || label="unknown"
+                    log_warn "Killing orphaned process: PID=$pid label=$label (parent $ppid_val is dead)" >&2
+                    kill_registered_pid "$pid"
+                    orphan_count=$((orphan_count + 1))
+                fi
+            fi
+        else
+            # Process is dead -- clean up stale registry entry
+            rm -f "$entry_file" 2>/dev/null
+        fi
+    done
+
+    echo "$orphan_count"
+}
+
+# Kill ALL registered processes (used during full shutdown)
+kill_all_registered() {
+    [ -z "$PID_REGISTRY_DIR" ] && init_pid_registry
+
+    if [ ! -d "$PID_REGISTRY_DIR" ]; then
+        return 0
+    fi
+
+    for entry_file in "$PID_REGISTRY_DIR"/*.json; do
+        [ -f "$entry_file" ] || continue
+        local pid
+        pid=$(basename "$entry_file" .json)
+        case "$pid" in
+            ''|*[!0-9]*) continue ;;
+        esac
+        kill_registered_pid "$pid"
+    done
+}
+
+#===============================================================================
 # Event Emission (Dashboard Integration)
 # Writes events to .loki/events.jsonl for dashboard consumption
 #===============================================================================
@@ -1688,6 +1828,7 @@ create_worktree() {
         ) &
         # Capture install PID for cleanup on exit
         WORKTREE_INSTALL_PIDS+=($!)
+        register_pid "$!" "worktree-install" "stream=$stream_name"
 
         log_info "Created worktree: $worktree_path"
         return 0
@@ -1796,6 +1937,7 @@ spawn_worktree_session() {
 
     local pid=$!
     WORKTREE_PIDS[$stream_name]=$pid
+    register_pid "$pid" "worktree-session" "stream=$stream_name"
 
     log_info "Session spawned: $stream_name (PID: $pid)"
     return 0
@@ -2002,6 +2144,7 @@ cleanup_parallel_streams() {
         if kill -0 "$pid" 2>/dev/null; then
             kill "$pid" 2>/dev/null || true
         fi
+        unregister_pid "$pid"
     done
     WORKTREE_INSTALL_PIDS=()
 
@@ -2012,6 +2155,7 @@ cleanup_parallel_streams() {
             log_step "Stopping session: $stream"
             kill "$pid" 2>/dev/null || true
         fi
+        unregister_pid "$pid"
     done
 
     # Wait for all to finish
@@ -2620,8 +2764,8 @@ write_dashboard_state() {
     # Get complexity tier
     local complexity="${DETECTED_COMPLEXITY:-standard}"
 
-    # Get RARV cycle step (approximate based on iteration)
-    local rarv_step=$((ITERATION_COUNT % 4))
+    # Get RARV cycle step from actual phase tracking (falls back to iteration-based)
+    local rarv_step=${RARV_CURRENT_STEP:-$((ITERATION_COUNT % 4))}
     local rarv_stages='["reason", "act", "reflect", "verify"]'
 
     # Get memory system stats (if available)
@@ -2634,9 +2778,9 @@ write_dashboard_state() {
     [ -d ".loki/memory/skills" ] && procedural_count=$(find ".loki/memory/skills" -type f -name "*.json" 2>/dev/null | wc -l | tr -d ' ')
 
     # Get quality gates status (if available)
-    local quality_gates='{"staticAnalysis":"pending","codeReview":"pending","antiSycophancy":"pending","testCoverage":"pending","securityScan":"pending","performance":"pending"}'
+    local quality_gates='null'
     if [ -f ".loki/state/quality-gates.json" ]; then
-        quality_gates=$(cat ".loki/state/quality-gates.json" 2>/dev/null || echo "$quality_gates")
+        quality_gates=$(cat ".loki/state/quality-gates.json" 2>/dev/null || echo 'null')
     fi
 
     # Get Completion Council state (v5.25.0)
@@ -3037,6 +3181,7 @@ start_status_monitor() {
         done
     ) &
     STATUS_MONITOR_PID=$!
+    register_pid "$STATUS_MONITOR_PID" "status-monitor"
 
     log_info "Status monitor started"
     log_info "Monitor progress: ${CYAN}watch -n 2 cat .loki/STATUS.txt${NC}"
@@ -3046,6 +3191,7 @@ stop_status_monitor() {
     if [ -n "$STATUS_MONITOR_PID" ]; then
         kill "$STATUS_MONITOR_PID" 2>/dev/null || true
         wait "$STATUS_MONITOR_PID" 2>/dev/null || true
+        unregister_pid "$STATUS_MONITOR_PID"
     fi
     stop_resource_monitor
 }
@@ -3621,6 +3767,7 @@ start_resource_monitor() {
         done
     ) &
     RESOURCE_MONITOR_PID=$!
+    register_pid "$RESOURCE_MONITOR_PID" "resource-monitor"
 
     log_info "Resource monitor started (CPU threshold: ${RESOURCE_CPU_THRESHOLD}%, Memory threshold: ${RESOURCE_MEM_THRESHOLD}%)"
     log_info "Check status: ${CYAN}cat .loki/state/resources.json${NC}"
@@ -3630,6 +3777,7 @@ stop_resource_monitor() {
     if [ -n "$RESOURCE_MONITOR_PID" ]; then
         kill "$RESOURCE_MONITOR_PID" 2>/dev/null || true
         wait "$RESOURCE_MONITOR_PID" 2>/dev/null || true
+        unregister_pid "$RESOURCE_MONITOR_PID"
     fi
 }
 
@@ -4720,12 +4868,14 @@ BUILD_PROMPT
             esac
         ) &
         pids+=($!)
+        register_pid "$!" "code-reviewer" "name=$reviewer_name"
     done
 
     # Wait for all reviewers to complete
     log_info "Waiting for $reviewer_count reviewers to complete (blind review)..."
     for pid in "${pids[@]}"; do
         wait "$pid" || true
+        unregister_pid "$pid"
     done
 
     log_info "All reviewers complete. Aggregating verdicts..."
@@ -5191,6 +5341,7 @@ start_dashboard() {
     LOKI_TLS_CERT="${LOKI_TLS_CERT:-}" LOKI_TLS_KEY="${LOKI_TLS_KEY:-}" \
         LOKI_SKILL_DIR="${skill_dir}" PYTHONPATH="${skill_dir}" nohup "$python_cmd" -m dashboard.server > "$log_file" 2>&1 &
     DASHBOARD_PID=$!
+    register_pid "$DASHBOARD_PID" "dashboard" "port=${DASHBOARD_PORT:-57374}"
 
     # Save PID for later cleanup
     mkdir -p .loki/dashboard
@@ -5224,6 +5375,7 @@ stop_dashboard() {
     if [ -n "$DASHBOARD_PID" ]; then
         kill "$DASHBOARD_PID" 2>/dev/null || true
         wait "$DASHBOARD_PID" 2>/dev/null || true
+        unregister_pid "$DASHBOARD_PID"
     fi
 
     # Also try PID file
@@ -5231,6 +5383,7 @@ stop_dashboard() {
         local saved_pid=$(cat ".loki/dashboard/dashboard.pid" 2>/dev/null)
         if [ -n "$saved_pid" ]; then
             kill "$saved_pid" 2>/dev/null || true
+            unregister_pid "$saved_pid"
         fi
         rm -f ".loki/dashboard/dashboard.pid"
     fi
@@ -7121,6 +7274,7 @@ cleanup() {
         fi
         stop_dashboard
         stop_status_monitor
+        kill_all_registered
         rm -f "$loki_dir/loki.pid" 2>/dev/null
         if [ -f "$loki_dir/session.json" ]; then
             _LOKI_SESSION_FILE="$loki_dir/session.json" python3 -c "
@@ -7148,6 +7302,7 @@ except (json.JSONDecodeError, OSError): pass
         fi
         stop_dashboard
         stop_status_monitor
+        kill_all_registered
         rm -f .loki/loki.pid .loki/PAUSE 2>/dev/null
         # Mark session.json as stopped
         if [ -f ".loki/session.json" ]; then
@@ -7335,6 +7490,7 @@ main() {
         LOKI_RUNNING_FROM_TEMP='' nohup "$original_script" "${cmd_args[@]}" > "$log_file" 2>&1 &
         local bg_pid=$!
         echo "$bg_pid" > "$pid_file"
+        register_pid "$bg_pid" "background-session" "log=$log_file"
 
         echo ""
         echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -7457,6 +7613,14 @@ main() {
     # Write PID file for ALL modes (foreground + background)
     echo "$$" > "$pid_file"
 
+    # Initialize PID registry and clean up orphans from previous sessions
+    init_pid_registry
+    local orphan_count
+    orphan_count=$(cleanup_orphan_pids)
+    if [ "$orphan_count" -gt 0 ]; then
+        log_warn "Killed $orphan_count orphaned process(es) from previous session"
+    fi
+
     # Copy skill files to .loki/skills/ - makes CLI self-contained
     # No need to install Claude Code skill separately
     copy_skill_files
@@ -7536,10 +7700,12 @@ main() {
             run_autonomous "$PRD_PATH"
         ) &
         local main_pid=$!
+        register_pid "$main_pid" "parallel-main" ""
 
         # Run parallel orchestrator
         run_parallel_orchestrator &
         local orchestrator_pid=$!
+        register_pid "$orchestrator_pid" "parallel-orchestrator" ""
 
         # Wait for main session (orchestrator continues watching)
         wait $main_pid || result=$?

@@ -1,6 +1,6 @@
 # Loki Mode - Claude Code Skill
 
-The flagship product of [Autonomi](https://www.autonomi.dev/). Multi-agent autonomous startup system for Claude Code, OpenAI Codex CLI, and Google Gemini CLI. Takes PRD to fully deployed, revenue-generating product with zero human intervention.
+The flagship product of [Autonomi](https://www.autonomi.dev/). Multi-agent autonomous startup system for Claude Code, OpenAI Codex CLI, and Google Gemini CLI. Takes PRD to fully deployed product with minimal human intervention.
 
 ## Quick Start
 
@@ -194,7 +194,7 @@ Prompt: "Review the following claims for factual accuracy.
 
 ### Version Numbering
 Follows semantic versioning: MAJOR.MINOR.PATCH
-- Current: v5.49.0
+- Current: v5.49.1
 - MAJOR bump for architecture changes (v5.0.0 = multi-provider support)
 - MINOR bump for new features (v5.23.0 = Dashboard File-Based API)
 - PATCH bump for fixes (v5.22.1 = session.json phantom state)

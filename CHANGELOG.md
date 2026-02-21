@@ -5,6 +5,44 @@ All notable changes to Loki Mode will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.49.1] - 2026-02-21
+
+### Added
+- Central PID registry at `.loki/pids/` with JSON entries for all spawned processes
+- 6 registry functions: `init_pid_registry`, `register_pid`, `unregister_pid`, `kill_registered_pid`, `cleanup_orphan_pids`, `kill_all_registered`
+- `_parse_json_field` helper with python3 + shell (sed) fallback for environments without python3
+- `loki cleanup` CLI command to kill orphaned processes from crashed sessions
+- Startup orphan scan: automatically detects and kills orphans from previous sessions
+- Background mode and parallel mode PIDs now registered in PID registry
+- Quality Gate #8: Mock Detector (`tests/detect-mock-problems.sh`) - detects tests that only test inline mocks
+- Quality Gate #9: Test Mutation Detector (`tests/detect-test-mutations.sh`) - detects low assertion density
+- Process Supervisor test suite (`tests/test-process-supervisor.sh`) - 26 tests
+- Dashboard `/api/health/processes` endpoint reads PID registry for process status
+
+### Fixed
+- Dashboard fake demo logs removed (6 fabricated setTimeout log entries)
+- Dashboard `running_agents` count now verifies PID liveness via `os.kill(pid, 0)` instead of raw array length
+- Dashboard quality gates return `null` instead of fake "pending" defaults
+- `register_pid` JSON injection: full sanitization chain (backslash, double-quote, newline stripping)
+- `cleanup_orphan_pids` stdout contamination: `log_warn` now redirects to stderr
+- `cleanup_orphan_pids` missing `echo "0"` on empty registry directory path
+- `ppid_val` numeric validation before `kill -0` in both run.sh and loki CLI
+- `cmd_stop` PID cleanup wait time aligned to 2s (was 0.5s), matching `kill_registered_pid`
+- `detect-mock-problems.sh` grep backreference portability for macOS
+
+### Changed
+- "zero human intervention" replaced with "minimal human intervention" project-wide (README, SKILL.md, CLAUDE.md, DOCKER_README.md, wiki, demo, docs/COMPARISON.md)
+- "100+" agent claims replaced with accurate language across all docs (README, skills, references, docs)
+- "7 swarms" corrected to "8 swarms" across all docs (README, COMPARISON, cursor-comparison, agents, agent-types, CONSTITUTION, competitive-analysis)
+- "37 agent types" corrected to "41 agent types" in CONSTITUTION.md, thick2thin.md
+- Pipeline diagram: removed "Revenue" step (no revenue code exists)
+- Benchmark claims: added "self-reported" and "unevaluated" disclaimers in COMPETITIVE-ANALYSIS.md
+- Removed inflated marketing claims: "First Truly Autonomous", "Better Than Anything", "2-3x quality"
+- Docker tags updated from stale versions to `latest` in INSTALLATION.md
+- Fake `loki-mode-install-skill` command replaced with actual `ln -sf` symlink in INSTALLATION.md
+- Documented telemetry opt-out (LOKI_TELEMETRY_DISABLED, DO_NOT_TRACK)
+- Version bumped to v5.49.1 across all version files
+
 ## [5.49.0] - 2026-02-19
 
 ### Added

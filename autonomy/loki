@@ -9,6 +9,7 @@
 # Usage:
 #   loki start [PRD]      - Start Loki Mode (optionally with PRD)
 #   loki stop             - Stop execution immediately
+#   loki cleanup          - Kill orphaned processes from crashed sessions
 #   loki pause            - Pause after current session
 #   loki resume           - Resume paused execution
 #   loki status           - Show current status
@@ -312,6 +313,7 @@ show_help() {
     echo "  init             Build a PRD interactively or from templates"
     echo "  issue <url|num>  Generate PRD from GitHub issue and optionally start"
     echo "  stop             Stop execution immediately"
+    echo "  cleanup          Kill orphaned processes from crashed sessions"
     echo "  pause            Pause after current session"
     echo "  resume           Resume paused execution"
     echo "  status [--json]  Show current status (--json for machine-readable)"
@@ -704,6 +706,28 @@ except: pass
             rm -f "$LOKI_DIR/dashboard/dashboard.pid"
         fi
 
+        # Kill any remaining registered processes (2s graceful window matches run.sh)
+        if [ -d "$LOKI_DIR/pids" ]; then
+            for entry_file in "$LOKI_DIR/pids"/*.json; do
+                [ -f "$entry_file" ] || continue
+                local reg_pid
+                reg_pid=$(basename "$entry_file" .json)
+                case "$reg_pid" in ''|*[!0-9]*) continue ;; esac
+                if kill -0 "$reg_pid" 2>/dev/null; then
+                    kill "$reg_pid" 2>/dev/null || true
+                    local w=0
+                    while [ $w -lt 4 ] && kill -0 "$reg_pid" 2>/dev/null; do
+                        sleep 0.5
+                        w=$((w + 1))
+                    done
+                    if kill -0 "$reg_pid" 2>/dev/null; then
+                        kill -9 "$reg_pid" 2>/dev/null || true
+                    fi
+                fi
+                rm -f "$entry_file"
+            done
+        fi
+
         # Emit session stop event
         emit_event session cli stop "reason=user_requested"
         # Emit success pattern for clean stop (SYN-018)
@@ -727,6 +751,86 @@ except: pass
         else
             echo "Start a session with: loki start"
         fi
+    fi
+}
+
+# Kill orphaned processes from crashed sessions
+cmd_cleanup() {
+    local pids_dir="$LOKI_DIR/pids"
+    local killed=0
+    local stale=0
+
+    if [ ! -d "$pids_dir" ]; then
+        echo "No PID registry found. Nothing to clean up."
+        exit 0
+    fi
+
+    echo -e "${BOLD}Scanning for orphaned processes...${NC}"
+
+    for entry_file in "$pids_dir"/*.json; do
+        [ -f "$entry_file" ] || continue
+        local pid
+        pid=$(basename "$entry_file" .json)
+        case "$pid" in
+            ''|*[!0-9]*) continue ;;
+        esac
+
+        local label=""
+        local ppid_val=""
+        # Parse JSON fields (python3 with shell fallback)
+        if command -v python3 >/dev/null 2>&1; then
+            label=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1])).get('label','unknown'))" "$entry_file" 2>/dev/null) || label="unknown"
+            ppid_val=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1])).get('ppid',''))" "$entry_file" 2>/dev/null) || true
+        else
+            label=$(sed 's/.*"label":"//' "$entry_file" 2>/dev/null | sed 's/".*//' | head -1) || label="unknown"
+            ppid_val=$(sed 's/.*"ppid"://' "$entry_file" 2>/dev/null | sed 's/[,}].*//' | head -1) || true
+        fi
+
+        if kill -0 "$pid" 2>/dev/null; then
+            # Process is alive - check if parent is dead (orphan)
+            local is_orphan=false
+            # Validate ppid_val is numeric before using with kill
+            case "$ppid_val" in ''|*[!0-9]*) ppid_val="" ;; esac
+            if [ -n "$ppid_val" ] && ! kill -0 "$ppid_val" 2>/dev/null; then
+                is_orphan=true
+            fi
+
+            if [ "$is_orphan" = true ] || [ "${1:-}" = "--force" ]; then
+                echo -e "  ${RED}Killing${NC} PID=$pid label=$label (parent $ppid_val dead)"
+                kill "$pid" 2>/dev/null || true
+                sleep 0.5
+                if kill -0 "$pid" 2>/dev/null; then
+                    kill -9 "$pid" 2>/dev/null || true
+                fi
+                rm -f "$entry_file"
+                killed=$((killed + 1))
+            else
+                echo -e "  ${GREEN}Alive${NC}  PID=$pid label=$label (parent $ppid_val alive)"
+            fi
+        else
+            # Process is dead - clean up stale entry
+            rm -f "$entry_file"
+            stale=$((stale + 1))
+        fi
+    done
+
+    echo ""
+    echo "Results: $killed orphan(s) killed, $stale stale entries cleaned"
+
+    # Also kill orphaned loki-run temp scripts
+    local temp_killed=0
+    if pgrep -f "loki-run-" >/dev/null 2>&1; then
+        if ! is_session_running; then
+            echo "Killing orphaned loki-run temp scripts..."
+            pkill -f "loki-run-" 2>/dev/null || true
+            sleep 0.5
+            pkill -9 -f "loki-run-" 2>/dev/null || true
+            temp_killed=1
+        fi
+    fi
+
+    if [ $killed -eq 0 ] && [ $stale -eq 0 ] && [ $temp_killed -eq 0 ]; then
+        echo -e "${GREEN}System is clean. No orphans found.${NC}"
     fi
 }
 
@@ -4496,6 +4600,9 @@ main() {
             ;;
         stop)
             cmd_stop
+            ;;
+        cleanup)
+            cmd_cleanup "$@"
             ;;
         pause)
             cmd_pause

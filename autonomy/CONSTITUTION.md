@@ -142,7 +142,7 @@ GROWTH ──[continuous improvement loop]──> GROWTH
 - `Bash` - Command execution
 - `platform-orchestrator` - Deployment and service management
 
-**The 37 agent types are ROLES defined through prompts, not subagent_types.**
+**The 41 agent types are ROLES defined through prompts, not subagent_types.**
 
 ---
 
@@ -158,7 +158,7 @@ skills/
   quality-gates.md             # 7-gate system, anti-sycophancy
   testing.md                   # Playwright, E2E, property-based
   production.md                # CI/CD, batch processing
-  agents.md                    # 37 agent types, A2A patterns
+  agents.md                    # 41 agent types, A2A patterns
   parallel-workflows.md        # Git worktrees, parallel streams
   troubleshooting.md           # Error recovery, fallbacks
   artifacts.md                 # Code generation patterns

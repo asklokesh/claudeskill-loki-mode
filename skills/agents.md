@@ -1,6 +1,6 @@
 # Agent Dispatch & Structured Prompting
 
-> **Full agent type definitions:** See `references/agent-types.md` for complete 41 agent role specifications across 7 swarms (Engineering, Operations, Business, Data, Product, Growth, Review, Orchestration).
+> **Full agent type definitions:** See `references/agent-types.md` for complete 41 agent role specifications across 8 swarms (Engineering, Operations, Business, Data, Product, Growth, Review, Orchestration).
 
 ---
 
@@ -245,7 +245,7 @@ Priority order for context:
 
 ---
 
-## The 37 Agent Roles
+## The 41 Agent Roles (37 Domain + 4 Orchestration)
 
 See `references/agent-types.md` for complete specifications. Summary:
 
@@ -259,4 +259,4 @@ See `references/agent-types.md` for complete specifications. Summary:
 | Growth | hacker, community, success, lifecycle | 4 |
 | Review | code, business, security | 3 |
 
-**Spawn only what you need.** Simple project: 5-10 agents. Complex startup: 100+.
+**Spawn only what you need.** Simple project: 5-10 agents. Complex startup: more as needed.

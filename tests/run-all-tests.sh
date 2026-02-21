@@ -65,6 +65,13 @@ run_test "Memory CLI Tests" "$SCRIPT_DIR/test-memory-cli.sh"
 run_test "Hooks System Tests" "$SCRIPT_DIR/test-hooks.sh"
 run_test "MCP Server Tests" "$SCRIPT_DIR/test-mcp-server.sh"
 
+# Process Supervisor Tests
+run_test "Process Supervisor Tests" "$SCRIPT_DIR/test-process-supervisor.sh"
+
+# Quality Gates
+run_test "Mock Detector (Gate #8)" "$SCRIPT_DIR/detect-mock-problems.sh"
+run_test "Test Mutation Detector (Gate #9)" "$SCRIPT_DIR/detect-test-mutations.sh"
+
 # Linting
 run_test "ShellCheck Linting" "$SCRIPT_DIR/run-shellcheck.sh"
 

@@ -49,7 +49,7 @@ skills/
 
 references/ (unchanged)
   +-- 18 detailed reference files
-  +-- agents.md (23KB) - Full 37 agent specs
+  +-- agents.md (23KB) - Full 41 agent specs
   +-- openai-patterns.md, lab-research-patterns.md, etc.
 ```
 
@@ -117,7 +117,7 @@ Content that didn't exist in v2.38.0:
 | Handoff message format | A2A specification | skills/agents.md |
 | Agentic patterns table | awesome-agentic-patterns | skills/agents.md |
 | "Ralph Wiggum Mode" insight | moridinamael | skills/agents.md |
-| Full 37 agent reference | references/agent-types.md | skills/agents.md (pointer) |
+| Full 41 agent reference | references/agent-types.md | skills/agents.md (pointer) |
 | References directory listing | New | skills/00-index.md |
 
 ---

@@ -37,9 +37,9 @@ GSD is the closest competitor -- a context engineering system that spawns fresh 
 |---------|-----------|-------------|---------|--------|--------------|-------|
 | **GitHub Stars** | 594 | 13,700 | 62,400 | 25,000+ | N/A (Commercial) | N/A (Commercial) |
 | **Agent Count** | 41 types | 64+ agents | 5 roles | Unlimited | 8 parallel | 1 autonomous |
-| **Parallel Execution** | Yes (100+) | Yes (swarms) | Sequential | Yes (crews) | Yes (8 worktrees) | Yes (fleet) |
-| **Published Benchmarks** | **98.78% HumanEval (multi-agent)** | None | 85.9-87.7% HumanEval | None | ~250 tok/s | 15% complex tasks |
-| **SWE-bench Score** | **99.67% patch gen (299/300)** | Unknown | Unknown | Unknown | Unknown | 15% complex |
+| **Parallel Execution** | Yes (multi-agent) | Yes (swarms) | Sequential | Yes (crews) | Yes (8 worktrees) | Yes (fleet) |
+| **Published Benchmarks** | 98.78% HumanEval (self-reported, max 3 retries) | None | 85.9-87.7% HumanEval | None | ~250 tok/s | 15% complex tasks |
+| **SWE-bench Score** | 99.67% patch gen (unevaluated, 299/300) | Unknown | Unknown | Unknown | Unknown | 15% complex |
 | **Full SDLC** | Yes (8 phases) | Yes | Partial | Partial | No | Partial |
 | **Business Ops** | **Yes (8 agents)** | No | No | No | No | No |
 | **Enterprise Security** | `--dangerously-skip-permissions` | MCP sandboxed | Sandboxed | Audit logs, RBAC | Staged autonomy | Sandboxed |

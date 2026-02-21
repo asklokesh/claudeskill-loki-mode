@@ -472,7 +472,7 @@ See `references/quality-control.md` for complete details.
 
 ## Scale Considerations
 
-> **Source:** [Cursor Scaling Learnings](../references/cursor-learnings.md) - integrators became bottlenecks at 100+ agents
+> **Source:** [Cursor Scaling Learnings](../references/cursor-learnings.md) - integrators became bottlenecks at high agent counts
 
 ### Review Intensity Scaling
 

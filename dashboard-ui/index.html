@@ -617,22 +617,6 @@
             logEvent('council-action', e.detail);
         });
 
-        // Add demo logs to the log stream
-        setTimeout(() => {
-            logStream.addLog('Dashboard UI components initialized', 'success');
-            logStream.addLog('Connecting to Loki Mode API...', 'info');
-        }, 500);
-
-        setTimeout(() => {
-            logStream.addLog('WebSocket connection established', 'success');
-            logStream.addLog('Starting autonomous execution loop', 'step');
-        }, 1500);
-
-        setTimeout(() => {
-            logStream.addLog('Agent spawned: arch-001 (Opus)', 'agent');
-            logStream.addLog('RARV cycle: REASON phase started', 'step');
-        }, 2500);
-
         // Log ready event
         logEvent('ready', 'All components loaded successfully');
     </script>

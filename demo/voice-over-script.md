@@ -8,7 +8,7 @@ Complete narration for Loki Mode demo video.
 
 > Welcome to Loki Mode - a multi-agent autonomous startup system that works with Claude Code, OpenAI Codex, and Google Gemini.
 >
-> Loki Mode takes your product requirements document and transforms it into a fully functioning application - with zero human intervention.
+> Loki Mode takes your product requirements document and transforms it into a fully functioning application - with minimal human intervention.
 >
 > Today I'll show you how it works by building a complete todo application from scratch.
 

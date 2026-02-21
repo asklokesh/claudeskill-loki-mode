@@ -2,7 +2,7 @@
 
 **The flagship product of [Autonomi](https://www.autonomi.dev/) -- Multi-agent autonomous development system for Claude Code, OpenAI Codex CLI, and Google Gemini CLI.**
 
-> Transform a Product Requirements Document (PRD) into a fully deployed, production-ready application with zero human intervention.
+> Transform a Product Requirements Document (PRD) into a fully deployed, production-ready application with minimal human intervention.
 
 ---
 
@@ -98,7 +98,7 @@ Loki Mode is an enterprise-grade autonomous AI development orchestrator that:
 
 ## Version History
 
-Current Version: **5.49.0**
+Current Version: **5.49.1**
 
 See [[Changelog]] for detailed release notes.
 

@@ -404,7 +404,20 @@ async def get_status() -> StatusResponse:
             iteration = state.get("iteration", 0)
             complexity = state.get("complexity", "standard")
             mode = state.get("mode", "")
-            running_agents = len(state.get("agents", []))
+            # Count only agents with alive PIDs (not raw array length)
+            agents_list = state.get("agents", [])
+            running_agents = 0
+            for agent in agents_list:
+                agent_pid = agent.get("pid")
+                if agent_pid:
+                    try:
+                        os.kill(int(agent_pid), 0)
+                        running_agents += 1
+                    except (OSError, ValueError, TypeError):
+                        pass
+                else:
+                    # No PID field -- count as running (legacy data)
+                    running_agents += 1
 
             tasks = state.get("tasks", {})
             pending_tasks = len(tasks.get("pending", []))
@@ -3193,6 +3206,31 @@ async def get_process_health(token: Optional[dict] = Depends(auth.get_current_to
                 })
         except Exception:
             pass
+
+    # PID registry (central process supervisor)
+    pids_dir = loki_dir / "pids"
+    registered: list[dict[str, Any]] = []
+    if pids_dir.exists():
+        for entry_file in sorted(pids_dir.glob("*.json")):
+            try:
+                pid_str = entry_file.stem
+                pid = int(pid_str)
+                entry = json.loads(entry_file.read_text())
+                try:
+                    os.kill(pid, 0)
+                    status = "alive"
+                except OSError:
+                    status = "dead"
+                registered.append({
+                    "pid": pid,
+                    "label": entry.get("label", "unknown"),
+                    "started": entry.get("started", ""),
+                    "ppid": entry.get("ppid"),
+                    "status": status,
+                })
+            except (ValueError, json.JSONDecodeError, OSError):
+                continue
+    result["registered_processes"] = registered
 
     watchdog_enabled = os.environ.get("LOKI_WATCHDOG", "false").lower() == "true"
     result["watchdog_enabled"] = watchdog_enabled

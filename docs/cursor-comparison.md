@@ -9,7 +9,7 @@
 
 | Dimension | Cursor | Loki Mode | Winner |
 |-----------|--------|-----------|--------|
-| **Proven Scale** | 1M+ LoC, 100+ agents | Benchmarks only | Cursor |
+| **Proven Scale** | 1M+ LoC, large agent count | Benchmarks only | Cursor |
 | **Research Foundation** | Empirical iteration | 25+ academic citations | Loki Mode |
 | **Quality Assurance** | Workers self-manage | 7-gate system + anti-sycophancy | Loki Mode |
 | **Anti-Sycophancy** | Not mentioned | CONSENSAGENT blind review | Loki Mode |
@@ -122,7 +122,7 @@ BOOTSTRAP -> DISCOVERY -> ARCHITECTURE -> INFRASTRUCTURE
      -> DEVELOPMENT -> QA -> DEPLOYMENT -> GROWTH (continuous)
 ```
 
-**41 Specialized Agent Types across 7 swarms:**
+**41 Specialized Agent Types across 8 swarms:**
 - Engineering (8 types)
 - Operations (8 types)
 - Business (8 types)
@@ -184,7 +184,7 @@ We incorporated Cursor's proven patterns:
 
 1. **Recursive Sub-Planners** - Planning scales horizontally
 2. **Judge Agents** - Explicit CONTINUE/COMPLETE/ESCALATE/PIVOT decisions
-3. **Optimistic Concurrency** - No locks, scales to 100+ agents
+3. **Optimistic Concurrency** - No locks, scales horizontally
 4. **Scale-Aware Review** - Full review for high-risk only at scale
 
 ---

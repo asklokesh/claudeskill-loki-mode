@@ -1,6 +1,6 @@
 # Loki Mode
 
-**The Flagship Product of [Autonomi](https://www.autonomi.dev/) -- The First Truly Autonomous Multi-Agent Startup System**
+**The Flagship Product of [Autonomi](https://www.autonomi.dev/) -- An Autonomous Multi-Agent Development System**
 
 [![npm version](https://img.shields.io/npm/v/loki-mode)](https://www.npmjs.com/package/loki-mode)
 [![npm downloads](https://img.shields.io/npm/dw/loki-mode)](https://www.npmjs.com/package/loki-mode)
@@ -9,17 +9,15 @@
 [![GitHub Marketplace](https://img.shields.io/badge/Marketplace-Loki%20Mode-purple?logo=github)](https://github.com/marketplace/actions/loki-mode-code-review)
 [![Autonomi](https://img.shields.io/badge/Autonomi-autonomi.dev-5B4EEA)](https://www.autonomi.dev/)
 [![Agent Types](https://img.shields.io/badge/Agent%20Types-41-blue)]()
-[![Loki Mode](https://img.shields.io/badge/Loki%20Mode-98.78%25%20Pass%401-blueviolet)](benchmarks/results/)
-[![HumanEval](https://img.shields.io/badge/HumanEval-98.17%25%20Pass%401-brightgreen)](benchmarks/results/)
-[![SWE-bench](https://img.shields.io/badge/SWE--bench-99.67%25%20Patch%20Gen-brightgreen)](benchmarks/results/)
+[![Benchmarks](https://img.shields.io/badge/Benchmarks-Infrastructure%20Ready-blue)](benchmarks/)
 
-**Current Version: v5.47.0**
+**Current Version: v5.49.0**
 
 **[Autonomi](https://www.autonomi.dev/)** | **[Documentation](https://www.autonomi.dev/docs)** | **[GitHub](https://github.com/asklokesh/loki-mode)**
 
-> **PRD → Deployed Product in Zero Human Intervention**
+> **PRD to Deployed Product with Minimal Human Intervention**
 >
-> Loki Mode transforms a Product Requirements Document into a fully built, tested, deployed, and revenue-generating product while you sleep. No manual steps. No intervention. Just results.
+> Loki Mode transforms a Product Requirements Document into a fully built, tested, and deployed product with autonomous multi-agent execution. Human oversight for deployment credentials, domain setup, and critical decisions.
 
 ---
 
@@ -79,7 +77,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: asklokesh/loki-mode@v5.38
+      - uses: asklokesh/loki-mode@v5
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           mode: review          # review, fix, or test
@@ -163,40 +161,27 @@ See [skills/providers.md](skills/providers.md) for full provider documentation.
 
 ---
 
-## Benchmark Results
+## Benchmarks
 
-### Three-Way Comparison (HumanEval)
+Benchmark infrastructure is included for HumanEval and SWE-bench evaluation. Results are self-reported from the included test harness and have not been independently verified.
 
-| System | Pass@1 | Details |
-|--------|--------|---------|
-| **Loki Mode (Multi-Agent)** | **98.78%** | 162/164 problems, RARV cycle recovered 2 |
-| Direct Claude | 98.17% | 161/164 problems (baseline) |
-| MetaGPT | 85.9-87.7% | Published benchmark |
+| Benchmark | Result | Notes |
+|-----------|--------|-------|
+| HumanEval | 162/164 (98.78%) | Self-reported, max 3 retries per problem |
+| SWE-bench | 299/300 patches generated | Patch generation only -- SWE-bench evaluator not yet run to verify correctness |
 
-**Loki Mode beats MetaGPT by +11-13%** thanks to the RARV (Reason-Act-Reflect-Verify) cycle.
+**Note:** SWE-bench "patch generation" means the system produced a patch file, not that the patch correctly resolves the issue. The SWE-bench evaluator should be run to determine actual resolution rates.
 
-### Full Results
-
-| Benchmark | Score | Details |
-|-----------|-------|---------|
-| **Loki Mode HumanEval** | **98.78% Pass@1** | 162/164 (multi-agent with RARV) |
-| **Direct Claude HumanEval** | **98.17% Pass@1** | 161/164 (single agent baseline) |
-| **Direct Claude SWE-bench** | **99.67% patch gen** | 299/300 problems |
-| **Loki Mode SWE-bench** | **99.67% patch gen** | 299/300 problems |
-| Model | Claude Opus 4.5 | |
-
-**Key Finding:** Multi-agent RARV matches single-agent performance on both benchmarks after timeout optimization. The 4-agent pipeline (Architect->Engineer->QA->Reviewer) achieves the same 99.67% patch generation as direct Claude.
-
-See [benchmarks/results/](benchmarks/results/) for full methodology and solutions.
+See [benchmarks/](benchmarks/) for the test harness and raw results.
 
 ---
 
 ## What is Loki Mode?
 
-Loki Mode is a multi-provider AI skill that orchestrates **41 specialized AI agent types** across **7 swarms** to autonomously build, test, deploy, and scale complete startups. Works with **Claude Code**, **OpenAI Codex CLI**, and **Google Gemini CLI**. It dynamically spawns only the agents you need—**5-10 for simple projects, 100+ for complex startups**—working in parallel with continuous self-verification.
+Loki Mode is a multi-provider AI skill that orchestrates **41 specialized AI agent types** across **8 swarms** to autonomously build, test, and deploy software projects. Works with **Claude Code**, **OpenAI Codex CLI**, and **Google Gemini CLI**. It dynamically spawns agents as needed -- typically **5-10 for simple projects, more for complex ones** -- working in parallel with continuous self-verification.
 
 ```
-PRD → Research → Architecture → Development → Testing → Deployment → Marketing → Revenue
+PRD → Research → Architecture → Development → Testing → Deployment → Marketing
 ```
 
 **Just say "Loki Mode" and point to a PRD. Walk away. Come back to a deployed product.**
@@ -205,11 +190,11 @@ PRD → Research → Architecture → Development → Testing → Deployment →
 
 ## Why Loki Mode?
 
-### **Better Than Anything Out There**
+### **How It Works**
 
 | What Others Do | What Loki Mode Does |
 |----------------|---------------------|
-| **Single agent** writes code linearly | **100+ agents** work in parallel across engineering, ops, business, data, product, and growth |
+| **Single agent** writes code linearly | **Multiple agents** work in parallel across engineering, ops, business, data, product, and growth |
 | **Manual deployment** required | **Autonomous deployment** to AWS, GCP, Azure, Vercel, Railway with blue-green and canary strategies |
 | **No testing** or basic unit tests | **7 automated quality gates**: input/output guardrails, static analysis, blind review, anti-sycophancy, severity blocking, test coverage |
 | **Code only** - you handle the rest | **Full business operations**: marketing, sales, legal, HR, finance, investor relations |
@@ -221,8 +206,8 @@ PRD → Research → Architecture → Development → Testing → Deployment →
 
 ### **Core Advantages**
 
-1. **Truly Autonomous**: RARV (Reason-Act-Reflect-Verify) cycle with self-verification achieves 2-3x quality improvement
-2. **Massively Parallel**: 100+ agents working simultaneously, not sequential single-agent bottlenecks
+1. **Self-Verifying**: RARV (Reason-Act-Reflect-Verify) cycle with continuous self-verification catches errors early
+2. **Parallel Execution**: Multiple agents working simultaneously, not sequential single-agent bottlenecks
 3. **Production-Ready**: Not just code—handles deployment, monitoring, incident response, and business operations
 4. **Self-Improving**: Learns from mistakes, updates continuity logs, prevents repeated errors
 5. **Zero Babysitting**: Auto-resumes on rate limits, recovers from failures, runs until completion
@@ -255,7 +240,7 @@ PRD → Research → Architecture → Development → Testing → Deployment →
 | **GitHub Integration** | Issue import, PR creation, status sync | [GitHub Integration](skills/github-integration.md) |
 | **Distribution** | npm, Homebrew, Docker installation | [Installation Guide](docs/INSTALLATION.md) |
 | **Research Foundation** | OpenAI, DeepMind, Anthropic patterns | [Acknowledgements](docs/ACKNOWLEDGEMENTS.md) |
-| **Benchmarks** | HumanEval 98.78%, SWE-bench 99.67% | [Benchmark Results](benchmarks/results/) |
+| **Benchmarks** | HumanEval and SWE-bench infrastructure included | [Benchmark Harness](benchmarks/) |
 | **Comparisons** | vs Auto-Claude, Cursor | [Auto-Claude](docs/auto-claude-comparison.md), [Cursor](docs/cursor-comparison.md) |
 
 ---
@@ -424,7 +409,7 @@ Loki Mode doesn't just write code—it **thinks, acts, learns, and verifies**:
    └─ Apply learning and RETRY from REASON
 ```
 
-**Result:** 2-3x quality improvement through continuous self-verification.
+**Result:** Improved quality through continuous self-verification and multi-reviewer code review.
 
 ### **Perpetual Improvement Mode**
 
@@ -561,7 +546,7 @@ graph TB
 **Key components:**
 - **RARV+C Cycle** -- Reason, Act, Reflect, Verify, Compound. Every iteration follows this loop. Failed verification triggers retry from Reason.
 - **Provider Layer** -- Claude Code (full parallel agents, Task tool, MCP), Codex CLI and Gemini CLI (sequential, degraded mode).
-- **Agent Swarms** -- 41 specialized agent types across 7 swarms, spawned on demand based on project complexity.
+- **Agent Swarms** -- 41 specialized agent types across 8 swarms, spawned on demand based on project complexity.
 - **Completion Council** -- 3 members vote on whether the project is done. Anti-sycophancy devil's advocate on unanimous votes.
 - **Memory System** -- Episodic traces, semantic patterns, procedural skills. Progressive disclosure reduces context usage by 60-80%.
 - **Dashboard** -- FastAPI server reading `.loki/` flat files, with real-time web UI for task queue, agents, logs, and council state. Now with TLS/HTTPS, OIDC/SSO, and RBAC (v5.36.0-v5.37.0).
@@ -609,7 +594,7 @@ Config search order: `.loki/config.yaml` (project) -> `~/.config/loki-mode/confi
 
 ## Agent Swarms (41 Types)
 
-Loki Mode has **41 predefined agent types** organized into **7 specialized swarms**. The orchestrator spawns only what you need—simple projects use 5-10 agents, complex startups spawn 100+.
+Loki Mode has **41 predefined agent types** organized into **8 specialized swarms**. The orchestrator spawns only what you need -- simple projects typically use 5-10 agents, complex ones may use more.
 
 <img width="5309" height="979" alt="Agent Swarms Visualization" src="https://github.com/user-attachments/assets/7d18635d-a606-401f-8d9f-430e6e4ee689" />
 
@@ -981,7 +966,7 @@ Built for the [Claude Code](https://claude.ai) ecosystem, powered by Anthropic's
 
 Loki Mode is the flagship product of **[Autonomi](https://www.autonomi.dev/)** -- a platform for autonomous AI systems. Like Alphabet is to Google, Autonomi is the parent brand under which Loki Mode and future products operate.
 
-**Why Autonomi?** Loki Mode proved that multi-agent autonomous systems can build real software from a PRD with zero human intervention. Autonomi is the expansion of that vision into a broader platform of autonomous services and products.
+**Why Autonomi?** Loki Mode proved that multi-agent autonomous systems can build real software from a PRD with minimal human intervention. Autonomi is the expansion of that vision into a broader platform of autonomous services and products.
 
 - **[autonomi.dev](https://www.autonomi.dev/)** -- Main website
 - **[Documentation](https://www.autonomi.dev/docs)** -- Full documentation

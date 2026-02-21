@@ -182,7 +182,7 @@ Dexter shows value of domain specialization. Our 41 agent types follow this patt
    - Most haven't scaled across enterprise
 
 ### Loki Mode Alignment
-- Multi-agent architecture (41 types, 7 swarms)
+- Multi-agent architecture (41 types, 8 swarms)
 - Plan Agents (orchestrator, planner)
 - Execution Agents (eng-*, ops-*, biz-*)
 - Security controls (LOKI_SANDBOX_MODE, LOKI_BLOCKED_COMMANDS)
