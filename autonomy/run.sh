@@ -5297,41 +5297,53 @@ start_dashboard() {
         log_info "TLS enabled for dashboard"
     fi
 
-    # Ensure dashboard Python dependencies via virtualenv (PEP 668 safe)
+    # Ensure dashboard Python dependencies via virtualenv
+    # Use ~/.loki/dashboard-venv (persistent, writable, survives npm/brew upgrades)
     local skill_dir="${SCRIPT_DIR%/*}"
     local req_file="${skill_dir}/dashboard/requirements.txt"
-    local dashboard_venv="${skill_dir}/dashboard/.venv"
+    local dashboard_venv="$HOME/.loki/dashboard-venv"
     local python_cmd="python3"
 
-    # Use venv python if available, otherwise set one up
+    # Use venv python if available
     if [ -x "${dashboard_venv}/bin/python3" ]; then
         python_cmd="${dashboard_venv}/bin/python3"
     fi
 
-    if ! "$python_cmd" -c "import fastapi" 2>/dev/null; then
+    # Check all required imports
+    if ! "$python_cmd" -c "import fastapi; import sqlalchemy; import aiosqlite" 2>/dev/null; then
         log_step "Setting up dashboard virtualenv..."
-        if ! [ -d "$dashboard_venv" ]; then
+        if ! [ -x "${dashboard_venv}/bin/python3" ]; then
+            # Remove broken venv if exists
+            [ -d "$dashboard_venv" ] && rm -rf "$dashboard_venv"
+            mkdir -p "$HOME/.loki"
             python3 -m venv "$dashboard_venv" 2>/dev/null || python3.13 -m venv "$dashboard_venv" 2>/dev/null || {
-                log_warn "Failed to create virtualenv, trying direct pip install..."
+                log_warn "Failed to create virtualenv"
+                log_warn "You may need: sudo apt install python3-venv"
             }
         fi
         if [ -x "${dashboard_venv}/bin/python3" ]; then
             python_cmd="${dashboard_venv}/bin/python3"
-            log_step "Installing dashboard dependencies into venv..."
+            log_step "Installing dashboard dependencies..."
             if [ -f "$req_file" ]; then
-                "${dashboard_venv}/bin/pip" install -q -r "$req_file" 2>/dev/null || {
-                    log_warn "Pinned deps failed, installing core deps..."
-                    "${dashboard_venv}/bin/pip" install -q fastapi uvicorn pydantic websockets 2>/dev/null || true
+                "${dashboard_venv}/bin/pip" install -r "$req_file" 2>&1 | tail -1 || {
+                    log_warn "Pinned deps failed, trying unpinned..."
+                    "${dashboard_venv}/bin/pip" install fastapi uvicorn pydantic websockets sqlalchemy aiosqlite 2>&1 | tail -1 || {
+                        log_warn "Failed to install dashboard dependencies"
+                        log_warn "Dashboard will not be available"
+                    }
+                    # greenlet is optional (needs C compiler on some platforms)
+                    "${dashboard_venv}/bin/pip" install greenlet 2>/dev/null || true
                 }
             else
-                "${dashboard_venv}/bin/pip" install -q fastapi uvicorn pydantic websockets 2>/dev/null || true
+                "${dashboard_venv}/bin/pip" install fastapi uvicorn pydantic websockets sqlalchemy aiosqlite 2>&1 | tail -1 || {
+                    log_warn "Failed to install dashboard dependencies"
+                    log_warn "Dashboard will not be available"
+                }
+                "${dashboard_venv}/bin/pip" install greenlet 2>/dev/null || true
             fi
         else
-            # Fallback: try direct pip (may fail on PEP 668 systems)
-            pip3 install -q fastapi uvicorn pydantic websockets 2>/dev/null || pip install -q fastapi uvicorn pydantic websockets 2>/dev/null || {
-                log_warn "Failed to install dashboard dependencies"
-                log_warn "Run manually: python3 -m venv ${dashboard_venv} && ${dashboard_venv}/bin/pip install fastapi uvicorn pydantic websockets"
-            }
+            log_warn "Failed to install dashboard dependencies"
+            log_warn "Run manually: python3 -m venv ${dashboard_venv} && ${dashboard_venv}/bin/pip install fastapi uvicorn sqlalchemy aiosqlite"
         fi
     fi
 

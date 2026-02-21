@@ -130,6 +130,81 @@ get_version() {
     fi
 }
 
+# Ensure dashboard Python venv with all deps installed.
+# Uses ~/.loki/dashboard-venv (persistent, writable, survives npm/brew upgrades).
+# Sets DASHBOARD_PYTHON to the venv python3 path on success.
+# Returns 0 on success, 1 on failure.
+ensure_dashboard_venv() {
+    local dashboard_venv="$HOME/.loki/dashboard-venv"
+    DASHBOARD_PYTHON="python3"
+
+    # Use existing venv python if available
+    if [ -x "${dashboard_venv}/bin/python3" ]; then
+        DASHBOARD_PYTHON="${dashboard_venv}/bin/python3"
+    fi
+
+    # Check all required imports
+    if "$DASHBOARD_PYTHON" -c "import fastapi; import sqlalchemy; import aiosqlite" 2>/dev/null; then
+        return 0
+    fi
+
+    echo -e "${YELLOW}Setting up dashboard virtualenv...${NC}"
+
+    # Create venv if missing or broken
+    if ! [ -x "${dashboard_venv}/bin/python3" ]; then
+        # Remove broken venv if exists
+        if [ -d "$dashboard_venv" ]; then
+            echo -e "${YELLOW}Removing broken dashboard venv...${NC}"
+            rm -rf "$dashboard_venv"
+        fi
+        mkdir -p "$HOME/.loki"
+        python3 -m venv "$dashboard_venv" 2>/dev/null || python3.13 -m venv "$dashboard_venv" 2>/dev/null || {
+            echo -e "${RED}Failed to create dashboard virtualenv${NC}"
+            echo "You may need to install python3-venv:"
+            echo "  sudo apt install python3-venv    (Debian/Ubuntu)"
+            echo "  brew install python3              (macOS)"
+            return 1
+        }
+    fi
+
+    DASHBOARD_PYTHON="${dashboard_venv}/bin/python3"
+    echo -e "${YELLOW}Installing dashboard dependencies...${NC}"
+
+    # Try pinned requirements first, then unpinned fallback
+    local req_file="${SKILL_DIR}/dashboard/requirements.txt"
+    local installed=false
+    if [ -f "$req_file" ]; then
+        if "${dashboard_venv}/bin/pip" install -r "$req_file" 2>&1 | tail -1; then
+            installed=true
+        else
+            echo -e "${YELLOW}Pinned deps failed, trying unpinned...${NC}"
+        fi
+    fi
+
+    if [ "$installed" = false ]; then
+        # Install without greenlet first (it may need a C compiler).
+        # SQLAlchemy only requires greenlet for sync-in-async; aiosqlite is pure async.
+        if ! "${dashboard_venv}/bin/pip" install fastapi uvicorn pydantic websockets sqlalchemy aiosqlite 2>&1 | tail -1; then
+            echo -e "${RED}Failed to install dashboard dependencies${NC}"
+            echo "Try manually: ${dashboard_venv}/bin/pip install fastapi uvicorn sqlalchemy aiosqlite"
+            return 1
+        fi
+        # Try greenlet separately (optional, needs C compiler on some platforms)
+        "${dashboard_venv}/bin/pip" install greenlet 2>/dev/null || true
+    fi
+
+    # Verify imports work after install
+    if ! "$DASHBOARD_PYTHON" -c "import fastapi; import sqlalchemy; import aiosqlite" 2>/dev/null; then
+        echo -e "${RED}Dashboard dependencies installed but imports still fail${NC}"
+        echo "Try removing the venv and retrying:"
+        echo "  rm -rf ${dashboard_venv}"
+        echo "  loki dashboard start"
+        return 1
+    fi
+
+    return 0
+}
+
 # Check if jq is available (called by functions that need it)
 require_jq() {
     if ! command -v jq &> /dev/null; then
@@ -1565,14 +1640,12 @@ cmd_dashboard_start() {
         exit 1
     fi
 
-    # Determine python command -- prefer dashboard venv if available
-    local python_cmd="python3"
-    local dashboard_venv="${SKILL_DIR}/dashboard/.venv"
-    if [ -x "${dashboard_venv}/bin/python3" ]; then
-        python_cmd="${dashboard_venv}/bin/python3"
-    elif ! command -v python3 &> /dev/null; then
-        python_cmd="python"
+    # Set up dashboard venv and python command
+    if ! ensure_dashboard_venv; then
+        echo -e "${RED}Cannot start dashboard without Python dependencies${NC}"
+        return 1
     fi
+    local python_cmd="$DASHBOARD_PYTHON"
 
     # Check if already running
     if [ -f "$DASHBOARD_PID_FILE" ]; then
@@ -1616,34 +1689,6 @@ cmd_dashboard_start() {
     if [ -n "$tls_cert" ] && [ -n "$tls_key" ]; then
         url_scheme="https"
         tls_info=" (TLS enabled)"
-    fi
-
-    # Ensure dashboard Python dependencies via virtualenv (PEP 668 safe)
-    if ! "$python_cmd" -c "import fastapi" 2>/dev/null; then
-        echo -e "${YELLOW}Setting up dashboard virtualenv...${NC}"
-        local req_file="${SKILL_DIR}/dashboard/requirements.txt"
-        if ! [ -d "$dashboard_venv" ]; then
-            python3 -m venv "$dashboard_venv" 2>/dev/null || python3.13 -m venv "$dashboard_venv" 2>/dev/null || true
-        fi
-        if [ -x "${dashboard_venv}/bin/python3" ]; then
-            python_cmd="${dashboard_venv}/bin/python3"
-            echo -e "${YELLOW}Installing dashboard dependencies into venv...${NC}"
-            if [ -f "$req_file" ]; then
-                "${dashboard_venv}/bin/pip" install -q -r "$req_file" 2>/dev/null || {
-                    echo -e "${YELLOW}Pinned deps failed, installing core deps...${NC}"
-                    "${dashboard_venv}/bin/pip" install -q fastapi uvicorn pydantic websockets 2>/dev/null || true
-                }
-            else
-                "${dashboard_venv}/bin/pip" install -q fastapi uvicorn pydantic websockets 2>/dev/null || true
-            fi
-        else
-            # Fallback: try direct pip (may fail on PEP 668 systems)
-            pip3 install -q fastapi uvicorn pydantic websockets 2>/dev/null || pip install -q fastapi uvicorn pydantic websockets 2>/dev/null || {
-                echo -e "${RED}Failed to install dashboard dependencies${NC}"
-                echo "Run manually: python3 -m venv ${dashboard_venv} && ${dashboard_venv}/bin/pip install fastapi uvicorn pydantic websockets"
-                exit 1
-            }
-        fi
     fi
 
     echo -e "${GREEN}Starting dashboard server...${NC}"
@@ -3347,35 +3392,12 @@ cmd_api() {
                 fi
             fi
 
-            # Ensure dashboard Python dependencies via virtualenv (PEP 668 safe)
-            local dashboard_venv="${SKILL_DIR}/dashboard/.venv"
-            local api_python="python3"
-            if [ -x "${dashboard_venv}/bin/python3" ]; then
-                api_python="${dashboard_venv}/bin/python3"
+            # Ensure dashboard Python dependencies
+            if ! ensure_dashboard_venv; then
+                echo -e "${RED}Cannot start dashboard without Python dependencies${NC}"
+                exit 1
             fi
-            if ! "$api_python" -c "import fastapi" 2>/dev/null; then
-                echo -e "${YELLOW}Setting up dashboard virtualenv...${NC}"
-                if ! [ -d "$dashboard_venv" ]; then
-                    python3 -m venv "$dashboard_venv" 2>/dev/null || python3.13 -m venv "$dashboard_venv" 2>/dev/null || true
-                fi
-                if [ -x "${dashboard_venv}/bin/python3" ]; then
-                    api_python="${dashboard_venv}/bin/python3"
-                    local req_file="${SKILL_DIR}/dashboard/requirements.txt"
-                    if [ -f "$req_file" ]; then
-                        "${dashboard_venv}/bin/pip" install -q -r "$req_file" 2>/dev/null || {
-                            "${dashboard_venv}/bin/pip" install -q fastapi uvicorn pydantic websockets 2>/dev/null || true
-                        }
-                    else
-                        "${dashboard_venv}/bin/pip" install -q fastapi uvicorn pydantic websockets 2>/dev/null || true
-                    fi
-                else
-                    pip3 install -q fastapi uvicorn pydantic websockets 2>/dev/null || {
-                        echo -e "${RED}Failed to install dashboard dependencies${NC}"
-                        echo "Run manually: python3 -m venv ${dashboard_venv} && ${dashboard_venv}/bin/pip install fastapi uvicorn pydantic websockets"
-                        exit 1
-                    }
-                fi
-            fi
+            local api_python="$DASHBOARD_PYTHON"
 
             # Start server
             mkdir -p "$LOKI_DIR/logs" "$LOKI_DIR/dashboard"
@@ -3941,7 +3963,13 @@ SESSEOF
             sleep 1
         fi
 
-        LOKI_DIR="$LOKI_DIR" PYTHONPATH="$SKILL_DIR" python3 -m uvicorn dashboard.server:app \
+        # Set up dashboard venv
+        if ! ensure_dashboard_venv; then
+            echo -e "${YELLOW}Warning: Dashboard dependencies not available, continuing without dashboard${NC}"
+        fi
+        local demo_python="$DASHBOARD_PYTHON"
+
+        LOKI_DIR="$LOKI_DIR" PYTHONPATH="$SKILL_DIR" "$demo_python" -m uvicorn dashboard.server:app \
             --host 127.0.0.1 --port 57374 --log-level warning &>/dev/null &
         local dash_pid=$!
         echo "$dash_pid" > "$LOKI_DIR/dashboard/dashboard.pid"
