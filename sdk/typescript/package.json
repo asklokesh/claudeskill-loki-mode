@@ -2,9 +2,11 @@
   "name": "@autonomi/sdk",
   "version": "0.1.0",
   "description": "TypeScript/Node.js SDK for the Autonomi Control Plane API",
-  "main": "src/index.ts",
-  "types": "src/index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
     "test": "node --test tests/client.test.js"
   },
   "engines": {
@@ -16,5 +18,8 @@
     "loki-mode",
     "sdk",
     "api-client"
-  ]
+  ],
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
 }
