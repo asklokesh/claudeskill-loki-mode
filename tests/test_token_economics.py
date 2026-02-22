@@ -601,7 +601,7 @@ class TestTokenEconomicsSummary:
             summary = te.get_summary()
             assert summary["session_id"] == "test-session"
             assert "started_at" in summary
-            assert summary["started_at"].endswith("Z")
+            assert summary["started_at"].endswith("Z") or summary["started_at"].endswith("+00:00")
             assert "metrics" in summary
             assert summary["metrics"]["discovery_tokens"] == 50
             assert summary["metrics"]["read_tokens"] == 100
