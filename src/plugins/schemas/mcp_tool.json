@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MCP Tool Plugin Schema",
+  "description": "Schema for custom MCP tool plugins in Loki Mode",
+  "type": "object",
+  "required": ["type", "name", "description", "command"],
+  "properties": {
+    "type": {
+      "const": "mcp_tool"
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{2,49}$",
+      "description": "Unique tool name (lowercase, 3-50 chars, alphanumeric and hyphens)"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 500,
+      "description": "Human-readable description of the MCP tool"
+    },
+    "command": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Command to execute when tool is invoked"
+    },
+    "parameters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "type"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Parameter name"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["string", "number", "boolean"],
+            "description": "Parameter type"
+          },
+          "description": {
+            "type": "string",
+            "description": "Parameter description"
+          },
+          "required": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether the parameter is required"
+          },
+          "default": {
+            "description": "Default value for the parameter"
+          }
+        },
+        "additionalProperties": false
+      },
+      "description": "Tool input parameters"
+    },
+    "timeout_ms": {
+      "type": "integer",
+      "minimum": 1000,
+      "maximum": 120000,
+      "default": 30000,
+      "description": "Maximum execution time in milliseconds"
+    },
+    "working_directory": {
+      "type": "string",
+      "enum": ["project", "plugin"],
+      "default": "project",
+      "description": "Working directory for command execution"
+    }
+  },
+  "additionalProperties": false
+}

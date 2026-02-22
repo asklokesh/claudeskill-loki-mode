@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Agent Plugin Schema",
+  "description": "Schema for custom agent plugins in Loki Mode",
+  "type": "object",
+  "required": ["type", "name", "description", "prompt_template"],
+  "properties": {
+    "type": {
+      "const": "agent"
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{2,49}$",
+      "description": "Unique agent name (lowercase, 3-50 chars, alphanumeric and hyphens)"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 500,
+      "description": "Human-readable description of the agent"
+    },
+    "trigger": {
+      "type": "string",
+      "description": "Regex pattern for when to activate this agent"
+    },
+    "prompt_template": {
+      "type": "string",
+      "maxLength": 10000,
+      "description": "Prompt template for the agent (supports {{event.*}} variables)"
+    },
+    "quality_gate": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this agent participates in quality gate reviews"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "engineering",
+        "operations",
+        "business",
+        "data",
+        "product",
+        "growth",
+        "review",
+        "orchestration",
+        "custom"
+      ],
+      "description": "Swarm category for this agent"
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of capabilities this agent provides"
+    }
+  },
+  "additionalProperties": false
+}
